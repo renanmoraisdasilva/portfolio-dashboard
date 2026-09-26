@@ -56,7 +56,6 @@ export function mountWebRoutes(app: Express): void {
   // Backward-compatible paths for old direct links/bookmarks.
   app.get('/index.html', (_req, res) => res.redirect('/'));
   app.get('/simulation.html', (_req, res) => res.redirect('/pages/simulation.html'));
-  app.get('/finance.html', (_req, res) => res.redirect('/pages/finance.html'));
   app.get('/analytics.html', (_req, res) => res.redirect('/pages/analytics.html'));
   app.get('/sql-explorer.html', (_req, res) => res.redirect('/pages/sql-explorer.html'));
 

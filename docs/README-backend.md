@@ -18,47 +18,13 @@ API notes:
 - `GET /api/history` (supports `?range=` of `day`, `week`, `month`, `6months`, `year` or `all`), `POST /api/history/point`, `DELETE /api/history/:id`, `DELETE /api/history` to manage history points.
 
 Static pages: HTML files are organized under `pages/` and served by the same app via static middleware. For example:
-- `GET /pages/finance.html` will serve `pages/finance.html`.
-
-Finance service (new): the app now exposes a Finance API backed by its own SQLite DB `apps/api/data/finance.db`.
-- `POST /api/finance/import` — import a finance JSON payload. The request body should include the finance data; if `year` is omitted from the payload, you may override it with `?year=<YYYY>`.
-- `GET /api/finance?year=<YYYY>` — export the finance canonical JSON for the requested year. Defaults to the current year if omitted.
-- `POST /api/finance/init` — initialize or migrate the finance DB schema.
+- `GET /pages/index.html` will serve `pages/index.html`.
 - `GET /api/docs` — Swagger UI for the backend OpenAPI documentation.
-
-Incomes:
-- `POST /api/finance/incomes` — add an income. Body: `{ month, source, value, description?, year? }`
-- `PUT /api/finance/incomes/:id` — update an income. Body: `{ source, value, description? }`
-- `DELETE /api/finance/incomes/:id` — remove an income.
-
-Fixed expenses:
-- `GET /api/finance/fixed?month=<0-11>&year=<YYYY?>` — list fixed expenses for a month.
-- `POST /api/finance/fixed` — add fixed. Body: `{ month, name, category, value, paymentMethod?, normallyDueDay?, paidOnDate?, year? }`
-- `PUT /api/finance/fixed/:id` — update fixed. Body may include any of the same fields.
-- `DELETE /api/finance/fixed/:id` — delete fixed.
-
-Eventual expenses:
-- `GET /api/finance/eventual?month=<0-11>&year=<YYYY?>` — list eventual expenses for a month.
-- `POST /api/finance/eventual` — add eventual. Body: `{ month, category, value, description?, paymentMethod?, year? }`
-- `PUT /api/finance/eventual/:id` — update eventual.
-- `DELETE /api/finance/eventual/:id` — delete eventual.
-
-Credit card expenses:
-- `GET /api/finance/credit?card=<nuRenan|nuJu|nomad>&month=<0-11>&year=<YYYY?>` — list credit card transactions for a card/month.
-- `POST /api/finance/credit` — add credit expense. Body: `{ card, month, category, value, paymentMethod?, description?, year? }`
-- `PUT /api/finance/credit/:id` — update credit expense. Body may include `{ category?, value?, paymentMethod?, description?, paidOnDate? }`.
-- `DELETE /api/finance/credit/:id` — delete credit expense.
-
-Years and reset:
-- `GET /api/finance/years` — list available finance years.
-- `POST /api/finance/years` — create an empty year. Body: `{ year }`
-- `POST /api/finance/years/:year/reset` — delete all finance data for that year.
 
 If you prefer a dedicated URL like `/importer/`, place the page and its assets under `public/importer/` and mount it with `app.use('/importer', express.static(...))` in `apps/api/src/index.ts`.
 
 Docker notes:
-- `pages/finance.html` is copied into the runtime image so it will be available at `/pages/finance.html` in the container.
-- To persist `finance.db` across container restarts, mount the `apps/api/data` folder as a volume when running the container:
+- To persist `portfolio.db` across container restarts, mount the `apps/api/data` folder as a volume when running the container:
 
   docker run -v /path/on/host:/app/apps/api/data -p 3000:3000 your-image
 

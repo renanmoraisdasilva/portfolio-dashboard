@@ -1,16 +1,15 @@
 # Portfolio Dashboard
 
-A full-stack portfolio dashboard repository containing a static frontend experience and a TypeScript + Express backend for finance data.
+A full-stack portfolio dashboard repository containing a static frontend experience and a TypeScript + Express backend.
 
 ## What is included
 
-- `pages/finance.html` — main finance dashboard UI with fixed/eventual expenses, credit card handling, charts, and local finance state.
 - `pages/index.html` — landing page or home experience for the portfolio dashboard.
 - `pages/simulation.html` — additional frontend views in the repo.
-- `apps/api/openapi.yaml` — API specification for backend finance and portfolio endpoints.
+- `apps/api/openapi.yaml` — API specification for the backend endpoints.
 - `docs/README-backend.md` — detailed backend API and server notes.
-- `apps/api/` — backend implementation with Express, SQLite, finance routes, migrations, and tests.
-- `fixtures/` — synthetic sample datasets (portfolio + finance) used for seeding and import demos.
+- `apps/api/` — backend implementation with Express, SQLite, routes, migrations, and tests.
+- `fixtures/` — synthetic sample dataset used for seeding.
 
 ## Project structure
 
@@ -70,7 +69,7 @@ docker compose -f docker-compose.local.yml up -d --build
 BASE_URL=http://localhost:3000 k6 run scripts/k6/dashboard-workflow.js
 ```
 
-- `npm run migrate:init` initializes SQLite tables and applies finance DB migrations.
+- `npm run migrate:init` initializes SQLite tables and applies migrations.
 - `npm run dev` starts the backend in development mode with hot reload.
 - `npm run start:web` starts only the web process from compiled output.
 - `npm run start:worker` starts only the scheduled-work process from compiled output.
@@ -96,24 +95,13 @@ docker compose -f docker-compose.local.yml down -v
 
 The frontend is primarily static HTML and can be opened directly in the browser from the repository root.
 
-Alternatively, run the backend and serve the repo root if you want to access `pages/finance.html` via the web server.
+Alternatively, run the backend to serve the same pages over `http://localhost:3000/pages/`.
 
 ## Backend API docs
 
-- The backend finance API is documented in `apps/api/openapi.yaml`.
+- The backend API is documented in `apps/api/openapi.yaml`.
 - Swagger UI is available at `http://localhost:3000/api/docs` when the backend is running.
 - Backend-specific usage notes are in `docs/README-backend.md`.
-
-Key finance routes:
-
-- `GET /api/finance?year=<YYYY>` — export finance state
-- `POST /api/finance/import` — import finance JSON
-- `POST /api/finance/init` — initialize/migrate the finance DB
-- `POST /api/finance/incomes` — add income
-- `GET /api/finance/fixed` — list fixed expenses
-- `POST /api/finance/fixed` — add fixed expense
-- `PUT /api/finance/fixed/:id` — update fixed expense
-- `POST /api/finance/years/:year/reset` — reset a year
 
 ## Testing
 
@@ -139,13 +127,12 @@ npm run check
 
 ## Notes
 
-- The finance backend uses SQLite and stores data in `apps/api/data/`.
-- The finance frontend can work with `localStorage` or fetch from the backend API when available.
+- The backend uses SQLite and stores data in `apps/api/data/`.
 - For a containerized deployment, the backend Dockerfile is in `apps/api/Dockerfile`.
 
 ## Additional resources
 
-- `docs/README-backend.md` — backend API and finance service documentation
+- `docs/README-backend.md` — backend API documentation
 - `apps/api/openapi.yaml` — OpenAPI endpoint definitions and schemas
 - `docs/MODERNIZATION-PLAN.md` — phased plan for moving the static frontend to Vue 3 + Vite
-- `fixtures/` — synthetic datasets for seeding and for the Finance import demo
+- `fixtures/` — synthetic dataset used for seeding

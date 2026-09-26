@@ -4,9 +4,6 @@
  * This file is the single source of truth for the portfolio database schema.
  * - Add a new column here, run `npm run db:generate`, commit the migration file.
  * - Never add ad-hoc ALTER TABLE calls to db.ts — create a migration instead.
- *
- * The finance database is out of scope for now (it still uses its own
- * init() function in financeDb.ts).
  */
 
 import { sqliteTable, text, real, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';

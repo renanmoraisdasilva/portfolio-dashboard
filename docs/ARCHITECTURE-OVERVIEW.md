@@ -13,11 +13,9 @@ flowchart LR
             direction TB
             App[Express app<br/>createApp + route mounting]
             PortfolioRoutes[Portfolio routes]
-            FinanceRoutes[Finance routes]
             AnalyticsRoutes[Analytics routes]
             AlertRoutes[Alert routes]
             App --> PortfolioRoutes
-            App --> FinanceRoutes
             App --> AnalyticsRoutes
             App --> AlertRoutes
         end
@@ -33,7 +31,6 @@ flowchart LR
     subgraph Storage[Shared mounted data directory]
         direction LR
         Portfolio[(portfolio.db)]
-        FinanceDB[(finance.db)]
     end
 
     subgraph Providers[External providers]
@@ -48,7 +45,6 @@ flowchart LR
 
     PortfolioRoutes --> Portfolio
     AnalyticsRoutes --> Portfolio
-    FinanceRoutes --> FinanceDB
 
     PriceJob --> Portfolio
     HistoryJob --> Portfolio
@@ -220,7 +216,6 @@ There are **service modules**, but not independently deployed services.
 | `historyManager` | Periodically creates portfolio history snapshots |
 | `portfolioCalculator` | Pure portfolio and FIFO calculations |
 | `analyticsService` | Computes return, drawdown, Sharpe ratio, allocation |
-| `financeService` | Finance database operations |
 | `homeAssistantService` | Sends alert notifications |
 | Route modules | HTTP API endpoints |
 
@@ -263,7 +258,7 @@ This project follows the design sequence from *System Design Interview: An Insid
 Document the target workload before changing the architecture:
 
 - Expected users and concurrent dashboard sessions
-- Read/write ratio for portfolio and finance APIs
+- Read/write ratio for portfolio APIs
 - Price freshness requirement
 - Acceptable analytics delay
 - Availability and recovery targets
@@ -302,7 +297,7 @@ An in-process cache is sufficient for a single web process, but multiple replica
 
 ### 6. Move shared production data to PostgreSQL
 
-SQLite is appropriate for local development and a single-node deployment. PostgreSQL becomes the next storage exercise when concurrent web replicas and workers create write contention. Migrate the portfolio database first, add indexes from query measurements, and keep the finance migration separate so each boundary can be evaluated independently.
+SQLite is appropriate for local development and a single-node deployment. PostgreSQL becomes the next storage exercise when concurrent web replicas and workers create write contention. Migrate the portfolio database first and add indexes from query measurements.
 
 ### Current bottlenecks
 

@@ -1,6 +1,6 @@
 # Portfolio Dashboard — Agent Instructions
 
-A full-stack portfolio tracker and finance dashboard. Backend: TypeScript + Express + SQLite (via **Drizzle ORM + better-sqlite3**). Frontend: vanilla HTML/CSS/JS (no framework).
+A full-stack portfolio dashboard. Backend: TypeScript + Express + SQLite (via **Drizzle ORM + better-sqlite3**). Frontend: vanilla HTML/CSS/JS (no framework).
 
 ## Quick start
 
@@ -13,7 +13,7 @@ npm run dev            # dev server with hot reload (ts-node-dev), port 3000
 
 Schema initialization runs **automatically** on server start via Drizzle migrations. `npm run migrate:init` is only needed to import `fixtures/portfolio_data.json` into a fresh database — skip it for new setups.
 
-Frontend HTML files (`pages/index.html`, `pages/finance.html`, etc.) are served statically by the backend. Open `http://localhost:3000` after starting the server.
+Frontend HTML files (`pages/index.html`, `pages/analytics.html`, etc.) are served statically by the backend. Open `http://localhost:3000` after starting the server.
 
 ## Build & test
 
@@ -29,9 +29,8 @@ npm run db:studio      # open Drizzle Studio (local DB browser)
 
 ## Architecture
 
-Three SQLite databases live in `apps/api/data/` (created on first run):
+One SQLite database lives in `apps/api/data/` (created on first run):
 - **portfolio.db** — managed by **Drizzle ORM**; schema defined in `apps/api/src/schema.ts`. Tables: `trades`, `portfolio_snapshots`, `price_cache`, `asset_chart_cache`, `interest`, `cash`, `price_ticks`, `scenarios`, `alerts`, `analytics_snapshots`
-- **finance.db** — finance module: incomes, fixed/eventual expenses, credit card expenses, tithes, year records (still managed by `financeDb.ts` init)
 
 ### Backend layout
 
@@ -44,7 +43,6 @@ apps/api/src/
   jobs/                 # Scheduled price, analytics, and history work
   db.ts                 # portfolio.db connection: better-sqlite3 + Drizzle ORM; run/get/all helpers
   schema.ts             # Drizzle schema — single source of truth for portfolio.db tables
-  financeDb.ts          # finance.db connection + runF/getF/allF helpers
   models.ts             # TypeScript interfaces (Trade, HistoryPoint, CashPosition, …)
   migrate.ts            # CLI: npm run migrate:init / migrate:import
   config/
@@ -55,7 +53,6 @@ apps/api/src/
     portfolioCalculator.ts # Pure computation layer: replayFIFOLots() + computePortfolioValue(); no DB calls, fully testable
     analyticsService.ts    # Batch computation of return%, drawdown, Sharpe ratio per period; stores in analytics_snapshots
     cashBackfill.ts        # Pure helpers for backfill-cash migration (no DB calls, fully testable)
-    financeService.ts      # Finance CRUD and year import/export logic
     homeAssistantService.ts # Send alert notifications via Home Assistant webhook
     migration.ts           # Import legacy portfolio_data.json
   routes/                     # Express routers, all mounted at /api/
@@ -69,21 +66,18 @@ apps/api/drizzle/
 static/js/
   dashboard.js          # Portfolio dashboard UI (trades, history, allocation charts)
   simulation.js         # What-if simulator with price overrides per asset
-  finance.js            # Finance dashboard (incomes, expenses, credit cards)
-  finance-utils.js      # Shared finance normalisation helpers (normalizeFinanceData, etc.)
   analytics.js          # Analytics Lab page (return%, drawdown, Sharpe, cost-vs-market charts)
   lib/api.js            # fetch() wrapper for /api/* calls
   lib/format.js         # Number/date/currency formatters
   lib/toast.js          # Toast notification helper
-static/css/             # Per-page CSS files (base, components, dashboard, finance, simulation, analytics)
+static/css/             # Per-page CSS files (base, components, dashboard, simulation, analytics)
 ```
 
 ## Key conventions
 
 ### Database helpers
-Each database module exposes its own helper suffix — **never mix them**:
+The promisified helpers for `portfolio.db` live in `db.ts`:
 - `run()`, `get()`, `all()` — portfolio.db (db.ts); wraps `better-sqlite3` synchronous API in promises
-- `runF()`, `getF()`, `allF()` — finance.db (financeDb.ts)
 
 `db.ts` also exports `drizzleDb` (typed Drizzle ORM instance) for use with Drizzle query builders, and `sqlite` (the raw `better-sqlite3` `Database` instance).
 
@@ -100,12 +94,6 @@ Key fields per symbol:
 - `yahooTicker` + `historicalFallbacks` — Yahoo Finance tickers tried in order for price history
 - `currency` type symbols (`BRLUSD`) are excluded from tradeable asset lists but shown separately
 
-### Finance module
-- All finance tables include a `year` column (multi-year support)
-- Credit cards tracked: `nuRenal`, `nuJu`, `nomad`
-- Finance data is fully isolated from portfolio data (separate DB, separate routes)
-- `financeDb.ts` exports a `yearFilter(year?)` helper — when `year` is omitted, queries return data across **all years**
-
 ### Schema migrations
 **portfolio.db** is managed by Drizzle ORM. `apps/api/src/schema.ts` is the single source of truth. To add a column or table:
 1. Edit `schema.ts`
@@ -113,8 +101,6 @@ Key fields per symbol:
 3. Commit the generated `.sql` file — it runs automatically on next server start
 
 **Never** add ad-hoc `ALTER TABLE` calls to `db.ts` for portfolio.db.
-
-**finance.db** still uses its own `init()` function (in `financeDb.ts`) with inline `ALTER TABLE` checks. When adding a column to it, add the migration inline there.
 
 ### API routes
 All routes mount at `/api/`. See [openapi.yaml](apps/api/openapi.yaml) and [README-backend.md](docs/README-backend.md) for full documentation. Swagger UI runs at `http://localhost:3000/api/docs`.
@@ -131,7 +117,6 @@ Key route files and what they own:
 | `routes/cash.ts` | `GET/PUT /api/cash` |
 | `routes/interest.ts` | `GET/POST/DELETE /api/interest` |
 | `routes/alerts.ts` | Alert CRUD + triggered alerts |
-| `routes/finance.ts` | Finance accounting (incomes, expenses, credit cards, years) |
 | `routes/scenarios.ts` | Simulation scenarios (save/load) |
 | `routes/analytics.ts` | `GET /api/analytics` — analytics snapshots |
 | `routes/migrations.ts` | `POST /api/migrations/backfill-prices`, `POST /api/migrations/backfill-cash` — maintenance migrations (replaced standalone scripts) |
@@ -149,8 +134,7 @@ Fetch from `/api/*` with JSON content type. Use `lib/api.js` helpers where avail
 - The `apps/api/data/` directory is created at runtime. Do not commit database files.
 - Price fetching uses multiple external APIs — tests that exercise `priceFetcher.ts` should mock network calls.
 - Coverage thresholds are enforced at 80%; new code in `src/` should include tests or the build will fail.
-- **Always use the promisified helpers** `get()`, `getF()`, `getV()` from their respective db modules — never call the raw `sqlite` instance directly in routes (it bypasses the async contract the rest of the codebase expects).
+- **Always use the promisified helpers** `run()`, `get()`, `all()` from `db.ts` — never call the raw `sqlite` instance directly in routes (it bypasses the async contract the rest of the codebase expects).
 - **`lib/api.js` returns `null` on any fetch error**, it does not throw. Every caller must check the return value before using it.
-- **Coverage collection is narrow by design** — only `src/config/`, `src/financeDb.ts`, `src/services/financeService.ts`, `src/services/portfolioCalculator.ts`, and `static/js/lib/format.js` are instrumented. Routes, `priceFetcher.ts`, `historyManager.ts`, and `index.ts` are excluded from coverage reports.
-- **Finance routes are conditionally mounted** - if `initFinanceDB()` throws on startup, `/api/finance` is silently absent. The server still responds on other routes.
-- **Frontend JS files are plain scripts, not ES modules** — `dashboard.js`, `finance.js`, `simulation.js` use global scope. Only files under `static/js/lib/` use ES module `export` syntax.
+- **Coverage collection is narrow by design** — only `src/config/`, `src/services/portfolioCalculator.ts`, and `static/js/lib/format.js` are instrumented. Routes, `priceFetcher.ts`, `historyManager.ts`, and `index.ts` are excluded from coverage reports.
+- **Frontend JS files are plain scripts, not ES modules** — `dashboard.js`, `simulation.js`, `analytics.js` use global scope. Only files under `static/js/lib/` use ES module `export` syntax.

@@ -2,7 +2,7 @@
   "name": "portfolio-dashboard",
   "version": "0.1.0",
   "private": true,
-  "description": "Full-stack portfolio and finance dashboard — Vue 3 + TypeScript + Vite frontend, TypeScript + Express + SQLite backend.",
+  "description": "Full-stack portfolio dashboard — Vue 3 + TypeScript + Vite frontend, TypeScript + Express + SQLite backend.",
   "license": "MIT",
   "workspaces": [
     "apps/*",

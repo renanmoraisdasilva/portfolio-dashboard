@@ -630,23 +630,6 @@ function importData(event) {
         save();
         refresh();
         alert('Data imported locally!');
-      // If it's a finance export, try importing into finance service
-      } else if (data && (Array.isArray(data.incomes) || Array.isArray(data.fixedExpenses))) {
-        try {
-          const resp = await fetch('/api/finance/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-          if (resp.ok) {
-            alert('Finance data imported to server!');
-            return;
-          } else {
-            const text = await resp.text();
-            throw new Error(text || 'Finance server import failed');
-          }
-        } catch (err) {
-          console.warn('Finance server import failed, importing locally', err);
-          // fallback to local import inside finance.html (no change here)
-          alert('Finance server import failed; falling back to client-side import (open finance page and import there).');
-          return;
-        }
       } else {
         alert('Invalid file format.');
       }

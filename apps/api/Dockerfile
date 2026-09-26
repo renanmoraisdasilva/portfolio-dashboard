@@ -55,7 +55,6 @@ COPY --from=builder /app/icon.png ./icon.png
 # Fail the image build early if any required root page is missing.
 RUN test -f /app/pages/index.html \
 	&& test -f /app/pages/simulation.html \
-	&& test -f /app/pages/finance.html \
 	&& test -f /app/pages/sql-explorer.html \
 	&& test -f /app/pages/analytics.html
 

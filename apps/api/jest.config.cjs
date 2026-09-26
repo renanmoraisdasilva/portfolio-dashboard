@@ -13,8 +13,6 @@ module.exports = {
   collectCoverage: true,
   collectCoverageFrom: [
     'src/config/**/*.ts',
-    'src/financeDb.ts',
-    'src/services/financeService.ts',
     'src/services/portfolioCalculator.ts',
     '../../static/js/lib/format.js'
   ],
