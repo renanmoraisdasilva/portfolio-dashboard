@@ -5,8 +5,8 @@
  * - Add a new column here, run `npm run db:generate`, commit the migration file.
  * - Never add ad-hoc ALTER TABLE calls to db.ts — create a migration instead.
  *
- * Finance and vocabulary databases are out of scope for now (still use their
- * own init() functions in financeDb.ts / vocabularyService.ts).
+ * The finance database is out of scope for now (it still uses its own
+ * init() function in financeDb.ts).
  */
 
 import { sqliteTable, text, real, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';

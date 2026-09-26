@@ -1,18 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { sqlite } from '../db';
 import { financeDb } from '../financeDb';
-import { vocabDb } from '../vocabularyDb';
 import Database from 'better-sqlite3';
 
 export const sqlExplorerRouter = Router();
 
-export const VALID_DBS = ['portfolio', 'finance', 'vocabulary'] as const;
+export const VALID_DBS = ['portfolio', 'finance'] as const;
 export type DbName = typeof VALID_DBS[number];
 
 const DB_MAP: Record<string, Database.Database> = {
   portfolio: sqlite,
   finance: financeDb,
-  vocabulary: vocabDb,
 };
 
 /** Returns true when the statement is read-only (SELECT / EXPLAIN / PRAGMA / WITH). */

@@ -39,16 +39,6 @@ export interface PriceCache {
   meta?: any;
 }
 
-export interface VocabularyEntry {
-  id: string;
-  word: string;
-  translation?: string | null;
-  example?: string | null;
-  tags?: string | null; // comma-separated
-  excluded?: number | null;
-  created_at: number;
-}
-
 export interface Alert {
   id: string;
   symbol: string;

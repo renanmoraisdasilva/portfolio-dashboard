@@ -5,8 +5,6 @@ import { init } from './db';
 import { createApp, mountWebRoutes } from './app';
 import { financeRouter } from './routes/finance';
 import { initFinanceDB } from './services/financeService';
-import { vocabularyRouter } from './routes/vocabulary';
-import { initVocabularyDB } from './services/vocabularyService';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
@@ -22,14 +20,6 @@ export async function startWeb(): Promise<void> {
     console.log('Finance DB initialized and /api/finance route mounted');
   } catch (err) {
     console.warn('Failed to initialize finance DB', err instanceof Error ? err.message : String(err));
-  }
-
-  try {
-    await initVocabularyDB();
-    app.use('/api/vocab', vocabularyRouter);
-    console.log('/api/vocab route mounted');
-  } catch (err) {
-    console.warn('Failed to initialize vocabulary service', err instanceof Error ? err.message : String(err));
   }
 
   app.listen(PORT, () => {

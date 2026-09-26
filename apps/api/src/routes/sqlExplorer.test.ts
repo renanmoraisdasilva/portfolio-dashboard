@@ -154,12 +154,12 @@ describe('query execution against in-memory SQLite', () => {
 // VALID_DBS constant sanity checks
 // ---------------------------------------------------------------------------
 describe('VALID_DBS', () => {
-  test('contains exactly the three expected db names', () => {
-    expect([...VALID_DBS].sort()).toEqual(['finance', 'portfolio', 'vocabulary']);
+  test('contains exactly the two expected db names', () => {
+    expect([...VALID_DBS].sort()).toEqual(['finance', 'portfolio']);
   });
 
   test('is a readonly tuple (not mutated at runtime)', () => {
     const copy = [...VALID_DBS];
-    expect(copy).toHaveLength(3);
+    expect(copy).toHaveLength(2);
   });
 });

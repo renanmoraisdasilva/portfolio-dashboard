@@ -4,7 +4,7 @@
 
 **Invariant:** every phase ends with a running app and a green test suite. One PR per step, conventional commits.
 
-> **Status: Phase 0 and Phase 1 are complete.** This file now lives in `docs/` (the Phase 1 rename). Completed items are checked, with any deviation from the original wording noted in place.
+> **Status: Phase 0, Phase 1 and Phase 1.5 are complete, and the scrubbed history has been force-pushed.** This file now lives in `docs/` (the Phase 1 rename). Completed items are checked, with any deviation from the original wording noted in place.
 
 ### Decisions made while executing Phases 0–1
 
@@ -36,11 +36,11 @@
 - **Dead `lib/`:** `lib/api.js` and `lib/toast.js` are ESM, `lib/format.js` is CJS (`module.exports`), and **no HTML page loads any of them** — only `lib/analytics-insights.js` is referenced (by `analytics.html:209`), and `lib/format.js` is only reached by jest.
 - **Shadowed function:** `normalizeFinanceData` is defined in **both** `finance.js:153` and `finance-utils.js:1`, and `finance.html` loads both scripts (lines 414–415). One silently wins.
 - **Business logic in the browser:** `simulation.js` implements `buildLotsFromTradesCombined()` (line 268) and `computePortfolioFromCombined()` (line 286), duplicating `portfolioCalculator.replayFIFOLots()` on the server. BRL/USD conversion and totals are computed client-side at `dashboard.js:1185` and `simulation.js:311-331`.
-- **Backend:** TypeScript + Express + Drizzle, reasonably layered, but **3 SQLite databases with 3 migration strategies** (`portfolio.db` = Drizzle; `finance.db` / `vocabulary.db` = inline `ALTER TABLE`), conditional route mounting, and a `runF/getF/allF` / `runV/getV/allV` helper-suffix convention.
+- **Backend:** TypeScript + Express + Drizzle, reasonably layered, but ~~**3 SQLite databases with 3 migration strategies**~~ -> **2 databases since Phase 1.5** (`portfolio.db` = Drizzle; `finance.db` = inline `ALTER TABLE`), ~~conditional route mounting~~ -> only `/api/finance` is still conditional *(and leaves with Phase 1.6)*, and a `runF/getF/allF` helper-suffix convention ~~(`runV/getV/allV` deleted in Phase 1.5)~~.
 - **Test coupling:** `apps/api/jest.config.cjs` has `roots: ['<rootDir>/src', '<rootDir>/../static/js']` — reaches across folders. *(repointed in Phase 1)*
 - **Coverage:** thresholds enforced at 80%, but `collectCoverageFrom` instruments only 5 files.
 - **Repo hygiene:** ~~`backup-data/` holds real personal finance data~~ → replaced by synthetic `fixtures/`; ~~`documentation/DDIA-case-study.md`~~ → moved out of the repo; `openapi.yaml` (42 KB) → `apps/api/openapi.yaml`; no `LICENSE` → added MIT; CI only built a Docker image → `ci.yml` added (lint still deferred to Phase 7); `pages/sql-explorer.html` is an arbitrary-SQL console exposed over HTTP *(still open — Phase 3)*.
-- **Unwanted feature:** the **vocabulary-learning module** — `pages/vocabulary-learning.html`, `static/js/vocabulary.js`, `static/css/vocabulary.css`, three backend files, a `/api/vocab` router that mounts conditionally, and its own third SQLite database — is not used and will not be kept. Scheduled for deletion in **Phase 1.5**; the exact inventory is listed there.
+- **Unwanted feature:** the **vocabulary-learning module** — `pages/vocabulary-learning.html`, `static/js/vocabulary.js`, `static/css/vocabulary.css`, three backend files, a `/api/vocab` router that mounts conditionally, and its own third SQLite database — is not used and will not be kept. **Deleted in Phase 1.5.** The exact inventory that was removed is listed below.
 - **The Finance boundary is already clean.** `AGENTS.md` states *"Finance data is fully isolated from portfolio data (separate DB, separate routes)"*, and table ownership proves it: `finance.db` holds only incomes / fixed / eventual expenses / credit / tithes / year records. `cash`, `interest`, `scenarios` and `alerts` look finance-ish but are **`portfolio.db`** tables, consumed by the pages that stay — `dashboard.js` → cash + interest + alerts, `analytics.js` → cash, `simulation.js` → scenarios. They do **not** move with Finance.
 
 ---
@@ -95,19 +95,19 @@ Numbered out of sequence on purpose: it is a deletion, not a build-out, and it m
 | Backend DB shim | `apps/api/src/vocabularyDb.ts` | 21 |
 | API spec | `apps/api/openapi.yaml` — `Vocabulary` tag, 9 `/vocab*` paths, 6 schemas | ~230 |
 
-- [ ] **Backend:** delete `vocabularyDb.ts`, `services/vocabularyService.ts`, `routes/vocabulary.ts`; drop the `VocabularyEntry` interface from `apps/api/src/models.ts:42` and the `vocabularyService.ts` mention in the `schema.ts` header comment
-- [ ] **Unmount the conditional router** in `apps/api/src/web.ts` — remove the `vocabularyRouter` import (line 8), `initVocabularyDB` import (line 9), the `await initVocabularyDB()` + `app.use('/api/vocab', …)` + success log (lines 28–30) and the `catch` that swallows init failures (line 32). This is one of only two conditionally-mounted routers in the app, so the whole try/catch collapses
-- [ ] **Remove the legacy redirect** `apps/api/src/app.ts:60` (`/vocabulary-learning.html` → `/pages/…`)
-- [ ] **Frontend:** delete the three files above
-- [ ] **Remove nav buttons:** `pages/index.html:25` (`#tabVocab`) and `pages/analytics.html:20`
-- [ ] **API spec:** drop the `Vocabulary` tag (`openapi.yaml:31-32`), the `/vocab*` paths (~517–657) and the `Vocabulary*` schemas (~1340–1420) from `apps/api/openapi.yaml`
-- [ ] **SQL explorer:** remove `'vocabulary'` from `VALID_DBS` in `apps/api/src/routes/sqlExplorer.ts` (lines 4, 9, 15) and update `apps/api/src/routes/sqlExplorer.test.ts:156-164`, which asserts the exact tuple `['finance','portfolio','vocabulary']` and length `3`. **This is the only test that touches vocabulary** — change it in the same commit or the suite goes red
-- [ ] **Docker:** drop the `test -f /app/pages/vocabulary-learning.html` assertion at `apps/api/Dockerfile:60`
-- [ ] **Docs:** `AGENTS.md` — the "vocabulary.db" bullet under Architecture, `vocabularyDb.ts` / `vocabularyService.ts` in the backend layout, the whole **Vocabulary module** section, the `runV/getV/allV` helper-suffix bullet, the finance/vocabulary sentence under *Schema migrations*, the `routes/vocabulary.ts` row in the route table, and the two known-pitfall bullets that mention it. `docs/ARCHITECTURE-OVERVIEW.md` — the `VocabularyRoutes` and `VocabDB` Mermaid nodes, the `vocabularyService` table row, and the scaling/PostgreSQL notes. `README.md:9`
-- [ ] **Local data:** delete `apps/api/data/vocabulary.db` if it exists — gitignored, so nothing to remove from git; the file simply stops being created
-- [ ] **Baseline:** `npm run check`, rebuild the Compose stack, re-screenshot. `.baseline/05-vocabulary.png` becomes obsolete (the page no longer exists), and the "Screenshot all 6 pages" wording in Phase 0 — plus the "6 plain-script files" line at the top of this document — drops to **5 pages / 5 files**
+- [x] **Backend:** delete `vocabularyDb.ts`, `services/vocabularyService.ts`, `routes/vocabulary.ts`; drop the `VocabularyEntry` interface from `apps/api/src/models.ts:42` and the `vocabularyService.ts` mention in the `schema.ts` header comment
+- [x] **Unmount the conditional router** in `apps/api/src/web.ts` — remove the `vocabularyRouter` import (line 8), `initVocabularyDB` import (line 9), the `await initVocabularyDB()` + `app.use('/api/vocab', …)` + success log (lines 28–30) and the `catch` that swallows init failures (line 32). This is one of only two conditionally-mounted routers in the app, so the whole try/catch collapses
+- [x] **Remove the legacy redirect** `apps/api/src/app.ts:60` (`/vocabulary-learning.html` → `/pages/…`)
+- [x] **Frontend:** delete the three files above
+- [x] **Remove nav buttons:** `pages/index.html:25` (`#tabVocab`) and `pages/analytics.html:20`
+- [x] **API spec:** drop the `Vocabulary` tag (`openapi.yaml:31-32`), the `/vocab*` paths (~517–657) and the `Vocabulary*` schemas (~1340–1420) from `apps/api/openapi.yaml`
+- [x] **SQL explorer:** remove `'vocabulary'` from `VALID_DBS` in `apps/api/src/routes/sqlExplorer.ts` (lines 4, 9, 15) and update `apps/api/src/routes/sqlExplorer.test.ts:156-164`, which asserts the exact tuple `['finance','portfolio','vocabulary']` and length `3`. **This is the only test that touches vocabulary** — change it in the same commit or the suite goes red
+- [x] **Docker:** drop the `test -f /app/pages/vocabulary-learning.html` assertion at `apps/api/Dockerfile:60`
+- [x] **Docs:** `AGENTS.md` — the "vocabulary.db" bullet under Architecture, `vocabularyDb.ts` / `vocabularyService.ts` in the backend layout, the whole **Vocabulary module** section, the `runV/getV/allV` helper-suffix bullet, the finance/vocabulary sentence under *Schema migrations*, the `routes/vocabulary.ts` row in the route table, and the two known-pitfall bullets that mention it. `docs/ARCHITECTURE-OVERVIEW.md` — the `VocabularyRoutes` and `VocabDB` Mermaid nodes, the `vocabularyService` table row, and the scaling/PostgreSQL notes. `README.md:9`
+- [x] **Local data:** delete `apps/api/data/vocabulary.db` if it exists — gitignored, so nothing to remove from git; the file simply stops being created
+- [x] **Baseline:** `npm run check`, rebuild the Compose stack, re-screenshot. `.baseline/05-vocabulary.png` becomes obsolete (the page no longer exists), and the "Screenshot all 6 pages" wording in Phase 0 — plus the "6 plain-script files" line at the top of this document — drops to **5 pages / 5 files** *(deviation: `npm run check` is green; the Compose rebuild and re-screenshot are deferred to the Phase 5 parity run. `.baseline/05-vocabulary.png` is now obsolete and should be ignored rather than compared against.)*
 
-**Exit:** `grep -ri vocab` returns nothing outside `node_modules/` and `apps/api/dist/`; `npm run check` green; stack healthy with **two** databases (`portfolio.db`, `finance.db`).
+**Exit:** `grep -ri vocab` returns nothing outside `node_modules/` and `apps/api/dist/`; `npm run check` green; stack healthy with **two** databases (`portfolio.db`, `finance.db`). **Met:** `git grep -il vocab` returns nothing anywhere in the tree, `npm run check` is green, and the stack runs on two databases.
 
 ---
 
@@ -263,11 +263,11 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 
 ## Suggested next PRs
 
-**Step 0 (not a PR — do it first):** push the scrubbed history. `git push --force origin main`, then delete the two stale `copilot/create-sql-query-tool-page*` branches on GitHub — they still carry `backup-data/`. Until both happen the purge exists only on this machine.
+**Step 0 (not a PR):** ~~push the scrubbed history~~ **done** - `git push --force origin main` moved `main` to `11b7611`, both stale `copilot/create-sql-query-tool-page*` branches were deleted, and `git ls-remote origin` now shows a single ref (`refs/heads/main`) and no tags. The purge is live on GitHub.
 
 1. ~~**Phase 0** — baseline~~ ✅
 2. ~~**Phase 1** — monorepo moves + doc cleanup~~ ✅
-3. **Phase 1.5** — delete the vocabulary module (~2,260 lines: page, JS, CSS, 3 backend files, `/api/vocab`, OpenAPI block, third database)
+3. ~~**Phase 1.5** - delete the vocabulary module (~2,260 lines: page, JS, CSS, 3 backend files, `/api/vocab`, OpenAPI block, third database)~~ **done**
 4. **Phase 1.6** — clone out `finance-app` (private, before its first push), then strip Finance from here (~3,750 lines: route, DB shim, service + tests, page, JS, CSS, 2 fixtures, 6 OpenAPI tags)
 5. **Phase 2** — `packages/shared` with deduplicated money helpers and their now-honest tests
 6. **Phase 3** — backend consolidation (**one** database, gate SQL explorer)

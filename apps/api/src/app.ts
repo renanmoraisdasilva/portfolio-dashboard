@@ -57,7 +57,6 @@ export function mountWebRoutes(app: Express): void {
   app.get('/index.html', (_req, res) => res.redirect('/'));
   app.get('/simulation.html', (_req, res) => res.redirect('/pages/simulation.html'));
   app.get('/finance.html', (_req, res) => res.redirect('/pages/finance.html'));
-  app.get('/vocabulary-learning.html', (_req, res) => res.redirect('/pages/vocabulary-learning.html'));
   app.get('/analytics.html', (_req, res) => res.redirect('/pages/analytics.html'));
   app.get('/sql-explorer.html', (_req, res) => res.redirect('/pages/sql-explorer.html'));
 

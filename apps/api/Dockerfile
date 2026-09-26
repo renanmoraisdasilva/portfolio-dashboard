@@ -57,7 +57,6 @@ RUN test -f /app/pages/index.html \
 	&& test -f /app/pages/simulation.html \
 	&& test -f /app/pages/finance.html \
 	&& test -f /app/pages/sql-explorer.html \
-	&& test -f /app/pages/vocabulary-learning.html \
 	&& test -f /app/pages/analytics.html
 
 EXPOSE 3000

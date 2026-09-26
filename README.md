@@ -6,7 +6,7 @@ A full-stack portfolio dashboard repository containing a static frontend experie
 
 - `pages/finance.html` — main finance dashboard UI with fixed/eventual expenses, credit card handling, charts, and local finance state.
 - `pages/index.html` — landing page or home experience for the portfolio dashboard.
-- `pages/simulation.html`, `pages/vocabulary-learning.html` — additional frontend views in the repo.
+- `pages/simulation.html` — additional frontend views in the repo.
 - `apps/api/openapi.yaml` — API specification for backend finance and portfolio endpoints.
 - `docs/README-backend.md` — detailed backend API and server notes.
 - `apps/api/` — backend implementation with Express, SQLite, finance routes, migrations, and tests.
