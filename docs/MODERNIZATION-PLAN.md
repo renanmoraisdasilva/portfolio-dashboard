@@ -156,7 +156,7 @@ The failure mode to design against: `initFinanceDB()` creates every table on fir
 
 - [ ] **Manual backup before the cutover** — the nightly job is a safety net, not a rehearsal
 - [ ] **Deploy the portfolio half first** — `portfolio.db` and its mount are untouched, so this is safe standing alone; finance data just sits in its file until the relocation step
-- [ ] **Relocate `finance.db`** — stop both containers, **move** (not copy) `/opt/portfolio/data/finance.db` → the Finance app's data dir, start, then spot-check row counts in each app against the backup taken above
+- [ ] **Relocate `finance.db`** - stop both containers, **move** (not copy) `/opt/portfolio/data/finance.db` -> `/opt/finance/data/finance.db` (the path `finance-app/docker-compose.yml` already mounts - create the directory first), start, then spot-check row counts in each app against the backup taken above
 - [ ] **Close the backup gap** — `server-infra/ansible/roles/backups/templates/backup-databases.sh.j2` hardcodes `PORTFOLIO_DATA=/opt/portfolio/data` and loops `for database in portfolio.db finance.db vocabulary.db`. Once `finance.db` moves out, the `if [[ -f ]]` guard means it is **silently skipped**: income, expense, credit-card and tithes data stops being backed up with no error, while dead `vocabulary.db` keeps being backed up forever. Repoint it at the new path, drop `vocabulary.db`, and update `server-infra/docs/recovery.md` step 6. *(separate PR in `server-infra` — infra changes stay in their owning repo)*
 
 ### Building it
