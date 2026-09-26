@@ -1,0 +1,1689 @@
+{
+  "year": 2026,
+  "incomes": [
+    [
+      {
+        "id": "dc45db44-eb82-4e0e-834e-80cf4a99149a",
+        "source": "Employer A",
+        "value": 11844.49,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "60c7ba85-4fd1-451a-83b7-93d46b29ff34",
+        "source": "Employer B",
+        "value": 9258.34,
+        "description": null
+      },
+      {
+        "id": "586f8b43-9005-413a-83c4-ab0a65a9fdd2",
+        "source": "Side project",
+        "value": 7503.12,
+        "description": null
+      },
+      {
+        "id": "d15e46fa-17c8-4eb2-86bc-a1c0d0711c9c",
+        "source": "Side project",
+        "value": 9559.51,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "1e398ba3-b196-4e00-892a-3f29dd1c1145",
+        "source": "Contract work",
+        "value": 12175.18,
+        "description": null
+      },
+      {
+        "id": "5c4bc8e0-0f09-41a5-8df8-bc5ec93b938a",
+        "source": "Contract work",
+        "value": 5959.6,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "266fc86c-855c-4969-8109-0cc9537aad6b",
+        "source": "Side project",
+        "value": 10201.87,
+        "description": null
+      },
+      {
+        "id": "841302ef-1eab-43ba-8d0f-5a475fdf7865",
+        "source": "Employer A",
+        "value": 12579.11,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "7fa9f038-cd79-482b-80b1-114769ca301c",
+        "source": "Employer A",
+        "value": 11310.27,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "7f654e0a-1e8b-4ed8-84c6-def737bbdf2a",
+        "source": "Contract work",
+        "value": 5916.48,
+        "description": null
+      },
+      {
+        "id": "f7c533e9-8705-4b0a-8ece-a5c444885a3c",
+        "source": "Employer A",
+        "value": 14337.62,
+        "description": null
+      },
+      {
+        "id": "8c9d7fe8-eed3-4752-8592-3fadf6095304",
+        "source": "Employer B",
+        "value": 14598.96,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "29ab86b1-e415-4164-8ff4-a1c99e4bbfad",
+        "source": "Employer B",
+        "value": 11053.35,
+        "description": null
+      },
+      {
+        "id": "f842c575-a365-469d-8c11-9b9dfc9df967",
+        "source": "Side project",
+        "value": 13889.96,
+        "description": null
+      },
+      {
+        "id": "cf2dd266-bc34-42be-87aa-ff3a6962d585",
+        "source": "Contract work",
+        "value": 14180.42,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "253265bc-5c95-468b-8252-a1dc5e5534f6",
+        "source": "Employer A",
+        "value": 14271.98,
+        "description": null
+      },
+      {
+        "id": "c6ee341b-aa94-480b-80c6-d4e3ce4ae9fc",
+        "source": "Employer B",
+        "value": 9540.62,
+        "description": null
+      }
+    ],
+    [
+      {
+        "id": "38583d5d-c7cd-45ed-8f7b-12f46092afe4",
+        "source": "Side project",
+        "value": 10535.93,
+        "description": null
+      }
+    ],
+    [],
+    [],
+    []
+  ],
+  "tithes": [
+    [
+      {
+        "source": "Tithe - total",
+        "value": 941.87,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 1125.73,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 1257.48,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 1394.01,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 1603.41,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 1351.2,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 1140.52,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 980.61,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [
+      {
+        "source": "Tithe - total",
+        "value": 1628.83,
+        "breakdown": "10% of gross income"
+      }
+    ],
+    [],
+    [],
+    []
+  ],
+  "fixedExpenses": [
+    [
+      {
+        "id": "943b95f1-6c0b-4b68-898b-68c5e3b0befe",
+        "name": "Aluguel",
+        "category": "moradia",
+        "value": 2460.14,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 10,
+        "paidOnDate": null
+      },
+      {
+        "id": "5cc33d87-7ae7-4beb-8be8-3704985d501c",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 405.37,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "e9370cc6-2de1-4722-8844-23224bdc40f1",
+        "name": "Energia elétrica",
+        "category": "moradia",
+        "value": 266.04,
+        "paymentMethod": "pix",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "bf884274-b1eb-44f8-81dd-26d7675e8bb5",
+        "name": "Água",
+        "category": "moradia",
+        "value": 149.09,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "41d7ec0b-f8ea-41e6-8d14-62a0b00c2c80",
+        "name": "Internet",
+        "category": "comunicacao",
+        "value": 131.23,
+        "paymentMethod": "debito",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "2c42e8e3-5ab6-43ab-8f01-0e2fc67a7649",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 69.5,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "60539d6d-f59b-4b94-8d8b-4d41107335d7",
+        "name": "Plano de saúde",
+        "category": "saude",
+        "value": 531.9,
+        "paymentMethod": "debito",
+        "normallyDueDay": 6,
+        "paidOnDate": null
+      },
+      {
+        "id": "9f2d0c0b-c681-4adc-83a9-9a8279ce0446",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 368.58,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "945fcebb-32d5-4ff2-8d48-4b11e4e82027",
+        "name": "Supermercado",
+        "category": "alimentacao",
+        "value": 1687.26,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "4dc9ff90-d15a-4b9f-84d9-cdba51cd4399",
+        "name": "Aluguel",
+        "category": "moradia",
+        "value": 2416.63,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 10,
+        "paidOnDate": null
+      },
+      {
+        "id": "8bb79185-8f7e-4721-8855-e0d131230c5c",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 405.41,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "d5c3f346-32fe-4762-869c-849516718304",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 73.05,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "f36728ab-e2a5-4a43-83b0-c1ad7bf92d5f",
+        "name": "Plano de saúde",
+        "category": "saude",
+        "value": 516.24,
+        "paymentMethod": "debito",
+        "normallyDueDay": 6,
+        "paidOnDate": null
+      },
+      {
+        "id": "7abed5d9-d600-46ea-88d5-e5f81b9ff7c6",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 375.09,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "ed338574-d185-49e5-875b-9874d0ed62a9",
+        "name": "Supermercado",
+        "category": "alimentacao",
+        "value": 1804.35,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      },
+      {
+        "id": "f8d2eae1-2980-4f35-873c-12269517eb02",
+        "name": "Combustível",
+        "category": "transporte",
+        "value": 411.59,
+        "paymentMethod": "debito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "53fa53cc-3e2f-402a-8d26-1bc2b8a7826a",
+        "name": "Aluguel",
+        "category": "moradia",
+        "value": 2478.27,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 10,
+        "paidOnDate": null
+      },
+      {
+        "id": "40b0619e-3ae7-4b12-811c-d560b61ff894",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 447.95,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "470cbd0b-e542-4f07-81be-da3d6a9ad28d",
+        "name": "Energia elétrica",
+        "category": "moradia",
+        "value": 268.67,
+        "paymentMethod": "pix",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "746c7846-77fe-4e3f-8f87-e7bd972d091d",
+        "name": "Água",
+        "category": "moradia",
+        "value": 134.15,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "137a6681-6b43-4af5-8ab5-4dfd78e480fd",
+        "name": "Internet",
+        "category": "comunicacao",
+        "value": 136.71,
+        "paymentMethod": "debito",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "bf4dd54f-092e-4a05-8df4-15c4ec044fbe",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 69.83,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "0ab8c3f8-3b41-42f3-8f1c-d7f7e643ebbe",
+        "name": "Plano de saúde",
+        "category": "saude",
+        "value": 530.78,
+        "paymentMethod": "debito",
+        "normallyDueDay": 6,
+        "paidOnDate": null
+      },
+      {
+        "id": "4125b7cd-0218-459b-867c-8ef742235fa8",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 392.74,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "565ec614-c94b-4f3f-8ed5-be22d19a3f63",
+        "name": "Supermercado",
+        "category": "alimentacao",
+        "value": 1832.91,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "3790064b-878d-42f5-809a-8619917aa7b4",
+        "name": "Aluguel",
+        "category": "moradia",
+        "value": 2418.45,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 10,
+        "paidOnDate": null
+      },
+      {
+        "id": "4b416d9e-13e2-4031-8530-dc0e74d70e86",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 413.66,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "c7d30796-a8a5-4887-8c8a-a64598c5320e",
+        "name": "Energia elétrica",
+        "category": "moradia",
+        "value": 260.49,
+        "paymentMethod": "pix",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "d25cec9d-0a09-4a5f-8a6a-9cc2801782a6",
+        "name": "Água",
+        "category": "moradia",
+        "value": 136.25,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "c56bab96-b8cc-44f4-86b4-f72c309bffe6",
+        "name": "Internet",
+        "category": "comunicacao",
+        "value": 126.1,
+        "paymentMethod": "debito",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "d28c5e98-4b40-4022-8dac-c8f306cb8e9f",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 65.48,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "c4f2fc58-cc84-463e-866a-aaeddec28641",
+        "name": "Academia",
+        "category": "lazer",
+        "value": 113.17,
+        "paymentMethod": "credito",
+        "normallyDueDay": 3,
+        "paidOnDate": null
+      },
+      {
+        "id": "d973c80e-cf87-4a79-83ca-a364b52ed624",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 382.97,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "fbc8e1e6-84ab-41bd-8fe9-99ce3c385dd6",
+        "name": "Supermercado",
+        "category": "alimentacao",
+        "value": 1743.21,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "03072d2b-d759-492f-879f-2945f24e2d99",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 427.99,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "e351231c-a94a-4196-80ff-a066f3a807eb",
+        "name": "Água",
+        "category": "moradia",
+        "value": 148,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "6666c8b2-4b43-46b1-8fd5-982e4754d7b2",
+        "name": "Internet",
+        "category": "comunicacao",
+        "value": 123.09,
+        "paymentMethod": "debito",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "c38e4aa1-d30a-44f5-8280-72509b4ee018",
+        "name": "Plano de saúde",
+        "category": "saude",
+        "value": 489.14,
+        "paymentMethod": "debito",
+        "normallyDueDay": 6,
+        "paidOnDate": null
+      },
+      {
+        "id": "2285d981-03d2-480e-81a9-96a4f790034a",
+        "name": "Academia",
+        "category": "lazer",
+        "value": 117.28,
+        "paymentMethod": "credito",
+        "normallyDueDay": 3,
+        "paidOnDate": null
+      },
+      {
+        "id": "4f63085e-8e72-4da3-853f-e0616d16d6a4",
+        "name": "Supermercado",
+        "category": "alimentacao",
+        "value": 1719.04,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      },
+      {
+        "id": "b29b8bf9-c8fc-4340-83fb-825057db0cef",
+        "name": "Streaming",
+        "category": "lazer",
+        "value": 53.15,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "4345d6b3-1d15-4fde-84e5-ebe3f5ee0992",
+        "name": "Energia elétrica",
+        "category": "moradia",
+        "value": 252.66,
+        "paymentMethod": "pix",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "3d2d6852-06b9-402a-8535-592af67fc90e",
+        "name": "Água",
+        "category": "moradia",
+        "value": 144.06,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "93e53ebb-5b49-4cc1-83b7-507d3b49d1bc",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 72.62,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "1ca732f0-1966-4a5e-8bcf-b9e11506c710",
+        "name": "Plano de saúde",
+        "category": "saude",
+        "value": 501.29,
+        "paymentMethod": "debito",
+        "normallyDueDay": 6,
+        "paidOnDate": null
+      },
+      {
+        "id": "7361bcb2-b12f-4de2-88dc-6086ef85cadd",
+        "name": "Academia",
+        "category": "lazer",
+        "value": 117.89,
+        "paymentMethod": "credito",
+        "normallyDueDay": 3,
+        "paidOnDate": null
+      },
+      {
+        "id": "c0ac8a18-d43f-40cc-8c28-13cfb72c5dee",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 387.06,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "22b6350a-b97c-4779-8cbb-758d5f0a3052",
+        "name": "Combustível",
+        "category": "transporte",
+        "value": 434.96,
+        "paymentMethod": "debito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      },
+      {
+        "id": "9f67f797-f912-417a-8a1b-f1f076a28de0",
+        "name": "Streaming",
+        "category": "lazer",
+        "value": 57.77,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "6bbb401a-2477-42cd-8c18-400526bf1591",
+        "name": "Aluguel",
+        "category": "moradia",
+        "value": 2466.13,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 10,
+        "paidOnDate": null
+      },
+      {
+        "id": "1f36726f-ea1d-4876-8c17-c6e83ef25e30",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 431.68,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "c798429c-bffe-40ba-8b9b-e94ad7fe1caa",
+        "name": "Água",
+        "category": "moradia",
+        "value": 135.27,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "e2dd91d6-dbc9-4648-8b3f-7374f39df192",
+        "name": "Internet",
+        "category": "comunicacao",
+        "value": 122.21,
+        "paymentMethod": "debito",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "c4a6eeb4-7fff-45bd-8d6e-84af05e979c9",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 64.95,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "49d1e491-b324-48ff-804f-dd0b9c6de69a",
+        "name": "Plano de saúde",
+        "category": "saude",
+        "value": 524.63,
+        "paymentMethod": "debito",
+        "normallyDueDay": 6,
+        "paidOnDate": null
+      },
+      {
+        "id": "569158a2-4da4-4cab-8509-775db59dfd01",
+        "name": "Academia",
+        "category": "lazer",
+        "value": 118.11,
+        "paymentMethod": "credito",
+        "normallyDueDay": 3,
+        "paidOnDate": null
+      },
+      {
+        "id": "6f8e8735-34b0-447b-8526-580568305581",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 370.29,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "a6c07c47-ade8-4fad-8cf0-4bdc17bf4441",
+        "name": "Combustível",
+        "category": "transporte",
+        "value": 397.12,
+        "paymentMethod": "debito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "af007b2c-7844-443f-8b35-e89bb09c0869",
+        "name": "Aluguel",
+        "category": "moradia",
+        "value": 2443.52,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 10,
+        "paidOnDate": null
+      },
+      {
+        "id": "d36e86cc-d6a6-4bf7-8abf-5c11ed1297e8",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 433.21,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "f55848a5-9020-4382-8b00-40257ebd983e",
+        "name": "Energia elétrica",
+        "category": "moradia",
+        "value": 260.47,
+        "paymentMethod": "pix",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "3719d8a9-5f2f-439e-842a-f12baacf5f19",
+        "name": "Água",
+        "category": "moradia",
+        "value": 134.44,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "ec819d10-1f38-4873-84ce-9c2cc1a9821d",
+        "name": "Internet",
+        "category": "comunicacao",
+        "value": 132.32,
+        "paymentMethod": "debito",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "5dbbc8a4-e769-468f-8cec-352a7f55bf3a",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 66.76,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "7a1394ef-e7cb-4375-8cb5-bf0338882606",
+        "name": "Plano de saúde",
+        "category": "saude",
+        "value": 490.42,
+        "paymentMethod": "debito",
+        "normallyDueDay": 6,
+        "paidOnDate": null
+      },
+      {
+        "id": "b273132a-25c0-49b3-8404-bd7f8cb23f69",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 368.45,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "ba3286e7-7d85-4933-8bb4-497fef980b9f",
+        "name": "Supermercado",
+        "category": "alimentacao",
+        "value": 1719.35,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      },
+      {
+        "id": "051616fd-f860-451c-8d5c-7052a577fbdb",
+        "name": "Combustível",
+        "category": "transporte",
+        "value": 414.16,
+        "paymentMethod": "debito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [
+      {
+        "id": "c77ec28e-4079-45e0-821c-d46ff0798f90",
+        "name": "Aluguel",
+        "category": "moradia",
+        "value": 2310.3,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 10,
+        "paidOnDate": null
+      },
+      {
+        "id": "0c66627f-e03d-4fd4-8495-21c8133d82f9",
+        "name": "Condomínio",
+        "category": "moradia",
+        "value": 416.9,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 25,
+        "paidOnDate": null
+      },
+      {
+        "id": "9cf1e5f9-1325-444f-8caa-eaa56b18d936",
+        "name": "Energia elétrica",
+        "category": "moradia",
+        "value": 265.72,
+        "paymentMethod": "pix",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "005cb410-0579-464a-8366-c90a6c6eceb6",
+        "name": "Água",
+        "category": "moradia",
+        "value": 135.18,
+        "paymentMethod": "pix",
+        "normallyDueDay": 8,
+        "paidOnDate": null
+      },
+      {
+        "id": "bfb10ecf-7f2d-4caf-87d2-70ab7d9f3af4",
+        "name": "Celular",
+        "category": "comunicacao",
+        "value": 70,
+        "paymentMethod": "debito",
+        "normallyDueDay": 12,
+        "paidOnDate": null
+      },
+      {
+        "id": "0362de65-2502-4b5a-8a40-a4b7cf8f3861",
+        "name": "Academia",
+        "category": "lazer",
+        "value": 118.3,
+        "paymentMethod": "credito",
+        "normallyDueDay": 3,
+        "paidOnDate": null
+      },
+      {
+        "id": "16b49b2e-5656-4d41-8deb-d03aca6b4967",
+        "name": "Curso de inglês",
+        "category": "educacao",
+        "value": 397.54,
+        "paymentMethod": "boleto",
+        "normallyDueDay": 5,
+        "paidOnDate": null
+      },
+      {
+        "id": "a8f12634-2ceb-45a5-8800-738642250f2b",
+        "name": "Supermercado",
+        "category": "alimentacao",
+        "value": 1636.77,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      },
+      {
+        "id": "6b215290-a489-4115-8f2d-b5531c13c72d",
+        "name": "Combustível",
+        "category": "transporte",
+        "value": 425.05,
+        "paymentMethod": "debito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      },
+      {
+        "id": "bf773b90-8dfb-47bc-8cd8-1078dc20b746",
+        "name": "Streaming",
+        "category": "lazer",
+        "value": 52.99,
+        "paymentMethod": "credito",
+        "normallyDueDay": null,
+        "paidOnDate": null
+      }
+    ],
+    [],
+    [],
+    []
+  ],
+  "eventualExpenses": [
+    [
+      {
+        "id": "13393d24-8d6e-4cfb-8f15-dc4eea10c54d",
+        "category": "educacao",
+        "value": 1177.26,
+        "description": null,
+        "paymentMethod": "pix"
+      },
+      {
+        "id": "ed1c747d-35f0-4f1c-8a8d-41770cb203a0",
+        "category": "saude",
+        "value": 1628.5,
+        "description": null,
+        "paymentMethod": "pix"
+      },
+      {
+        "id": "da2db1be-d358-4230-867e-4d588918706d",
+        "category": "alimentacao",
+        "value": 128.99,
+        "description": null,
+        "paymentMethod": "credito"
+      }
+    ],
+    [
+      {
+        "id": "a088a29a-6343-4349-806f-49dfaddd646a",
+        "category": "comunicacao",
+        "value": 1593.45,
+        "description": null,
+        "paymentMethod": "dinheiro"
+      },
+      {
+        "id": "9faf5ae5-8ef2-4910-8753-c936f2141b19",
+        "category": "outros",
+        "value": 1287.87,
+        "description": null,
+        "paymentMethod": "credito"
+      },
+      {
+        "id": "ac72bfdb-65eb-427b-8b92-7650b39e69a9",
+        "category": "moradia",
+        "value": 1392.8,
+        "description": null,
+        "paymentMethod": "boleto"
+      }
+    ],
+    [
+      {
+        "id": "19166885-b048-4d88-883f-97a8df59eaf9",
+        "category": "saude",
+        "value": 2228.81,
+        "description": null,
+        "paymentMethod": "debito"
+      },
+      {
+        "id": "ee9e76c3-3d1b-4ba7-832d-20dd3af9cd26",
+        "category": "saude",
+        "value": 665.37,
+        "description": null,
+        "paymentMethod": "pix"
+      },
+      {
+        "id": "40aa768b-6758-4bc1-8f53-6e7a9ebba2c1",
+        "category": "alimentacao",
+        "value": 1121.21,
+        "description": null,
+        "paymentMethod": "boleto"
+      }
+    ],
+    [],
+    [],
+    [
+      {
+        "id": "16ec7eff-2d77-4ff7-8853-4d86d538ee54",
+        "category": "educacao",
+        "value": 1284.29,
+        "description": null,
+        "paymentMethod": "boleto"
+      }
+    ],
+    [
+      {
+        "id": "eac14dd2-e192-46ab-8f57-e57209e04f93",
+        "category": "viagens",
+        "value": 889.5,
+        "description": null,
+        "paymentMethod": "dinheiro"
+      }
+    ],
+    [
+      {
+        "id": "fe87df64-729e-45ab-8e71-d31c5ff4f2d1",
+        "category": "transporte",
+        "value": 1119.33,
+        "description": null,
+        "paymentMethod": "pix"
+      },
+      {
+        "id": "2e3b32b5-45cd-427f-8b2f-cc5871c2a6ae",
+        "category": "outros",
+        "value": 772.14,
+        "description": null,
+        "paymentMethod": "credito"
+      },
+      {
+        "id": "c3599eb5-3a87-4599-81e2-1f897fb47aad",
+        "category": "compras",
+        "value": 1201.75,
+        "description": null,
+        "paymentMethod": "boleto"
+      }
+    ],
+    [
+      {
+        "id": "35a07e6c-9196-4b6b-85a6-d9cd47a4d32a",
+        "category": "alimentacao",
+        "value": 1246.07,
+        "description": null,
+        "paymentMethod": "pix"
+      }
+    ],
+    [],
+    [],
+    []
+  ],
+  "creditCards": {
+    "nuRenan": [
+      [],
+      [
+        {
+          "id": "e02a4396-1b53-474e-8aac-4c86a2aa7019",
+          "category": "saude",
+          "value": 1092.34,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "389e3ffc-d106-4291-89e7-195a5d27c860",
+          "category": "viagens",
+          "value": 2362.69,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "337650c1-218f-444d-8edf-6a9f46d17c05",
+          "category": "saude",
+          "value": 566.99,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "4aeb02d3-430c-4b88-85d4-daf96d612cb6",
+          "category": "viagens",
+          "value": 1017.13,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "c4b0b0e7-945e-41e6-8e1f-47161d311d87",
+          "category": "lazer",
+          "value": 354.74,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "c19c7c5e-8cf0-4521-80e0-a5db5d10b336",
+          "category": "viagens",
+          "value": 1260.33,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "6f5110a5-4023-461f-8d22-f859428e1dd0",
+          "category": "alimentacao",
+          "value": 2059.93,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "3b4e63c7-cae5-4f3e-8728-8a7de0496879",
+          "category": "diversos",
+          "value": 1981.21,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "321e3ea8-8df6-4bf3-8f9d-35eeb01f44d5",
+          "category": "diversos",
+          "value": 1738.31,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "7e2180e2-f8a1-4052-8480-e9d551758b5a",
+          "category": "lazer",
+          "value": 558.52,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "2de72883-96f5-4211-84c8-c275b3b81ba3",
+          "category": "outros",
+          "value": 1595.36,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "c3c29526-e00a-4fd1-833a-2a031480cf35",
+          "category": "saude",
+          "value": 215.05,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "06215a9f-4d0c-467d-8fe2-8e60000c7ff5",
+          "category": "educacao",
+          "value": 2139.99,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "59e340d4-9973-4047-8fa2-ecfc27b1afeb",
+          "category": "lazer",
+          "value": 678.86,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "91544021-40ae-4721-8801-ca562317835a",
+          "category": "moradia",
+          "value": 245.05,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "8a0835d3-deac-40b3-87eb-185abf14b8a4",
+          "category": "moradia",
+          "value": 2037.51,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "1791a055-810d-4959-8171-0b221fa1fdce",
+          "category": "alimentacao",
+          "value": 1728.7,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "0010bad5-25c1-4a43-8b83-75d89fb0a975",
+          "category": "transporte",
+          "value": 1741.68,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "f8028dd0-b8af-414d-864f-455ceb874abb",
+          "category": "saude",
+          "value": 1933.76,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "c827d72a-484c-4f4a-8311-d8d4f51450de",
+          "category": "comunicacao",
+          "value": 1594.94,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "0b9e53bc-3af3-4d2b-87a9-c9a2334988f4",
+          "category": "viagens",
+          "value": 1607.37,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "efdc87f5-0862-42a9-896f-cac2e783befa",
+          "category": "outros",
+          "value": 960.71,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "23746d75-69ae-46ab-85a8-2239f557de9b",
+          "category": "educacao",
+          "value": 1502.19,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "1245b23b-954b-4c32-89dd-890edbd95d03",
+          "category": "alimentacao",
+          "value": 1837.1,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "fad3717a-b74d-4249-899a-646f9dd0aea7",
+          "category": "moradia",
+          "value": 399.6,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "0144be2b-b3ab-4a46-89cc-c451a7f0c02a",
+          "category": "lazer",
+          "value": 688.85,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [],
+      [],
+      []
+    ],
+    "nuJu": [
+      [],
+      [
+        {
+          "id": "40e0db68-77a0-4da2-8dfb-1e89ddf26f85",
+          "category": "comunicacao",
+          "value": 815.52,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "9ca32116-56ad-49d1-89e8-b7fc891d247c",
+          "category": "lazer",
+          "value": 324.9,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "238aa5e4-39e6-4b76-8417-ea3454065552",
+          "category": "comunicacao",
+          "value": 203.37,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "5de7f3e7-ff29-47eb-8b82-3b2d489a5f24",
+          "category": "compras",
+          "value": 2138.58,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "db15da34-ccfc-4d98-8fe8-d39a12c2027f",
+          "category": "imigracao",
+          "value": 1641.54,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "76d8c736-6625-4d01-822d-7b2a13bddd24",
+          "category": "educacao",
+          "value": 2292.49,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "2aaa0e12-040d-49dc-809e-23f914d7a05c",
+          "category": "saude",
+          "value": 73.24,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "ca858817-2b1e-4013-8b25-6887ef82a004",
+          "category": "comunicacao",
+          "value": 2347.49,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "600bc198-28b7-4a76-8f31-329270bd76c5",
+          "category": "imigracao",
+          "value": 2024.34,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "2adb0a6e-3a61-40c0-8cef-e359d7ab6ef1",
+          "category": "compras",
+          "value": 193.73,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "c9f50edf-2bd6-4a64-8dd8-f4d7fbf089f5",
+          "category": "transporte",
+          "value": 1841.02,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "c682ed13-feae-4443-8cee-0cf1129ccea4",
+          "category": "educacao",
+          "value": 2036.02,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "536a69ff-fe33-435d-89da-c43d3675d4fd",
+          "category": "transporte",
+          "value": 1458.76,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "a9013937-6e31-4117-8e61-c3c94eafab8e",
+          "category": "viagens",
+          "value": 494.53,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "6bb7b433-e790-45e4-8e7f-0f190057dbd6",
+          "category": "comunicacao",
+          "value": 497.55,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "5ed2b0a6-bbcc-43a6-8e1d-b8309b06c786",
+          "category": "lazer",
+          "value": 1604.12,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "4a91df0a-b1cb-4178-8e2f-4d89b2627731",
+          "category": "saude",
+          "value": 517.26,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "8a81d245-ea53-4ce8-8da3-db119b6b5fdb",
+          "category": "outros",
+          "value": 895.97,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "26d4a1bb-29f1-4096-8dea-8b61ea7471c9",
+          "category": "alimentacao",
+          "value": 1008.51,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "3ca98650-059d-4c3c-8029-17cd7e63d246",
+          "category": "alimentacao",
+          "value": 745.63,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "c474f661-da03-4ac7-8077-f53eb98cf66b",
+          "category": "saude",
+          "value": 2153.34,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "14d761c7-b2fc-4ff9-8041-91e39cf15b0a",
+          "category": "moradia",
+          "value": 217.68,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "028a55ce-0ffc-45a8-8c62-3cf22b9fa668",
+          "category": "moradia",
+          "value": 2202.83,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "d283773b-0b19-49e0-8e27-1e873dd30f9f",
+          "category": "educacao",
+          "value": 94.81,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "06256638-258d-4825-845b-ca97481a499c",
+          "category": "transporte",
+          "value": 2125.67,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "18b02ce3-b6c5-4f59-818c-ed8b9d75a3c6",
+          "category": "educacao",
+          "value": 386.54,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "80d4e70d-410d-4ed9-81cf-bf170419f327",
+          "category": "moradia",
+          "value": 936.45,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [],
+      [],
+      []
+    ],
+    "nomad": [
+      [
+        {
+          "id": "22d217a2-237e-4a74-8e29-47cc650d5dc9",
+          "category": "moradia",
+          "value": 492.88,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "80d46c20-aa48-486f-890c-95ca04f6380b",
+          "category": "lazer",
+          "value": 991.46,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "c525b823-d689-48f4-8033-baf14bedb429",
+          "category": "viagens",
+          "value": 183.7,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "80db7e30-529a-4372-8487-e4ef327adc06",
+          "category": "compras",
+          "value": 758.07,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "8376480c-61b6-43aa-8bc3-45a46b98f54c",
+          "category": "saude",
+          "value": 1615.88,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "84ac2291-7bfb-4cd5-8f38-de52a6d24ce8",
+          "category": "educacao",
+          "value": 242.11,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "aca94537-9bd4-4d70-8b20-f42d49e8eb0f",
+          "category": "imigracao",
+          "value": 1390.02,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "aa513b0b-071b-4b5c-858d-38d4bf5a40a3",
+          "category": "educacao",
+          "value": 2027.09,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "a267bbcd-6eaa-46e3-8130-558f828ed827",
+          "category": "outros",
+          "value": 2068.08,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "4b669df2-1ea9-41fa-8491-6176d8e6dcb1",
+          "category": "educacao",
+          "value": 2301.62,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "3ff13520-e2cc-4853-84e3-a52214820e03",
+          "category": "educacao",
+          "value": 1366.15,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "5ff2923a-4778-44d5-8a2f-1d7db4c72bf7",
+          "category": "imigracao",
+          "value": 561.22,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "a85fc272-8e39-4039-8334-40bca580771e",
+          "category": "comunicacao",
+          "value": 488.68,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "f34efb6a-f54d-4e0e-8650-9bc754390e10",
+          "category": "lazer",
+          "value": 1936.45,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "7d41d375-93dd-4b08-8dfa-cd894c390091",
+          "category": "transporte",
+          "value": 893.65,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        },
+        {
+          "id": "77a3e69c-906a-497b-80bb-2956663eb93a",
+          "category": "moradia",
+          "value": 1461.14,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [
+        {
+          "id": "3101c8b3-e5ee-4a6e-8d0c-848c28992f7c",
+          "category": "compras",
+          "value": 614.56,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [],
+      [
+        {
+          "id": "bdfa05b1-590a-40ba-8871-9fb0d627a391",
+          "category": "viagens",
+          "value": 146.97,
+          "description": null,
+          "paymentMethod": "credito",
+          "paidOnDate": null
+        }
+      ],
+      [],
+      [],
+      []
+    ]
+  }
+}
