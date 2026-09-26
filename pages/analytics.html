@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analytics Lab — Portfolio Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="icon" href="/icon.png" sizes="16x16">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/analytics.css">
+</head>
+<body>
+
+<!-- ── Navigation tab bar ── -->
+<div class="tab-bar" style="display:flex;gap:12px;margin-bottom:24px;">
+  <button class="btn" onclick="window.location.href='/'">Dashboard</button>
+  <button class="btn" onclick="window.location.href='/pages/simulation.html'">Simulate</button>
+  <button class="btn" onclick="(() => { const now = new Date(); window.location.href = `/pages/finance.html?month=${now.getMonth()}&year=${now.getFullYear()}`; })()">Finance</button>
+  <button class="btn" onclick="window.location.href='/pages/vocabulary-learning.html'">Vocabulary</button>
+  <button class="btn btn-primary">Analytics</button>
+</div>
+
+<div class="page">
+
+  <!-- ── Page header ── -->
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo">📊</div>
+      <div>
+        <h1 style="font-size:1.6rem;font-weight:800;margin:0;">Analytics Lab</h1>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px;">Performance metrics &amp; portfolio analytics</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="window.location.href='/'">← Back</button>
+    </div>
+  </div>
+
+  <!-- ── Status bar ── -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="last-computed" id="lastComputedLabel">Last computed: <strong id="lastComputedTime">2 hours ago</strong></span>
+    <span class="spacer"></span>
+    <span style="color:var(--text-muted);font-size:0.8rem;">Updates every 24 h</span>
+  </div>
+
+  <!-- ── Period selector ── -->
+  <div class="period-tabs" id="periodTabs">
+    <button class="period-tab" data-period="1W" onclick="selectPeriod('1W', this)">1W</button>
+    <button class="period-tab" data-period="1M" onclick="selectPeriod('1M', this)">1M</button>
+    <button class="period-tab active" data-period="3M" onclick="selectPeriod('3M', this)">3M</button>
+    <button class="period-tab" data-period="1Y" onclick="selectPeriod('1Y', this)">1Y</button>
+    <button class="period-tab" data-period="ALL" onclick="selectPeriod('ALL', this)">ALL</button>
+  </div>
+
+  <!-- ── Summary metric cards ── -->
+  <div class="metrics-grid">
+
+    <!-- Return % -->
+    <div class="metric-card" id="cardReturn">
+      <div class="metric-icon">📈</div>
+      <div class="metric-label">Return <span class="metric-info-hint">ⓘ</span></div>
+      <div class="metric-value positive" id="metricReturn">+18.4%</div>
+      <div class="metric-sub positive" id="metricReturnSub">↑ $4,230 over 3 months</div>
+      <div class="metric-tooltip" id="tooltipReturn"></div>
+    </div>
+
+    <!-- Max Drawdown -->
+    <div class="metric-card danger" id="cardDrawdown">
+      <div class="metric-icon">📉</div>
+      <div class="metric-label">Max Drawdown <span class="metric-info-hint">ⓘ</span></div>
+      <div class="metric-value negative" id="metricDrawdown">−12.7%</div>
+      <div class="metric-sub" id="metricDrawdownDates" style="color:var(--text-muted);">Mar 8 → Mar 18 · 10 days</div>
+      <div class="metric-tooltip" id="tooltipDrawdown"></div>
+    </div>
+
+    <!-- Sharpe Ratio -->
+    <div class="metric-card neutral-accent" id="cardSharpe">
+      <div class="metric-icon">⚖️</div>
+      <div class="metric-label">Sharpe Ratio <span class="metric-info-hint">ⓘ</span></div>
+      <div class="metric-value" id="metricSharpe" style="color:var(--accent-warning);">1.42</div>
+      <div class="metric-sub" id="metricSharpeSub" style="color:var(--text-muted);">Risk-free: 4.5% / yr · ≥30 pts</div>
+      <div class="metric-tooltip" id="tooltipSharpe"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Overall Analysis ── -->
+  <div id="overallAnalysis" class="analysis-card"></div>
+
+  <!-- ── Cash Drag Analysis ── -->
+  <div id="cashDragCard" class="analysis-card cash-analysis-card">
+    <div class="analysis-header">
+      <span class="analysis-icon">🏦</span>
+      <span class="analysis-title">Cash Drag &amp; Interest Carry</span>
+      <span class="analysis-badge" id="cashDragBadge">Loading</span>
+    </div>
+    <div class="analysis-signals" id="cashDragBody">
+      <div class="analysis-signal">
+        <div class="signal-dot" style="background:#64748b"></div>
+        <span>Loading cash and price context…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Cash / Risk insights ── -->
+  <div class="charts-grid" style="margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-title">
+          <div class="chart-card-icon">🏦</div>
+          Cash vs Assets Over Time
+        </div>
+        <div class="cash-assets-controls">
+          <div class="currency-toggle" id="cashAssetsCurrencyToggle" role="group" aria-label="Cash chart currency">
+            <button type="button" class="currency-toggle-btn active" data-mode="assets-cash">Assets vs Cash</button>
+            <button type="button" class="currency-toggle-btn" data-mode="cash-currencies">BRL vs USD</button>
+          </div>
+          <span id="cashAssetsMeta" class="cash-assets-meta">period history · assets vs cash (USD)</span>
+        </div>
+      </div>
+      <div class="chart-container tall">
+        <canvas id="cashAssetsChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card" id="riskProfileCard">
+      <div class="chart-card-header">
+        <div class="chart-card-title">
+          <div class="chart-card-icon">🧭</div>
+          Portfolio Risk Profile
+        </div>
+        <span id="riskProfileBadge" class="analysis-badge">Loading</span>
+      </div>
+      <div id="riskProfileBody" class="analysis-signals" style="margin-top:6px;">
+        <div class="analysis-signal">
+          <div class="signal-dot" style="background:#64748b"></div>
+          <span>Loading risk factors…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Charts row: Portfolio line + Cost vs Market bar ── -->
+  <div class="charts-grid">
+
+    <!-- Portfolio value over period (line chart) -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-title">
+          <div class="chart-card-icon">📈</div>
+          Portfolio Value
+        </div>
+        <span class="drawdown-marker" id="drawdownMarker">Max DD −12.7%</span>
+      </div>
+      <div class="chart-container tall">
+        <canvas id="portfolioChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Cost basis vs Market value (bar chart) -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-title">
+          <div class="chart-card-icon">💹</div>
+          Cost Basis vs Market Value
+        </div>
+        <span style="font-size:0.8rem;color:var(--text-muted);">at period end</span>
+      </div>
+      <div class="chart-container tall">
+        <canvas id="costMarketChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Allocation table ── -->
+  <div class="chart-card" style="margin-bottom:16px;">
+    <div class="chart-card-header">
+      <div class="chart-card-title">
+        <div class="chart-card-icon">🥧</div>
+        Allocation &amp; P/L at Period End
+      </div>
+      <span style="font-size:0.8rem;color:var(--text-muted);">Replayed from trades · prices at snapshot time</span>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="alloc-table" id="allocTable">
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Allocation</th>
+            <th>Cost Basis</th>
+            <th>Market Value</th>
+            <th>Unrealized P/L</th>
+            <th>P/L %</th>
+          </tr>
+        </thead>
+        <tbody id="allocTableBody">
+          <!-- populated by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /.page -->
+
+<script src="/static/js/lib/analytics-insights.js"></script>
+<script src="/static/js/analytics.js"></script>
+</body>
+</html>

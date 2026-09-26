@@ -1,0 +1,130 @@
+import { randomUUID } from 'node:crypto';
+import { all, get, run } from '../db';
+import { refreshPrices } from './priceFetcher';
+import { replayFIFOLots, computePortfolioValue } from './portfolioCalculator';
+
+export async function computeAndInsertHistoryPoint(options: { manual?: boolean; note?: string } = {}) {
+  // Refresh prices first (also appends to price_ticks via priceFetcher)
+  await refreshPrices();
+
+  // Load current prices from the fast-read cache
+  const priceRows: any[] = await all('SELECT symbol, price FROM price_cache');
+  const prices: Record<string, number> = {};
+  for (const r of priceRows) prices[r.symbol] = r.price;
+
+  // Replay trades to compute open FIFO lots and realized sell profits
+  const trades: any[] = await all('SELECT * FROM trades ORDER BY time ASC');
+  const lots = replayFIFOLots(trades, prices);
+  const realizedFromSells = trades
+    .filter(t => t.side === 'sell')
+    .reduce((s, t) => s + (t.profit || 0), 0);
+
+  // Current cash state derived from the cash event log (sum of all signed deltas)
+  const cashRow: any = await get(`
+    SELECT
+      COALESCE(SUM(CASE WHEN currency='BRL' THEN amount ELSE 0 END), 0) AS cashReais,
+      COALESCE(SUM(CASE WHEN currency='USD' THEN amount ELSE 0 END), 0) AS cashDollars
+    FROM cash
+  `);
+  const cash = {
+    cashReais:   cashRow?.cashReais   ?? 0,
+    cashDollars: cashRow?.cashDollars ?? 0,
+  };
+
+  // Interest months (all-time, cumulative) by currency
+  const brlMonths: any[] = await all("SELECT amount FROM interest WHERE currency = 'BRL'");
+  const usdMonths: any[] = await all("SELECT amount FROM interest WHERE currency = 'USD'");
+  const interestBRLMonthsTotal = brlMonths.reduce((s, m) => s + (m.amount || 0), 0);
+  const interestUSDMonthsTotal = usdMonths.reduce((s, m) => s + (m.amount || 0), 0);
+
+  const { total, investedNet, p, brlUsdRate } = computePortfolioValue({
+    lots, prices, cash, realizedFromSells, interestBRLMonthsTotal, interestUSDMonthsTotal,
+  });
+
+  // Dedup guard: skip scheduled insertions if a point already exists within the last 25 minutes
+  const last: any = await get('SELECT * FROM portfolio_snapshots ORDER BY ts DESC LIMIT 1');
+  const now = Date.now();
+  if (!options.manual && last && (now - (last.ts || 0)) < 25 * 60 * 1000) {
+    console.log('Skipping scheduled history insertion; recent point exists', last.ts);
+    return last;
+  }
+
+  const id = randomUUID();
+  const ts = now;
+  const t = new Date(ts).toISOString();
+  await run(
+    'INSERT INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note, brlusd_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, t, ts, total, investedNet, p, options.manual ? 1 : 0, options.note ?? null, brlUsdRate],
+  );
+  return await get('SELECT * FROM portfolio_snapshots WHERE id = ?', [id]);
+}
+
+/**
+ * Reconstructs portfolio value at a specific past timestamp using only the event stores:
+ * trades, price_ticks, cash, and interest.
+ *
+ * Does NOT insert into portfolio_snapshots — callers decide whether to persist.
+ * Requires price_ticks to contain data at or before `ts` (run backfill first for historical ranges).
+ */
+export async function recomputeHistoryAt(ts: number) {
+  // Trades that existed at or before ts
+  const cutoff = new Date(ts).toISOString();
+  const trades: any[] = await all('SELECT * FROM trades WHERE time <= ? ORDER BY time ASC', [cutoff]);
+
+  const lots = replayFIFOLots(trades, {});
+  const realizedFromSells = trades
+    .filter(t => t.side === 'sell')
+    .reduce((s, t) => s + (t.profit || 0), 0);
+
+  // Latest price per symbol as of ts from the append-only event log
+  const tickRows: any[] = await all(`
+    SELECT p.symbol, p.price
+    FROM price_ticks p
+    INNER JOIN (
+      SELECT symbol, MAX(ts) AS max_ts
+      FROM price_ticks
+      WHERE ts <= ?
+      GROUP BY symbol
+    ) latest ON p.symbol = latest.symbol AND p.ts = latest.max_ts
+  `, [ts]);
+
+  if (tickRows.length === 0) {
+    throw new Error(`No price_ticks data at or before ts=${ts}. Run npm run migrate:backfill-prices first.`);
+  }
+
+  const prices: Record<string, number> = {};
+  for (const r of tickRows) prices[r.symbol] = r.price;
+
+  // Cash state as of ts: sum all cash rows with ts <= the requested timestamp
+  const cashRow: any = await get(`
+    SELECT
+      COALESCE(SUM(CASE WHEN currency='BRL' THEN amount ELSE 0 END), 0) AS cashReais,
+      COALESCE(SUM(CASE WHEN currency='USD' THEN amount ELSE 0 END), 0) AS cashDollars
+    FROM cash
+    WHERE ts <= ?
+  `, [ts]);
+  const cash = {
+    cashReais:   cashRow?.cashReais   ?? 0,
+    cashDollars: cashRow?.cashDollars ?? 0,
+  };
+
+  // Interest months that existed at or before ts, by currency
+  const brlMonthsAt: any[] = await all("SELECT amount FROM interest WHERE currency = 'BRL' AND created_at <= ?", [ts]);
+  const usdMonthsAt: any[] = await all("SELECT amount FROM interest WHERE currency = 'USD' AND created_at <= ?", [ts]);
+  const interestBRLMonthsTotal = brlMonthsAt.reduce((s, m) => s + (m.amount || 0), 0);
+  const interestUSDMonthsTotal = usdMonthsAt.reduce((s, m) => s + (m.amount || 0), 0);
+
+  const { total, investedNet, p, brlUsdRate } = computePortfolioValue({
+    lots, prices, cash, realizedFromSells, interestBRLMonthsTotal, interestUSDMonthsTotal,
+  });
+
+  return {
+    t:           new Date(ts).toISOString(),
+    ts,
+    v:           total,
+    i:           investedNet,
+    p,
+    brlusd_rate: brlUsdRate,
+  };
+}
+

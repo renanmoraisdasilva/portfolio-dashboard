@@ -1,0 +1,43 @@
+# Node modules
+node_modules/
+server/node_modules/
+
+# Build outputs
+dist/
+server/dist/
+server/coverage/
+
+# Env files
+.env
+*.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SQLite DB and backups
+server/data/*.sqlite
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
+server/data/portfolio.db
+server/data/portfolio.db.bak
+
+# Editor directories
+.vscode/
+.idea/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Docker
+*.tar
+backups/
+benchmarks/

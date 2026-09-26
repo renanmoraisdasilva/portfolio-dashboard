@@ -1,0 +1,1 @@
+ALTER TABLE `interest_months` RENAME TO `interest`;

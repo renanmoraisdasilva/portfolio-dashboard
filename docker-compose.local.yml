@@ -1,0 +1,67 @@
+x-telemetry-environment: &telemetry-environment
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://host.docker.internal:4318/v1/traces}"
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:-http://host.docker.internal:4318/v1/metrics}"
+  OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: "${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:-http://host.docker.internal:4318/v1/logs}"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=${TELEMETRY_ENVIRONMENT:-Development}"
+  OTEL_SDK_DISABLED: "${OTEL_SDK_DISABLED:-false}"
+
+x-telemetry-hosts: &telemetry-hosts
+  - "host.docker.internal:host-gateway"
+
+services:
+  portfolio:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: portfolio-dashboard:local
+    container_name: portfolio-dashboard-local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      <<: *telemetry-environment
+      PORT: 3000
+      OTEL_SERVICE_NAME: portfolio-web
+    command: node dist/web.js
+    extra_hosts: *telemetry-hosts
+    volumes:
+      - portfolio-data:/app/server/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: portfolio-dashboard:local
+    restart: unless-stopped
+    environment:
+      <<: *telemetry-environment
+      PORT: 3000
+      OTEL_SERVICE_NAME: portfolio-worker
+    command: node dist/worker.js
+    extra_hosts: *telemetry-hosts
+    volumes:
+      - portfolio-data:/app/server/data
+
+  seed:
+    image: portfolio-dashboard:local
+    restart: "no"
+    depends_on:
+      portfolio:
+        condition: service_healthy
+    command: node dist/seed.js /seed/portfolio_data.json
+    volumes:
+      - portfolio-data:/app/server/data
+      - ./backup-data:/seed:ro
+
+volumes:
+  portfolio-data:

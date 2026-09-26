@@ -1,0 +1,39 @@
+/* ============================================================
+   base.css — Shared reset, CSS variables and font import
+   Used by ALL pages (finance, dashboard, simulation, vocabulary)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* --- CSS Reset --- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* --- CSS Custom Properties (superset palette) --- */
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #141b2d;
+  --bg-tertiary: #1a2332;
+  --accent-primary: #00d9ff;
+  --accent-secondary: #7c3aed;
+  --accent-success: #10b981;
+  --accent-danger: #ef4444;
+  --accent-warning: #f59e0b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: #2d3748;
+  --glow: rgba(0, 217, 255, 0.25);
+  --card-gap: 16px;
+}
+
+/* --- Shared mobile overrides --- */
+@media (max-width: 600px) {
+  .header, .tab-bar {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    z-index: auto !important;
+  }
+}

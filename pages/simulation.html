@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Portfolio Simulation & Trade Planning</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/simulation.css">
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="title">📈 Portfolio Simulation & Trade Planning</div>
+    <div class="tab-bar" style="display:flex;gap:12px;margin-bottom:0;align-items:center">
+      <button class="btn" id="backToDashboard" onclick="window.location.href='/'">← Dashboard</button>
+      <button class="btn" id="resetBtn">Reset to Real Values</button>
+
+      <!-- Scenario modals trigger -->
+      <button class="btn" id="openScenariosBtn">Open Scenario</button>
+      <button class="btn" id="openSaveModalBtn">Save Scenario</button>
+    </div>
+  </div>
+
+  <!-- Metric cards copied from dashboard (same logic) -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">Current Value</div>
+      <div class="metric-value" id="sim_totalValue">$0</div>
+      <div class="metric-change neutral" id="sim_valueChange">Break even</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total Invested</div>
+      <div class="metric-value" id="sim_totalInvestedExCash">$0</div>
+      <div class="metric-change neutral" id="sim_investedPct">0.00% invested</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total Deposits</div>
+      <div class="metric-value" id="sim_totalInvested">$0</div>
+      <div class="metric-change neutral">Net invested</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Unrealized P/L</div>
+      <div class="metric-value" id="sim_unrealizedPL">$0</div>
+      <div class="metric-change neutral" id="sim_unrealizedPct">0.00%</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Realized P/L</div>
+      <div class="metric-value" id="sim_realizedPL">$0</div>
+      <div class="metric-change neutral" id="sim_realizedPLPct">From closed trades</div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <div class="card-header"><div style="font-weight:600">What-If Portfolio Simulator</div></div>
+        <div class="asset-rows" id="assetsList">
+          <!-- rows injected -->
+        </div>
+
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="card-header"><div style="font-weight:600">Asset Allocation</div></div>
+        <div class="alloc-wrap">
+          <div class="chart-container alloc alloc-chart"><canvas id="simAllocChart"></canvas></div>
+          <div class="alloc-summary" id="simAllocSummary">
+            <div style="display:flex;align-items:center;gap:8px;width:100%;justify-content:space-between">
+              <div class="summary-label">Allocation</div>
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom: 10px;">
+                <button class="chip" id="allocUsdBtn" data-currency="USD">USD</button>
+                <button class="chip" id="allocBrlBtn" data-currency="BRL">BRL</button>
+              </div>
+            </div>
+            <div id="simAllocList"></div>   
+          </div>
+        </div>
+        <div class="allocation-legend" id="simAllocLegend"></div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="card-header"><div style="font-weight:600">Simulated Positions</div></div>
+        <div class="table-container"><table>
+          <thead><tr><th>Asset</th><th>Qty</th><th>Avg Price</th><th>Current Price</th><th>Value</th><th>P/L</th></tr></thead>
+          <tbody id="simPositionsTbody"></tbody>
+        </table></div>
+      </div>
+
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-header"><div style="font-weight:600">Plan Trade</div></div>
+        <div class="form-grid">
+          <div>
+            <label class="small">Side</label>
+            <div style="display:flex;gap:8px">
+              <button id="simSideBuy" class="chip active" type="button">Buy</button>
+              <button id="simSideSell" class="chip" type="button">Sell</button>
+              <input type="hidden" id="simSide" value="buy">
+            </div>
+          </div>
+
+          <div>
+            <label class="small">Asset</label>
+            <select id="simAsset" class="chip" style="width:100%"><!-- populated dynamically from /api/config/symbols --></select>
+          </div>
+
+          <div>
+            <label class="small">Quantity</label>
+            <div class="stepper">
+              <button type="button" id="qtyDec">−</button>
+              <input id="simQty" class="sim-input" type="number" step="0.0001" placeholder="0.0000" />
+              <button type="button" id="qtyInc">+</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+              <input id="simQtyPct" class="sim-slider" type="range" min="0" max="100" step="1" value="0" />
+              <div class="small" id="simQtyPctLabel">0%</div>
+              <button class="btn" id="maxQtyBtn" type="button">Max</button>
+            </div>
+
+            <div style="margin-top:10px">
+              <label class="small">Total (in selected currency)</label>
+              <input id="simTotal" class="sim-input" type="text" placeholder="enter total in USD or BRL" style="text-align:right;width:100%" />
+            </div>
+
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-primary" id="addSimTradeBtn">Simulate Trade</button>
+              <button class="btn btn-danger" id="clearSimTradesBtn">Clear Sim Trades</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="small">Price (optional)</label>
+            <div class="stepper">
+              <button type="button" id="priceDec">−</button>
+              <input id="simPrice" class="sim-input" type="text" placeholder="use scenario price" style="text-align:right" />
+              <button type="button" id="priceInc">+</button>
+            </div>
+
+            <div style="margin-top:12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+                <label class="small" style="margin-right:6px;white-space:nowrap">Cash Source</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <button id="simCashUSD" class="chip active" type="button">USD</button>
+                  <button id="simCashBRL" class="chip" type="button">BRL</button>
+                  <input type="hidden" id="simCashSource" value="USD">
+                </div>
+              </div>
+
+              <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+                <div style="display:flex;gap:8px;align-items:center"><label class="small" style="width:70px">BRL</label><input type="text" id="simCashReais" style="width:140px;text-align:right" /></div>
+                <div style="display:flex;gap:8px;align-items:center"><label class="small" style="width:70px">USD</label><input type="text" id="simCashDollars" style="width:140px;text-align:right" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="margin-top:24px;font-weight:600">Simulated Trade History</div>
+          <div class="table-container" style="margin-top:8px"><table>
+            <thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+            <tbody id="simTradeHistory"></tbody>
+          </table></div>
+        </div>
+
+
+      </div>
+
+
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Save Scenario Modal -->
+<div id="saveModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <h2>Save Scenario</h2>
+    <div class="row">
+      <input id="saveModalName" type="text" placeholder="Scenario name" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-primary)" />
+    </div>
+    <div class="row">
+      <label class="small">Overwrite existing:</label>
+      <select id="saveModalOverwrite" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-primary)"><option value="">(New scenario)</option></select>
+    </div>
+    <div class="actions">
+      <button class="btn" id="cancelSaveModalBtn">Cancel</button>
+      <button class="btn btn-primary" id="confirmSaveModalBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Open Scenario Modal -->
+<div id="openModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <h2>Open Scenario</h2>
+    <div id="openModalTableContainer" style="max-height:360px;overflow:auto">
+      <table id="scenariosTable">
+        <thead><tr><th>Name</th><th>Created</th><th>Last Saved</th><th>Actions</th></tr></thead>
+        <tbody id="scenariosTableBody"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn" id="closeOpenModalBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/simulation.js"></script>
+</body>
+</html>
