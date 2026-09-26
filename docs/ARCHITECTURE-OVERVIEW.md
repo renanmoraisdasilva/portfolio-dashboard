@@ -9,7 +9,7 @@ flowchart LR
     subgraph Application[Portfolio Dashboard]
         direction LR
 
-        subgraph Web[Web process - server/src/web.ts]
+        subgraph Web[Web process - apps/api/src/web.ts]
             direction TB
             App[Express app<br/>createApp + route mounting]
             PortfolioRoutes[Portfolio routes]
@@ -24,7 +24,7 @@ flowchart LR
             App --> AlertRoutes
         end
 
-        subgraph Worker[Worker process - server/src/worker.ts]
+        subgraph Worker[Worker process - apps/api/src/worker.ts]
             direction TB
             PriceJob[Price refresh job]
             HistoryJob[History snapshot job]
@@ -64,7 +64,7 @@ flowchart LR
     AlertRoutes -. webhook .-> HA
 ```
 
-The web process creates the Express app in [server/src/app.ts](server/src/app.ts), then starts from [server/src/web.ts](server/src/web.ts). Scheduled work starts independently from [server/src/worker.ts](server/src/worker.ts) and is organized under `server/src/jobs/`. `server/src/index.ts` remains a compatibility dispatcher for local `APP_ROLE` usage.
+The web process creates the Express app in [apps/api/src/app.ts](apps/api/src/app.ts), then starts from [apps/api/src/web.ts](apps/api/src/web.ts). Scheduled work starts independently from [apps/api/src/worker.ts](apps/api/src/worker.ts) and is organized under `apps/api/src/jobs/`. `apps/api/src/index.ts` remains a compatibility dispatcher for local `APP_ROLE` usage.
 
 The two processes share the same database files. This separates HTTP traffic from scheduled work, but it does not yet provide independent storage scaling: SQLite still serializes writes and both processes depend on the same mounted data volume.
 
@@ -127,7 +127,7 @@ erDiagram
     portfolio_snapshots ||--o{ analytics_snapshots : "analytics input"
 ```
 
-The complete portfolio schema is in [server/src/schema.ts](server/src/schema.ts).
+The complete portfolio schema is in [apps/api/src/schema.ts](apps/api/src/schema.ts).
 
 ## What is cached?
 

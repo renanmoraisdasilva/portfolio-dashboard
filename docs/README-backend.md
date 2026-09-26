@@ -4,7 +4,7 @@ This folder contains a minimal TypeScript + Express server to provide API access
 
 Getting started (dev):
 
-- Install dependencies: cd server && npm install
+- Install dependencies: run `npm install` from the repository root (npm workspaces)
 - Initialize DB with sample data: npm run migrate:init
 - Run in development mode: npm run dev
 - Build: npm run build
@@ -20,7 +20,7 @@ API notes:
 Static pages: HTML files are organized under `pages/` and served by the same app via static middleware. For example:
 - `GET /pages/finance.html` will serve `pages/finance.html`.
 
-Finance service (new): the app now exposes a Finance API backed by its own SQLite DB `server/data/finance.db`.
+Finance service (new): the app now exposes a Finance API backed by its own SQLite DB `apps/api/data/finance.db`.
 - `POST /api/finance/import` — import a finance JSON payload. The request body should include the finance data; if `year` is omitted from the payload, you may override it with `?year=<YYYY>`.
 - `GET /api/finance?year=<YYYY>` — export the finance canonical JSON for the requested year. Defaults to the current year if omitted.
 - `POST /api/finance/init` — initialize or migrate the finance DB schema.
@@ -54,15 +54,15 @@ Years and reset:
 - `POST /api/finance/years` — create an empty year. Body: `{ year }`
 - `POST /api/finance/years/:year/reset` — delete all finance data for that year.
 
-If you prefer a dedicated URL like `/importer/`, place the page and its assets under `public/importer/` and mount it with `app.use('/importer', express.static(...))` in `server/src/index.ts`.
+If you prefer a dedicated URL like `/importer/`, place the page and its assets under `public/importer/` and mount it with `app.use('/importer', express.static(...))` in `apps/api/src/index.ts`.
 
 Docker notes:
 - `pages/finance.html` is copied into the runtime image so it will be available at `/pages/finance.html` in the container.
-- To persist `finance.db` across container restarts, mount the `server/data` folder as a volume when running the container:
+- To persist `finance.db` across container restarts, mount the `apps/api/data` folder as a volume when running the container:
 
-  docker run -v /path/on/host:/app/server/data -p 3000:3000 your-image
+  docker run -v /path/on/host:/app/apps/api/data -p 3000:3000 your-image
 
-  Or configure a volume in your `docker-compose.yml` to map `./server/data` to the container path `/app/server/data`.
+  Or configure a volume in your `docker-compose.yml` to map `./apps/api/data` to the container path `/app/apps/api/data`.
 - `GET /api/cash` and `PUT /api/cash` to manage cash positions.
 - `GET /api/interest/months`, `POST /api/interest/months`, and `DELETE /api/interest/months/:month` to manage interest entries.
 - `GET /api/prices` returns cached prices; a price refresh runner is initialized on server startup (stubbed).
@@ -71,7 +71,7 @@ Docker notes:
 
 ## Response caching
 
-The response cache is implemented in `server/src/services/responseCache.ts` with
+The response cache is implemented in `apps/api/src/services/responseCache.ts` with
 the open-source `lru-cache` package. It is lazy, bounded, TTL-based, and
 process-local. A cache entry is created only after a request needs it; no work
 runs merely because the TTL elapsed. Concurrent misses for the same key share
@@ -93,8 +93,8 @@ cache_misses_total{cache="analytics"}
 ```
 
 Notes:
-- The server persists data in `server/data/portfolio.db` (SQLite). Use `npm run migrate:init` to import `portfolio_data.json` into the DB.
-- For a production setup, run the server in Docker (see `server/Dockerfile`) and use the GitHub Actions workflow to build images.
+- The server persists data in `apps/api/data/portfolio.db` (SQLite). Use `npm run migrate:init` to import `portfolio_data.json` into the DB.
+- For a production setup, run the server in Docker (see `apps/api/Dockerfile`) and use the GitHub Actions workflow to build images.
 
 Next steps:
 - Finish implementing robust price fetching, asset history caching, and backups.

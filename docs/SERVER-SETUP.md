@@ -93,7 +93,7 @@ The webhook URL used to send portfolio alerts to Home Assistant is **baked into 
 
 **To update the webhook URL**, change the secret value in GitHub and trigger a new push to `main` — the CI will rebuild and push a new image. Update `PORTFOLIO_IMAGE_TAG` to that commit SHA in Dokploy and redeploy to pick it up.
 
-**Local development** uses `server/.env` (ignored by git). Copy `server/.env.example` and fill in your local HA webhook URL.
+**Local development** uses `apps/api/.env` (ignored by git). Copy `apps/api/.env.example` and fill in your local HA webhook URL.
 
 ---
 

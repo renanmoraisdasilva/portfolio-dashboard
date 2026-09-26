@@ -7,40 +7,45 @@ A full-stack portfolio dashboard repository containing a static frontend experie
 - `pages/finance.html` — main finance dashboard UI with fixed/eventual expenses, credit card handling, charts, and local finance state.
 - `pages/index.html` — landing page or home experience for the portfolio dashboard.
 - `pages/simulation.html`, `pages/vocabulary-learning.html` — additional frontend views in the repo.
-- `openapi.yaml` — API specification for backend finance and portfolio endpoints.
-- `README-backend.md` — detailed backend API and server notes.
-- `server/` — backend implementation with Express, SQLite, finance routes, migrations, and tests.
-- `backup-data/` — sample dataset files for the project.
+- `apps/api/openapi.yaml` — API specification for backend finance and portfolio endpoints.
+- `docs/README-backend.md` — detailed backend API and server notes.
+- `apps/api/` — backend implementation with Express, SQLite, finance routes, migrations, and tests.
+- `fixtures/` — synthetic sample datasets (portfolio + finance) used for seeding and import demos.
 
 ## Project structure
 
-- `server/` — TypeScript backend
-  - `src/` — server source code
-    - `web.ts` — web process entrypoint
-    - `worker.ts` — scheduled-work process entrypoint
-    - `app.ts` — Express app creation and route mounting
-    - `jobs/` — scheduled price, analytics, and history work
-    - `index.ts` — compatibility dispatcher for `APP_ROLE=web|worker|all`
-    - `routes/` — API route definitions
-    - `services/` — finance and domain logic
-    - `financeDb.ts` — SQLite data access helpers
-    - `migrate.ts` — DB migration and initialization script
-  - `package.json` — backend install and runtime scripts
-  - `tsconfig.json` — TypeScript config
-  - `jest.config.cjs` — Jest test config
+This is an npm workspaces monorepo:
 
-- `openapi.yaml` — OpenAPI 3 docs for the backend API
-- `README-backend.md` — backend readme with finance API details
-- `README.md` — root project documentation
+```text
+apps/
+  api/           TypeScript + Express + SQLite backend (Drizzle ORM)
+    src/           web.ts, worker.ts, app.ts, routes/, services/, jobs/
+    Dockerfile     multi-stage image build
+    openapi.yaml   OpenAPI 3 spec for the backend API
+  web/           Frontend workspace — Vue 3 + Vite (migrating from the static pages/)
+packages/
+  shared/        Contracts and pure domain logic shared by api and web
+pages/           Static HTML pages served by the backend
+static/          JS and CSS assets for the static pages
+fixtures/        Synthetic seed and import datasets
+docs/            Project documentation
+scripts/         Benchmark and k6 load-test scripts
+```
+
+- `apps/api/package.json` — backend install and runtime scripts
+- `apps/api/tsconfig.json` — TypeScript config
+- `apps/api/jest.config.cjs` — Jest test config
+- `package.json` — workspace root: `dev`, `build`, `test`, `check`
 
 ## Getting started
 
 ### Backend
 
+Run from the repository root:
+
 ```bash
-cd server
 npm install
-npm run migrate:init
+npm run migrate:init   # optional: import fixtures/portfolio_data.json into an empty DB
 npm run dev
 ```
 
@@ -79,7 +84,7 @@ one-shot seed container automatically after the web service is healthy:
 docker compose -f docker-compose.local.yml up -d --build
 ```
 
-The seed imports the sample portfolio from `backup-data/portfolio_data.json`
+The seed imports the sample portfolio from `fixtures/portfolio_data.json`
 and skips automatically if the database already contains data. To start over,
 remove the local volume first and start the stack again:
 
@@ -95,9 +100,9 @@ Alternatively, run the backend and serve the repo root if you want to access `pa
 
 ## Backend API docs
 
-- The backend finance API is documented in `openapi.yaml`.
+- The backend finance API is documented in `apps/api/openapi.yaml`.
 - Swagger UI is available at `http://localhost:3000/api/docs` when the backend is running.
-- Backend-specific usage notes are in `README-backend.md`.
+- Backend-specific usage notes are in `docs/README-backend.md`.
 
 Key finance routes:
 
@@ -112,27 +117,35 @@ Key finance routes:
 
 ## Testing
 
-Run backend tests from the `server/` folder:
+## Testing
+
+Run the whole suite from the repository root:
 
 ```bash
-cd server
 npm test
 ```
 
 To run coverage:
 
 ```bash
-cd server
 npm run test:coverage
+```
+
+To verify the build and the tests together (what CI runs):
+
+```bash
+npm run check
 ```
 
 ## Notes
 
-- The finance backend uses SQLite and stores data in `server/data/`.
+- The finance backend uses SQLite and stores data in `apps/api/data/`.
 - The finance frontend can work with `localStorage` or fetch from the backend API when available.
-- For a containerized deployment, the backend Dockerfile is in `server/Dockerfile`.
+- For a containerized deployment, the backend Dockerfile is in `apps/api/Dockerfile`.
 
 ## Additional resources
 
-- `README-backend.md` — backend API and finance service documentation
-- `openapi.yaml` — OpenAPI endpoint definitions and schemas
+- `docs/README-backend.md` — backend API and finance service documentation
+- `apps/api/openapi.yaml` — OpenAPI endpoint definitions and schemas
+- `docs/MODERNIZATION-PLAN.md` — phased plan for moving the static frontend to Vue 3 + Vite
+- `fixtures/` — synthetic datasets for seeding and for the Finance import demo

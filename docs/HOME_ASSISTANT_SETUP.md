@@ -49,7 +49,7 @@ environment:
 
 ### Local Development
 
-Add to `.env` file in the `server` directory:
+Add to `.env` file in the `apps/api` directory:
 ```
 HOME_ASSISTANT_WEBHOOK_URL=http://192.168.15.57:8123/api/webhook/api/webhook/your-webhook-id
 ```
