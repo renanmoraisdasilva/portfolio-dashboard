@@ -132,7 +132,36 @@ Also numbered out of sequence: it is an extraction, not a build-out, and it must
 | Fixtures | `fixtures/finance-data-2025.json`, `fixtures/finance-data-2026.json` |
 | Nav | `pages/index.html:24` (`#tabFinance`) and `pages/analytics.html:19` |
 
-- [ ] **Seed the private repo first:** `git clone <this-repo> finance-app` **before** deleting anything here, so Finance inherits the already-scrubbed history and its first push is clean. **Make it private before that first push**, then delete the portfolio half from `finance-app` and the Finance half from this repo — one PR per side
+### Data cutover — the only part that can lose data
+
+Deploying new code cannot lose the databases, by construction. They are gitignored (`apps/api/data/*.db`), dockerignored (`apps/api/data`), and bind-mounted from the host:
+
+```yaml
+# docker-compose.yml — production
+volumes:
+  - /opt/portfolio/data:/app/apps/api/data
+```
+
+A deploy pulls a new GHCR image and recreates the containers; `/opt/portfolio/data` is a directory **on the host** that the container merely mounts. Nightly backups (`server-infra` `backup-databases.sh.j2`, 02:15) run `sqlite3 .backup` + `PRAGMA integrity_check` over that directory into `/mnt/media/backups/luna/<stamp>/`, and `server-infra/docs/recovery.md` step 6 restores it.
+
+So there is no export/import and no "apply later" — with one exception:
+
+| Database | Fate across the split |
+|---|---|
+| `portfolio.db` | stays in `/opt/portfolio/data`; mount and backups unchanged — **no action** |
+| `finance.db` | moves to the Finance app's own data dir — **must be relocated by hand** |
+| `vocabulary.db` | already dead (Phase 1.5); file left in place, harmless |
+
+The failure mode to design against: `initFinanceDB()` creates every table on first run. Deploy Finance without its file and it comes up **green** — `/api/health` ok, correct schema, every balance zero. No error, no crash, no log line. This is therefore a *file relocation*, not a migration of rows.
+
+- [ ] **Manual backup before the cutover** — the nightly job is a safety net, not a rehearsal
+- [ ] **Deploy the portfolio half first** — `portfolio.db` and its mount are untouched, so this is safe standing alone; finance data just sits in its file until the relocation step
+- [ ] **Relocate `finance.db`** — stop both containers, **move** (not copy) `/opt/portfolio/data/finance.db` → the Finance app's data dir, start, then spot-check row counts in each app against the backup taken above
+- [ ] **Close the backup gap** — `server-infra/ansible/roles/backups/templates/backup-databases.sh.j2` hardcodes `PORTFOLIO_DATA=/opt/portfolio/data` and loops `for database in portfolio.db finance.db vocabulary.db`. Once `finance.db` moves out, the `if [[ -f ]]` guard means it is **silently skipped**: income, expense, credit-card and tithes data stops being backed up with no error, while dead `vocabulary.db` keeps being backed up forever. Repoint it at the new path, drop `vocabulary.db`, and update `server-infra/docs/recovery.md` step 6. *(separate PR in `server-infra` — infra changes stay in their owning repo)*
+
+### Building it
+
+- [ ] **Seed the repo first:** clone this repository out to `finance-app` **before** deleting anything here, so Finance inherits the already-scrubbed history. **Create it locally only** — the owner publishes it to GitHub and sets it **private before the first push**. Then delete the portfolio half from `finance-app` and the Finance half from here
 - [ ] **Sever the single cross-boundary call:** `dashboard.js` calls **`/api/finance/import`** — remove that action and its Settings UI from the portfolio dashboard (or port it into the Finance app). Do not leave a dead button behind
 - [ ] **Confirm the seam is genuinely closed:** `routes/state.ts` already has zero `finance`/`getF`/`runF`/`allF` references, i.e. `GET /api/state` export/import touches `portfolio.db` only — re-verify after the split so no finance section leaks into the state export
 - [ ] **Coverage config:** `apps/api/jest.config.cjs` `collectCoverageFrom` instruments exactly 5 files, two of which are `src/financeDb.ts` and `src/services/financeService.ts`. Remove them and re-check the 80% gate — it will now rest on 3 files
