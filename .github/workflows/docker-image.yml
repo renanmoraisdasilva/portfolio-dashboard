@@ -27,7 +27,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./server/Dockerfile
+          file: ./apps/api/Dockerfile
           push: true
           build-args: |
             HOME_ASSISTANT_WEBHOOK_URL=${{ secrets.HOME_ASSISTANT_WEBHOOK_URL }}

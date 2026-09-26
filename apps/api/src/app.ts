@@ -21,7 +21,9 @@ import { sqlExplorerRouter } from './routes/sqlExplorer';
 import { metricsText, observeHttpRequest } from './metrics';
 import { invalidateResponseCaches } from './services/responseCache';
 
-const repoRoot = path.resolve(__dirname, '..', '..');
+// __dirname is apps/api/src (dev) or apps/api/dist (compiled), so repo root is three levels up.
+// This must mirror the container layout, where WORKDIR is /app/apps/api and pages/static live at /app.
+const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
 export function createApp(): Express {
   const app = express();
@@ -74,7 +76,7 @@ export function mountWebRoutes(app: Express): void {
   app.use('/api/scenarios', scenariosRouter);
   app.use('/api/analytics', analyticsRouter);
 
-  const openapiFile = path.resolve(__dirname, '..', '..', 'openapi.yaml');
+  const openapiFile = path.resolve(__dirname, '..', 'openapi.yaml');
   try {
     const openapiRaw = fs.readFileSync(openapiFile, 'utf8');
     const openapiDoc = yaml.load(openapiRaw);

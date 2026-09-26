@@ -18,10 +18,10 @@ services:
       <<: *telemetry-environment
       PORT: 3000
       OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME_WEB:-portfolio-web}"
-    command: node dist/web.js
+    command: node apps/api/dist/web.js
     extra_hosts: *telemetry-hosts
     volumes:
-      - /opt/portfolio/data:/app/server/data
+      - /opt/portfolio/data:/app/apps/api/data
     healthcheck:
       test:
         [
@@ -40,10 +40,10 @@ services:
       <<: *telemetry-environment
       PORT: 3000
       OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME_WORKER:-portfolio-worker}"
-    command: node dist/worker.js
+    command: node apps/api/dist/worker.js
     extra_hosts: *telemetry-hosts
     volumes:
-      - /opt/portfolio/data:/app/server/data
+      - /opt/portfolio/data:/app/apps/api/data
 
 volumes: {}
 

@@ -37,7 +37,7 @@ function parseMoney(str, currency) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Symbol configuration — mirrors server/src/config/symbols.ts
+// Symbol configuration - mirrors apps/api/src/config/symbols.ts
 // ─────────────────────────────────────────────────────────────────────────────
 
 const KNOWN_SYMBOLS = {

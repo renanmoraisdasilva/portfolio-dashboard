@@ -1,11 +1,9 @@
 # Node modules
 node_modules/
-server/node_modules/
 
 # Build outputs
 dist/
-server/dist/
-server/coverage/
+coverage/
 
 # Env files
 .env
@@ -20,13 +18,15 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# SQLite DB and backups
-server/data/*.sqlite
-server/data/*.db
-server/data/*.db-shm
-server/data/*.db-wal
-server/data/portfolio.db
-server/data/portfolio.db.bak
+# SQLite DB and backups (apps/api/data/ is created at runtime and never committed)
+apps/api/data/*.sqlite
+apps/api/data/*.db
+apps/api/data/*.db-shm
+apps/api/data/*.db-wal
+apps/api/data/*.db.bak
+
+# Phase 0 baseline artifacts — screenshots contain real portfolio values
+.baseline/
 
 # Editor directories
 .vscode/

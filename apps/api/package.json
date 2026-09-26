@@ -1,5 +1,5 @@
 {
-  "name": "portfolio-dashboard-server",
+  "name": "@portfolio-dashboard/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,18 +8,18 @@
     "start:web": "node dist/web.js",
     "start:worker": "node dist/worker.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "dev:compose": "docker compose -f ../docker-compose.local.yml up --build",
+    "dev:compose": "docker compose -f ../../docker-compose.local.yml up --build",
     "test": "jest --config ./jest.config.cjs",
-    "test:docker": "docker build --target builder -t portfolio-dashboard-test -f Dockerfile .. && docker run --rm portfolio-dashboard-test sh -c \"npm install --include=dev --ignore-scripts && npm rebuild better-sqlite3 && npm test -- --runInBand\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:docker": "docker build --target builder -t portfolio-dashboard-test -f apps/api/Dockerfile ../.. && docker run --rm portfolio-dashboard-test sh -c \"npm test --workspace apps/api -- --runInBand\"",
     "test:coverage": "jest --config ./jest.config.cjs --coverage",
     "migrate:import": "ts-node src/migrate.ts",
     "migrate:init": "ts-node src/migrate.ts --init",
-    "seed:local": "ts-node src/seed.ts ../backup-data/portfolio_data.json",
+    "seed:local": "ts-node src/seed.ts ../../fixtures/portfolio_data.json",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "better-sqlite3": "^9.4.3",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/api-logs": "^0.214.0",
     "@opentelemetry/auto-instrumentations-node": "^0.67.0",
@@ -29,6 +29,7 @@
     "@opentelemetry/sdk-logs": "^0.214.0",
     "@opentelemetry/sdk-metrics": "^2.6.1",
     "@opentelemetry/sdk-node": "^0.214.0",
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.2",
@@ -58,9 +59,5 @@
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.1.6"
-  },
-  "allowScripts": {
-    "better-sqlite3@9.6.0": true,
-    "esbuild@0.28.1": true
   }
 }

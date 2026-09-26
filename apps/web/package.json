@@ -1,0 +1,6 @@
+{
+  "name": "@portfolio-dashboard/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vue 3 + TypeScript + Vite frontend. Scaffolded in Phase 4 of docs/MODERNIZATION-PLAN.md."
+}

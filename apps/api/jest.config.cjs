@@ -2,7 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/../static/js'],
+  roots: ['<rootDir>/src', '<rootDir>/../../static/js'],
   testMatch: ['**/*.test.ts', '**/__tests__/**/*.test.js'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transformIgnorePatterns: ['/node_modules/(?!uuid/)'],
@@ -16,7 +16,7 @@ module.exports = {
     'src/financeDb.ts',
     'src/services/financeService.ts',
     'src/services/portfolioCalculator.ts',
-    '../static/js/lib/format.js'
+    '../../static/js/lib/format.js'
   ],
   coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['text', 'lcov'],
