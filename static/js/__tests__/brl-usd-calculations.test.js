@@ -8,33 +8,23 @@
  *   - RENDA2065       — BRL bond: price stored in USD (explicitly converted in priceFetcher)
  *   - BTC, ETH, SPY, etc. — USD assets (no conversion needed)
  *
- * All functions below mirror the production implementations so that tests
- * document the algorithm and act as regression guards.
+ * Formatting, parsing and the BRL classification/conversion rules come from
+ * packages/shared - the real implementation, not a local mirror. The
+ * compute* functions still mirror dashboard.js / simulation.js, which are
+ * plain scripts that cannot import the package until the Vue migration.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline helpers — mirror lib/format.js
+// Real helpers, imported from packages/shared
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatMoney(val, currency) {
-  if (typeof val !== 'number') val = Number(val) || 0;
-  if (currency === 'BRL')
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-}
-
-function parseMoney(str, currency) {
-  if (!str && str !== 0) return 0;
-  if (typeof str === 'number') return str;
-  const cleaned = String(str).trim().replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
-  if (cleaned === '') return 0;
-  if (currency === 'BRL') {
-    const normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
-    return parseFloat(normalized) || 0;
-  }
-  const normalized = cleaned.replace(/,/g, '');
-  return parseFloat(normalized) || 0;
-}
+const {
+  formatMoney,
+  parseMoney,
+  brlToUSD,
+  usdToBRL,
+  createSymbolClassifier,
+} = require('@portfolio-dashboard/shared');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Symbol configuration - mirrors apps/api/src/config/symbols.ts
@@ -55,16 +45,8 @@ const KNOWN_SYMBOLS = {
   },
 };
 
-// BRL helper functions — mirror dashboard.js / simulation.js
-function isBRLAsset(s) {
-  return !!(KNOWN_SYMBOLS.detailed[s] && KNOWN_SYMBOLS.detailed[s].denominatedInBRL);
-}
-function isBRLNonBond(s) {
-  return isBRLAsset(s) && !(KNOWN_SYMBOLS.detailed[s] && KNOWN_SYMBOLS.detailed[s].type === 'bond');
-}
-function isBRLBond(s) {
-  return isBRLAsset(s) && !!(KNOWN_SYMBOLS.detailed[s] && KNOWN_SYMBOLS.detailed[s].type === 'bond');
-}
+// BRL classification, bound to this test's registry
+const { isBRLAsset, isBRLNonBond, isBRLBond } = createSymbolClassifier(KNOWN_SYMBOLS.detailed);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Core calculation functions — mirror dashboard.js / simulation.js logic
@@ -130,11 +112,6 @@ function computeTradeAmounts(symbol, price, qty, brlUsdRate) {
   return { brlAmount, usdAmount };
 }
 
-/** Convert BRL price (form input) → USD price (stored in DB) for BRL bond. */
-function brlToUSD(brlPrice, brlUsdRate) { return brlPrice * brlUsdRate; }
-
-/** Convert USD price (DB) → BRL price (display) for BRL bond / general. */
-function usdToBRL(usdPrice, brlUsdRate) { return usdPrice / brlUsdRate; }
 
 /**
  * Per-asset allocation values in USD (for pie chart).
