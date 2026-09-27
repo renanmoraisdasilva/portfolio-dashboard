@@ -2,40 +2,7 @@
    analytics.css — Analytics Lab page styles (analytics.html)
    ============================================================ */
 
-body {
-  font-family: system-ui, sans-serif;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1420 100%);
-  color: var(--text-primary);
-  min-height: 100vh;
-  padding: 32px;
-  line-height: 1.5;
-  overflow-x: hidden;
-}
-
-h1, h2 { margin-top: 0; }
-
-.page { max-width: 1400px; margin: 0 auto; }
-
-/* ── Header ── */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.logo-section { display: flex; align-items: center; gap: 12px; }
-.logo {
-  width: 44px; height: 44px;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 22px;
-  box-shadow: 0 0 20px var(--glow);
-}
-.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* Page shell, primary navigation and page header live in layout.css. */
 
 /* ── Status bar ── */
 .status-bar {
@@ -634,19 +601,9 @@ h1, h2 { margin-top: 0; }
 @media (max-width: 900px) {
   .charts-grid { grid-template-columns: 1fr; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-  body { padding: 16px; }
-  .tab-bar {
-    overflow-x: auto;
-    flex-wrap: nowrap !important;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
-  }
-  .tab-bar::-webkit-scrollbar { display: none; }
 }
 @media (max-width: 600px) {
   .metrics-grid { grid-template-columns: 1fr; }
-  body { padding: 16px 16px 24px; }
   .period-tabs { flex-wrap: wrap; }
   .chart-container { height: 220px; }
   .cash-kpi-grid { grid-template-columns: 1fr; }

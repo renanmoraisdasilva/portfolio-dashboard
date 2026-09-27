@@ -1732,8 +1732,8 @@ async function refresh() {
 function showTab(tab) {
   document.getElementById('dashboardSection').style.display = tab === 'dashboard' ? '' : 'none';
   document.getElementById('assetChartsSection').style.display = tab === 'assetCharts' ? '' : 'none';
-  document.getElementById('tabDashboard').classList.toggle('btn-primary', tab === 'dashboard');
-  document.getElementById('tabAssetCharts').classList.toggle('btn-primary', tab === 'assetCharts');
+  document.getElementById('tabDashboard').classList.toggle('is-active', tab === 'dashboard');
+  document.getElementById('tabAssetCharts').classList.toggle('is-active', tab === 'assetCharts');
 }
 showTab('dashboard');
 

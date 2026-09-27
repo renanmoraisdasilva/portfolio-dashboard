@@ -1,6 +1,6 @@
 /* ============================================================
    base.css — Shared reset, CSS variables and font import
-   Used by ALL pages (dashboard, simulation)
+   Used by ALL pages (dashboard, analytics, simulation, explorer)
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -28,7 +28,7 @@
 
 /* --- Shared mobile overrides --- */
 @media (max-width: 600px) {
-  .header, .tab-bar {
+  .page-header, .app-nav, .view-tabs {
     position: static !important;
     top: auto !important;
     left: auto !important;

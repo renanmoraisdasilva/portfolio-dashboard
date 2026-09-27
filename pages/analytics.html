@@ -8,32 +8,31 @@
   <link rel="icon" href="/icon.png" sizes="16x16">
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
   <link rel="stylesheet" href="/static/css/analytics.css">
 </head>
 <body>
 
-<!-- ── Navigation tab bar ── -->
-<div class="tab-bar" style="display:flex;gap:12px;margin-bottom:24px;">
-  <button class="btn" onclick="window.location.href='/'">Dashboard</button>
-  <button class="btn" onclick="window.location.href='/pages/simulation.html'">Simulate</button>
-  <button class="btn btn-primary">Analytics</button>
-</div>
+<!-- ── Page shell ── -->
+<div class="shell">
 
-<div class="page">
+<nav class="app-nav" aria-label="Primary">
+  <a class="nav-link" href="/">Dashboard</a>
+  <a class="nav-link is-active" href="/pages/analytics.html">Analytics</a>
+  <a class="nav-link" href="/pages/simulation.html">Simulation</a>
+  <a class="nav-link" href="/pages/sql-explorer.html">SQL Explorer</a>
+</nav>
 
-  <!-- ── Page header ── -->
-  <div class="header">
-    <div class="logo-section">
-      <div class="logo">📊</div>
-      <div>
-        <h1 style="font-size:1.6rem;font-weight:800;margin:0;">Analytics Lab</h1>
-        <div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px;">Performance metrics &amp; portfolio analytics</div>
-      </div>
-    </div>
-    <div class="actions">
-      <button class="btn" onclick="window.location.href='/'">← Back</button>
+<!-- ── Page header ── -->
+<header class="page-header">
+  <div class="page-brand">
+    <div class="logo">📊</div>
+    <div>
+      <h1 class="page-title">Analytics Lab</h1>
+      <p class="page-subtitle">Performance metrics &amp; portfolio analytics</p>
     </div>
   </div>
+</header>
 
   <!-- ── Status bar ── -->
   <div class="status-bar">
@@ -202,7 +201,7 @@
     </div>
   </div>
 
-</div><!-- /.page -->
+</div><!-- /.shell -->
 
 <script src="/static/js/lib/analytics-insights.js"></script>
 <script src="/static/js/analytics.js"></script>

@@ -12,28 +12,41 @@
   <link rel="icon" href="/icon.png" sizes="16x16">
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 
 
 <body>
-<div class="tab-bar" style="display:flex;gap:12px;margin-bottom:24px;">
-  <button id="tabDashboard" class="btn btn-primary" onclick="showTab('dashboard')">Dashboard</button>
-  <button id="tabAssetCharts" class="btn" onclick="showTab('assetCharts')">Asset Charts</button>
-  <button id="tabSimulation" class="btn" onclick="window.location.href='/pages/simulation.html'">Simulate</button>
-  <button id="tabAnalytics" class="btn" onclick="window.location.href='/pages/analytics.html'">Analytics</button>
-</div>
-<div class="dashboard" id="dashboardSection">
-  <div class="header">
-    <div class="logo-section">
-      <div class="logo">₿</div>
-      <h1>Portfolio Dashboard</h1>
-    </div>
-    <div class="actions">
-      <button class="btn" onclick="openSettingsModal()" title="Settings &amp; Tools" style="font-size:1.25rem;padding:7px 13px;line-height:1;">⚙</button>
-      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+<div class="shell dashboard">
+
+<nav class="app-nav" aria-label="Primary">
+  <a class="nav-link is-active" href="/">Dashboard</a>
+  <a class="nav-link" href="/pages/analytics.html">Analytics</a>
+  <a class="nav-link" href="/pages/simulation.html">Simulation</a>
+  <a class="nav-link" href="/pages/sql-explorer.html">SQL Explorer</a>
+</nav>
+
+<header class="page-header">
+  <div class="page-brand">
+    <div class="logo">₿</div>
+    <div>
+      <h1 class="page-title">Portfolio Dashboard</h1>
+      <p class="page-subtitle">Holdings, cash, trades and alerts in one view</p>
     </div>
   </div>
+  <div class="page-actions">
+    <button class="btn" onclick="openSettingsModal()" title="Settings &amp; Tools" style="font-size:1.25rem;padding:7px 13px;line-height:1;">⚙</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+  </div>
+</header>
+
+<div class="view-tabs">
+  <button id="tabDashboard" class="view-tab is-active" onclick="showTab('dashboard')">Overview</button>
+  <button id="tabAssetCharts" class="view-tab" onclick="showTab('assetCharts')">Asset Charts</button>
+</div>
+
+<div id="dashboardSection">
 
   <!-- Triggered Alerts Banner -->
   <div id="triggeredAlertsBanner" style="display: none; margin-bottom: 16px; padding: 14px 16px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.1)); border: 1px solid #ef4444; border-radius: 10px; animation: slideDown 0.3s ease;">
@@ -454,7 +467,7 @@
 
 </div>
 
-<div id="assetChartsSection" style="display:none;max-width:1400px;margin:0 auto;">
+<div id="assetChartsSection" style="display:none;">
   <div class="card">
     <div class="card-header">
       <div class="card-title"><span class="card-icon">📊</span>Asset Price Charts</div>
@@ -474,6 +487,8 @@
     </div> 
   </div>
 </div>
+
+</div><!-- /.shell -->
 
 <div id="settingsModal" class="modal" style="display:none">
   <div class="modal-content" style="text-align:left;width:min(480px,calc(100vw - 32px));max-height:85vh;overflow-y:auto;">
