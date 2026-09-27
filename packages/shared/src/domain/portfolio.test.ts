@@ -1,5 +1,5 @@
 /**
- * Unit tests for portfolioCalculator.ts — pure functions, no DB, no mocks needed.
+ * Unit tests for the shared portfolio calculator — pure functions, no DB, no mocks needed.
  *
  * Covers:
  *   replayFIFOLots  — lot accumulation, FIFO sell consumption, oversell, empty input
@@ -7,7 +7,15 @@
  *                           investedNet floor, cash handling, realized gains
  */
 
-import { replayFIFOLots, computePortfolioValue, isBRLNonBond } from './portfolioCalculator';
+import { createPortfolioCalculator } from './portfolio';
+
+// Bound to a registry, exactly as apps/api binds src/config/symbols.ts.
+const calculator = createPortfolioCalculator({
+  BOVA11: { type: 'stock', denominatedInBRL: true },
+  IVVB11: { type: 'stock', denominatedInBRL: true },
+});
+
+const { isBRLNonBond, replayFIFOLots, computePortfolioValue } = calculator;
 
 // ─── isBRLNonBond ─────────────────────────────────────────────────────────────
 

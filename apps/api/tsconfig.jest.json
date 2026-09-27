@@ -1,0 +1,16 @@
+{
+  // Used by ts-jest to type-check test files. Same options as tsconfig.json but
+  // with no rootDir/outDir: nothing is emitted here, and rootDir would reject
+  // every file outside apps/api/src — including packages/shared, which Jest
+  // maps to its source.
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "jest"]
+  }
+}

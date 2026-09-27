@@ -2,7 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/../../static/js'],
+  roots: ['<rootDir>/src', '<rootDir>/../../static/js', '<rootDir>/../../packages/shared/src'],
   testMatch: ['**/*.test.ts', '**/__tests__/**/*.test.js'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   // Tests resolve the package through its source, so the suite never needs a
@@ -12,13 +12,12 @@ module.exports = {
   },
   transformIgnorePatterns: ['/node_modules/(?!uuid/)'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
     '\\.js$': ['ts-jest', { tsconfig: require('path').resolve(__dirname, 'tsconfig.test-js.json') }]
   },
   collectCoverage: true,
   collectCoverageFrom: [
     'src/config/**/*.ts',
-    'src/services/portfolioCalculator.ts',
     '../../packages/shared/src/domain/**/*.ts',
     '../../static/js/lib/format.js'
   ],
