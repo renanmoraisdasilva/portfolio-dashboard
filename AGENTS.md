@@ -79,9 +79,7 @@ static/js/
   dashboard.js          # Portfolio dashboard UI (trades, history, allocation charts)
   simulation.js         # What-if simulator with price overrides per asset
   analytics.js          # Analytics Lab page (return%, drawdown, Sharpe, cost-vs-market charts)
-  lib/api.js            # fetch() wrapper for /api/* calls
-  lib/format.js         # Number/date/currency formatters
-  lib/toast.js          # Toast notification helper
+  lib/analytics-insights.js # Analytics Lab helpers (moves into the Vue app in Phase 5)
 static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics, explorer
 ```
 
@@ -134,7 +132,7 @@ Key route files and what they own:
 | `routes/migrations.ts` | `POST /api/migrations/backfill-prices`, `POST /api/migrations/backfill-cash` — maintenance migrations (replaced standalone scripts) |
 
 ### Frontend API calls
-Fetch from `/api/*` with JSON content type. Use `lib/api.js` helpers where available. State is stored in the DOM and re-fetched; no client-side state management library.
+Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fetched; no client-side state management library.
 
 ## Known pitfalls
 
@@ -147,8 +145,7 @@ Fetch from `/api/*` with JSON content type. Use `lib/api.js` helpers where avail
 - Price fetching uses multiple external APIs — tests that exercise `priceFetcher.ts` should mock network calls.
 - Coverage thresholds are enforced at 80%; new code in `src/` should include tests or the build will fail.
 - **Always use the promisified helpers** `run()`, `get()`, `all()` from `db.ts` — never call the raw `sqlite` instance directly in routes (it bypasses the async contract the rest of the codebase expects).
-- **`lib/api.js` returns `null` on any fetch error**, it does not throw. Every caller must check the return value before using it.
-- **Coverage collection is narrow by design** — `apps/api/src/config/` and `apps/api/src/services/portfolioCalculator.ts` are instrumented. Routes, `priceFetcher.ts`, `historyManager.ts`, and `index.ts` are excluded, and so is everything outside `apps/api`: Jest's rootDir is `apps/api` and the default babel coverage provider only instruments files under it, so `packages/shared` is not measured yet.
+- **Coverage collection is narrow by design** — `apps/api/src/config/` is instrumented. Routes, `priceFetcher.ts`, `historyManager.ts`, `index.ts`, and everything outside `apps/api` are excluded: Jest's rootDir is `apps/api` and the default babel coverage provider only instruments files under it, so `packages/shared` is not measured yet.
 - **`apps/api` imports `@portfolio-dashboard/shared`**, which compiles to `packages/shared/dist`. The root `build`, `typecheck` and `dev` scripts build it first, and the Docker image copies `packages/shared` into the runtime stage — running `tsc` inside `apps/api` on its own fails on the missing declarations.
 - **ts-jest type-checks with `apps/api/tsconfig.jest.json`**, which is `tsconfig.json` without `rootDir`/`outDir`: `rootDir: src` makes the compiler reject every file outside `apps/api/src`, including `packages/shared` (which Jest maps to its source).
 - **Frontend JS files are plain scripts, not ES modules** — `dashboard.js`, `simulation.js`, `analytics.js` use global scope. Only files under `static/js/lib/` use ES module `export` syntax.

@@ -54,8 +54,8 @@ export function usdToBRL(amount: number, brlUsdRate: number): number {
   return amount / brlUsdRate;
 }
 
-/** Formats a value as currency: `R$ 1.234,56` for BRL, `$1,234.56` for USD. */
-export function formatMoney(val: number | string, currency: Currency): string {
+/** Formats a value as currency: `R$ 1.234,56` for BRL, `$1,234.56` for USD. Nullish input formats as 0. */
+export function formatMoney(val: number | string | null | undefined, currency: Currency): string {
   const value = typeof val === 'number' ? val : Number(val) || 0;
   if (currency === 'BRL') {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);

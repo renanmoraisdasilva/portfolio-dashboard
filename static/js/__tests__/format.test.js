@@ -1,6 +1,6 @@
 'use strict';
 
-const { formatMoney, parseMoney } = require('../lib/format');
+const { formatMoney, parseMoney } = require('@portfolio-dashboard/shared');
 
 describe('formatMoney', () => {
   test('formats BRL with pt-BR locale', () => {
