@@ -11,7 +11,7 @@
     "dev:compose": "docker compose -f ../../docker-compose.local.yml up --build",
     "test": "jest --config ./jest.config.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:docker": "docker build --target builder -t portfolio-dashboard-test -f apps/api/Dockerfile ../.. && docker run --rm portfolio-dashboard-test sh -c \"npm test --workspace apps/api -- --runInBand\"",
+    "test:docker": "docker build --target builder -t portfolio-dashboard-test -f Dockerfile ../.. && docker run --rm portfolio-dashboard-test sh -c \"npm test --workspace apps/api -- --runInBand\"",
     "test:coverage": "jest --config ./jest.config.cjs --coverage",
     "migrate:import": "ts-node src/migrate.ts",
     "migrate:init": "ts-node src/migrate.ts --init",

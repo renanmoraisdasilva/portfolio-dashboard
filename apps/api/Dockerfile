@@ -32,6 +32,11 @@ COPY icon.png icon.png
 RUN npm run build --workspace apps/api
 
 # Prune dev deps so we copy a lean node_modules to the final image.
+# This is deliberately its own stage rather than a step at the end of
+# `builder`: `test:docker` builds --target builder and runs the suite from
+# that image, and jest, typescript and ts-jest are all devDependencies -
+# pruning them inside `builder` would leave the stage with no test runner.
+FROM builder AS pruned
 RUN npm prune --omit=dev
 
 # Final stage (runtime)
@@ -44,19 +49,26 @@ ENV HOME_ASSISTANT_WEBHOOK_URL=${HOME_ASSISTANT_WEBHOOK_URL}
 WORKDIR /app
 
 # Copy pre-built node_modules (hoisted to the workspace root) and app artifacts.
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json ./package-lock.json
-COPY --from=builder /app/apps/api ./apps/api
-COPY --from=builder /app/pages ./pages
-COPY --from=builder /app/static ./static
-COPY --from=builder /app/icon.png ./icon.png
+COPY --from=pruned /app/node_modules ./node_modules
+COPY --from=pruned /app/package.json ./package.json
+COPY --from=pruned /app/package-lock.json ./package-lock.json
+COPY --from=pruned /app/apps/api ./apps/api
+COPY --from=pruned /app/pages ./pages
+COPY --from=pruned /app/static ./static
+COPY --from=pruned /app/icon.png ./icon.png
 
 # Fail the image build early if any required root page is missing.
 RUN test -f /app/pages/index.html \
 	&& test -f /app/pages/simulation.html \
 	&& test -f /app/pages/sql-explorer.html \
 	&& test -f /app/pages/analytics.html
+
+# Tests belong to the builder stage only: `npm run test:docker` builds that
+# stage and runs the full suite from it, so they cannot be excluded at the
+# build-context level - a .dockerignore entry would silently drop suites
+# from that run. The shipped image needs neither the TypeScript sources, nor
+# the compiled output tsc produced in dist, nor the static-page helpers.
+RUN rm -rf static/js/__tests__ && find apps/api/src apps/api/dist -type f -name '*.test.*' -exec rm -f {} +
 
 EXPOSE 3000
 CMD ["node", "apps/api/dist/web.js"]
