@@ -70,7 +70,15 @@ export function mountWebRoutes(app: Express): void {
   app.use('/api/alerts', alertsRouter);
   app.use('/api/config', configRouter);
   app.use('/api/migrations', migrationsRouter);
-  app.use('/api/sql', sqlExplorerRouter);
+  // The SQL Explorer is an arbitrary-SQL console over HTTP with no
+  // authentication, so it stays closed unless explicitly enabled. Off by
+  // default, including in the Docker image — Phase 3 of
+  // docs/MODERNIZATION-PLAN.md.
+  const sqlExplorerEnabled = process.env.ENABLE_SQL_EXPLORER === 'true';
+  app.use('/api/sql', (_req, res, next) => {
+    if (sqlExplorerEnabled) return next();
+    res.status(403).json({ error: 'SQL Explorer is disabled. Set ENABLE_SQL_EXPLORER=true to enable it.' });
+  }, sqlExplorerRouter);
   app.use('/api/scenarios', scenariosRouter);
   app.use('/api/analytics', analyticsRouter);
 

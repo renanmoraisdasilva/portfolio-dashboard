@@ -48,6 +48,9 @@ FROM node:22-alpine AS runtime
 ARG HOME_ASSISTANT_WEBHOOK_URL
 ENV HOME_ASSISTANT_WEBHOOK_URL=${HOME_ASSISTANT_WEBHOOK_URL}
 
+# ENABLE_SQL_EXPLORER is deliberately NOT set: /api/sql/* answers 403 unless a
+# deployment opts in (Phase 3 of docs/MODERNIZATION-PLAN.md).
+
 WORKDIR /app
 
 # Copy pre-built node_modules (hoisted to the workspace root) and app artifacts.

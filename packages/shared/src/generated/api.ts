@@ -1605,7 +1605,7 @@ export interface paths {
         put?: never;
         /**
          * Run a single statement
-         * @description SELECT statements are returned as rows; anything else is executed as a write. The endpoint is unauthenticated today and is gated behind ENABLE_SQL_EXPLORER in Phase 3 of the modernization plan.
+         * @description SELECT statements are returned as rows; anything else is executed as a write. The endpoint is unauthenticated and answers 403 unless ENABLE_SQL_EXPLORER=true, which is off by default — including in the Docker image.
          */
         post: {
             parameters: {

@@ -199,7 +199,7 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 - [ ] **Kill the `runF`/`getF`/`allF` suffix convention** — replace with per-domain repos (`portfolioRepo`, `analyticsRepo`, …) closing over their own connection and exposing `run/get/all`. *(`runV/getV/allV` left with Phase 1.5, `runF/getF/allF` left with Phase 1.6 — so only `run`/`get`/`all` remain, and the suffix convention itself can go)*
 - [ ] **Stop silently dropping routes:** with both conditionally-mounted routers gone there is nothing left to swallow, so make DB init **fail fast** everywhere and delete the try/catch-gated mounting pattern; `/api/health` no longer needs a `modules: { …: 'degraded' }` list
 - [ ] **Retire or justify `routes/state.ts`** — documented as "legacy aggregation"; either define it as the dashboard's BFF endpoint or delete once Vue consumes granular endpoints
-- [ ] **Gate `sql-explorer`** behind `ENABLE_SQL_EXPLORER=true`, off by default in the Docker image — don't ship an open SQL endpoint
+- [x] **Gate `sql-explorer`** behind `ENABLE_SQL_EXPLORER=true`, off by default in the Docker image — don't ship an open SQL endpoint. **Done**: `app.ts` mounts a 403 guard in front of `/api/sql` unless the flag is `true`; `apps/api/src/sqlExplorer.gate.test.ts` covers both states, the Dockerfile documents why the flag is unset, and the spec description plus `docs/README-backend.md` state the default. *(deviation: the routes are still mounted — they answer 403 rather than 404 — so the OpenAPI contract test keeps seeing them and the spec keeps documenting them; the guard is the security boundary)*
 - [ ] **Widen coverage** beyond 5 files — add tests first, widen `collectCoverageFrom` second, then keep the 80% gate honest
 
 **Exit:** one migration command, routes fail loudly, SQL explorer off by default.
@@ -285,7 +285,7 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 | Global-scope files with no modules | `AGENTS.md` known pitfalls | Phase 5 — removes this constraint file by file |
 | ~~Real personal finance data in fixtures~~ **replaced in Phase 1** | `fixtures/*.json` is synthetic | — **history scrubbed and force-pushed, then squashed**; the `copilot/*` branches are gone |
 | `migrate:init` does not import `alerts` / `scenarios` | `apps/api/src/services/migration.ts` | Phase 3 — the legacy import drops those two tables *(both are `portfolio.db`, so they stay with this repo)* |
-| `pages/sql-explorer.html` exposes arbitrary SQL over HTTP | `apps/api/src/routes/sqlExplorer.ts` | Phase 3 — gate it behind `ENABLE_SQL_EXPLORER` |
+| ~~`pages/sql-explorer.html` exposes arbitrary SQL over HTTP~~ **resolved in Phase 3** | `apps/api/src/app.ts` → 403 guard on `/api/sql` unless `ENABLE_SQL_EXPLORER=true` | — |
 | ~~**`VALID_DBS` test hard-codes three database names**~~ **resolved in Phases 1.5 + 1.6** | `sqlExplorer.test.ts` → `['portfolio']` alone | — |
 | ~~Docker image asserts the vocabulary page exists~~ **resolved in Phase 1.5** | `apps/api/Dockerfile` | — |
 | ~~**`dashboard.js` calls `/api/finance/import`**~~ **resolved in Phase 1.6** | `static/js/dashboard.js` | — |
