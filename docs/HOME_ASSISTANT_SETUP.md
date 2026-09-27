@@ -6,7 +6,7 @@ This guide explains how to set up portfolio alerts to send notifications to your
 
 First, you need to create a webhook in Home Assistant that will receive the notification requests.
 
-### Option A: Using Home Assistant Automation (Recommended)
+### Using a Home Assistant automation
 
 1. Go to Home Assistant → Settings → Automations → Create Automation
 2. Create a new automation with a webhook trigger:
@@ -24,35 +24,39 @@ action:
       message: "{{ trigger.json.message }}"
 ```
 
-3. Note your Home Assistant URL (typically `http://192.168.15.57:8123/api/webhook` or your IP address)
+3. Note your Home Assistant host and port (for example `homeassistant.local:8123`, or your server's IP address)
 4. Note your webhook ID from the automation
 
 ## 2. Configure Environment Variable
 
-Set the `HOME_ASSISTANT_WEBHOOK_URL` environment variable in your server's `.env` file or deployment configuration.
+The value is the full webhook URL — one `/api/webhook/` path segment, then the
+webhook ID:
 
-Format:
-```
-HOME_ASSISTANT_WEBHOOK_URL=http://192.168.15.57:8123/api/webhook/api/webhook/YOUR_WEBHOOK_ID
-```
-
-Replace `YOUR_WEBHOOK_ID` with the webhook ID from your Home Assistant automation.
-
-### Docker Configuration
-
-If using Docker, add to your `docker-compose.yml` or pass as an environment variable:
-
-```yaml
-environment:
-  - HOME_ASSISTANT_WEBHOOK_URL=http://192.168.15.57:8123/api/webhook/api/webhook/your-webhook-id
+```text
+http://<home-assistant-host>:8123/api/webhook/YOUR_WEBHOOK_ID
 ```
 
-### Local Development
+Which file it goes in depends on where the app runs:
 
-Add to `.env` file in the `apps/api` directory:
+### Production (Docker)
+
+The webhook URL is **baked into the image at build time** — it is not read from
+a `.env` file at runtime. Store it as the `HOME_ASSISTANT_WEBHOOK_URL` secret in
+the GitHub Actions repository settings; `docker-image.yml` passes it to the
+`Dockerfile` as `ARG HOME_ASSISTANT_WEBHOOK_URL`, which sets the matching `ENV`.
+The production `docker-compose.yml` therefore has no `environment:` entry for
+it — redeploy after changing the secret. See `docs/SERVER-SETUP.md` §4.
+
+### Local development
+
+Add to `.env` in the `apps/api` directory:
+
+```text
+HOME_ASSISTANT_WEBHOOK_URL=http://<home-assistant-host>:8123/api/webhook/YOUR_WEBHOOK_ID
 ```
-HOME_ASSISTANT_WEBHOOK_URL=http://192.168.15.57:8123/api/webhook/api/webhook/your-webhook-id
-```
+
+If it is unset, alerts still work in the UI; only the mobile notification is
+skipped (the service logs a warning instead of failing).
 
 ## 3. Notification Format
 
@@ -81,7 +85,7 @@ To test your webhook configuration:
 curl -X POST \
   -H "Content-Type: application/json" \
   -d '{"title":"Portfolio Notification","message":"Test notification"}' \
-  http://192.168.15.57:8123/api/webhook/api/webhook/your-webhook-id
+  http://<home-assistant-host>:8123/api/webhook/YOUR_WEBHOOK_ID
 ```
 
 If successful, you should receive a notification on your phone.

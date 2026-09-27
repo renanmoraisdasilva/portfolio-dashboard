@@ -70,7 +70,7 @@ static/js/
   lib/api.js            # fetch() wrapper for /api/* calls
   lib/format.js         # Number/date/currency formatters
   lib/toast.js          # Toast notification helper
-static/css/             # Per-page CSS files (base, components, dashboard, simulation, analytics)
+static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics, explorer
 ```
 
 ## Key conventions

@@ -1,4 +1,6 @@
-Yes. The dashboard has caching, multiple internal modules, and three separate SQLite databases. It is currently a **modular monolith with separate web and worker processes**, not a microservices architecture.
+# Architecture overview
+
+The dashboard has caching, several internal modules, and **one** SQLite database. It is currently a **modular monolith with separate web and worker processes**, not a microservices architecture.
 
 **High-level architecture**
 
@@ -56,9 +58,9 @@ flowchart LR
     AlertRoutes -. webhook .-> HA
 ```
 
-The web process creates the Express app in [apps/api/src/app.ts](apps/api/src/app.ts), then starts from [apps/api/src/web.ts](apps/api/src/web.ts). Scheduled work starts independently from [apps/api/src/worker.ts](apps/api/src/worker.ts) and is organized under `apps/api/src/jobs/`. `apps/api/src/index.ts` remains a compatibility dispatcher for local `APP_ROLE` usage.
+The web process creates the Express app in [apps/api/src/app.ts](../apps/api/src/app.ts), then starts from [apps/api/src/web.ts](../apps/api/src/web.ts). Scheduled work starts independently from [apps/api/src/worker.ts](../apps/api/src/worker.ts) and is organized under `apps/api/src/jobs/`. `apps/api/src/index.ts` remains a compatibility dispatcher for local `APP_ROLE` usage.
 
-The two processes share the same database files. This separates HTTP traffic from scheduled work, but it does not yet provide independent storage scaling: SQLite still serializes writes and both processes depend on the same mounted data volume.
+The two processes share the same database file. This separates HTTP traffic from scheduled work, but it does not yet provide independent storage scaling: SQLite still serializes writes and both processes depend on the same mounted data volume.
 
 ## Database schema
 
@@ -119,7 +121,7 @@ erDiagram
     portfolio_snapshots ||--o{ analytics_snapshots : "analytics input"
 ```
 
-The complete portfolio schema is in [apps/api/src/schema.ts](apps/api/src/schema.ts).
+The complete portfolio schema is in [apps/api/src/schema.ts](../apps/api/src/schema.ts).
 
 ## What is cached?
 
@@ -219,7 +221,7 @@ There are **service modules**, but not independently deployed services.
 | `homeAssistantService` | Sends alert notifications |
 | Route modules | HTTP API endpoints |
 
-The route and domain modules run in the web process, while scheduled price, history, and analytics work runs in the worker process. They are still part of one deployable application and share the same database files, so a database or mounted-volume failure affects both roles.
+The route and domain modules run in the web process, while scheduled price, history, and analytics work runs in the worker process. They are still part of one deployable application and share the same database file, so a database or mounted-volume failure affects both roles.
 
 In system-design terminology, the current design is approximately:
 
@@ -227,7 +229,7 @@ In system-design terminology, the current design is approximately:
 One deployable application
 ├── Web process: routes and domain modules
 ├── Worker process: background schedulers
-└── Three shared SQLite databases
+└── One shared SQLite database
 ```
 
 The external systems are actual separate services:

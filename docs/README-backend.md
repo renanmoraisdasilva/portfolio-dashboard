@@ -1,6 +1,7 @@
-# Backend (Initial)
+# Backend
 
-This folder contains a minimal TypeScript + Express server to provide API access for the portfolio dashboard.
+The `apps/api` workspace: TypeScript + Express + SQLite (Drizzle ORM) serving
+the portfolio API and the static pages.
 
 Getting started (dev):
 
@@ -16,24 +17,32 @@ API notes:
 - `GET /api/health` returns basic health info.
 - `GET /api/trades` and `POST /api/trades` and `DELETE /api/trades/:id` for trades CRUD.
 - `GET /api/history` (supports `?range=` of `day`, `week`, `month`, `6months`, `year` or `all`), `POST /api/history/point`, `DELETE /api/history/:id`, `DELETE /api/history` to manage history points.
+- `GET /api/prices` returns cached prices; the worker refreshes them on an 8-minute interval (`apps/api/src/jobs/priceRefresh.ts`).
+- `GET /api/asset/{symbol}/history` returns cached/sourced asset history.
+- `GET /api/cash` and `PUT /api/cash` to manage cash positions, plus `GET/POST /api/cash/entries` and `DELETE /api/cash/entries/:id` for individual entries.
+- `GET /api/interest/months`, `POST /api/interest/months`, and `DELETE /api/interest/months/:month` to manage interest entries.
+- `GET /api/state/export` and `POST /api/state/import` to export/import whole state.
+- `GET /api/alerts`, `POST /api/alerts`, `PUT/DELETE /api/alerts/:id`, plus `GET /api/alerts/triggered` and `POST /api/alerts/dismiss/:alertId`.
+- `GET/POST/PUT/DELETE /api/scenarios` — saved simulation scenarios.
+- `GET /api/config/symbols` — the symbol registry that populates every select and chart.
+- `POST /api/migrations/backfill-prices` and `POST /api/migrations/backfill-cash` — maintenance migrations (see `AGENTS.md`).
+- `GET /api/sql/tables`, `GET /api/sql/schema`, `POST /api/sql/query` — the SQL Explorer, **with no authentication today**. Phase 3 of the modernization plan gates it behind `ENABLE_SQL_EXPLORER`.
 
-Static pages: HTML files are organized under `pages/` and served by the same app via static middleware. For example:
+Static pages: HTML files are organized under `pages/` and served by the same app via static middleware:
 - `GET /pages/index.html` will serve `pages/index.html`.
+
+Other endpoints of note:
 - `GET /api/docs` — Swagger UI for the backend OpenAPI documentation.
 
-If you prefer a dedicated URL like `/importer/`, place the page and its assets under `public/importer/` and mount it with `app.use('/importer', express.static(...))` in `apps/api/src/index.ts`.
+## Docker notes
 
-Docker notes:
 - To persist `portfolio.db` across container restarts, mount the `apps/api/data` folder as a volume when running the container:
 
+  ```bash
   docker run -v /path/on/host:/app/apps/api/data -p 3000:3000 your-image
+  ```
 
   Or configure a volume in your `docker-compose.yml` to map `./apps/api/data` to the container path `/app/apps/api/data`.
-- `GET /api/cash` and `PUT /api/cash` to manage cash positions.
-- `GET /api/interest/months`, `POST /api/interest/months`, and `DELETE /api/interest/months/:month` to manage interest entries.
-- `GET /api/prices` returns cached prices; a price refresh runner is initialized on server startup (stubbed).
-- `GET /api/asset/{symbol}/history` returns cached/sourced asset history.
-- `GET /api/export` and `POST /api/import` to export/import whole state.
 
 ## Response caching
 
@@ -59,10 +68,6 @@ cache_misses_total{cache="analytics"}
 ```
 
 Notes:
-- The server persists data in `apps/api/data/portfolio.db` (SQLite). Use `npm run migrate:init` to import `portfolio_data.json` into the DB.
-- For a production setup, run the server in Docker (see `apps/api/Dockerfile`) and use the GitHub Actions workflow to build images.
-
-Next steps:
-- Finish implementing robust price fetching, asset history caching, and backups.
-- Add optional authentication and TLS if exposing beyond LAN.
-- Adapt the frontend to use the API for all operations (already started).
+- The server persists data in `apps/api/data/portfolio.db` (SQLite). Use `npm run migrate:init` to import `fixtures/portfolio_data.json` into the DB.
+- For a production setup, run the server in Docker (see `apps/api/Dockerfile`) and use the GitHub Actions workflow to build images — see `docs/SERVER-SETUP.md`.
+- Roadmap work (Vue migration, API gating, coverage) lives in `docs/MODERNIZATION-PLAN.md`.

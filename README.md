@@ -4,11 +4,13 @@ A full-stack portfolio dashboard repository containing a static frontend experie
 
 ## What is included
 
-- `pages/index.html` — landing page or home experience for the portfolio dashboard.
-- `pages/simulation.html` — additional frontend views in the repo.
-- `apps/api/openapi.yaml` — API specification for the backend endpoints.
-- `docs/README-backend.md` — detailed backend API and server notes.
+- `pages/index.html` — dashboard and asset charts: holdings, trades, history, allocation, cash and alerts.
+- `pages/analytics.html` — analytics lab: return, drawdown, Sharpe ratio, cash drag, cost vs. market.
+- `pages/simulation.html` — what-if simulator with per-asset price overrides.
+- `pages/sql-explorer.html` — read-only SQL console over `portfolio.db`.
 - `apps/api/` — backend implementation with Express, SQLite, routes, migrations, and tests.
+- `apps/api/openapi.yaml` — API specification for the backend endpoints.
+- `docs/` — architecture, server setup, backend API notes, and the modernization plan.
 - `fixtures/` — synthetic sample dataset used for seeding.
 
 ## Project structure
@@ -21,15 +23,19 @@ apps/
     src/           web.ts, worker.ts, app.ts, routes/, services/, jobs/
     Dockerfile     multi-stage image build
     openapi.yaml   OpenAPI 3 spec for the backend API
-  web/           Frontend workspace — Vue 3 + Vite (migrating from the static pages/)
+  web/           Frontend workspace — Vue 3 + Vite scaffold (empty; Phase 4 of the plan)
 packages/
-  shared/        Contracts and pure domain logic shared by api and web
+  shared/        Shared contracts + domain logic scaffold (empty; Phase 2 of the plan)
 pages/           Static HTML pages served by the backend
 static/          JS and CSS assets for the static pages
 fixtures/        Synthetic seed and import datasets
 docs/            Project documentation
 scripts/         Benchmark and k6 load-test scripts
 ```
+
+`apps/web` and `packages/shared` are workspace placeholders only — they contain a
+`package.json` and nothing else until Phases 4 and 2 of
+`docs/MODERNIZATION-PLAN.md` fill them in.
 
 - `apps/api/package.json` — backend install and runtime scripts
 - `apps/api/tsconfig.json` — TypeScript config
@@ -47,6 +53,11 @@ npm install
 npm run migrate:init   # optional: import fixtures/portfolio_data.json into an empty DB
 npm run dev
 ```
+
+- `npm run migrate:init` initializes SQLite tables and applies migrations.
+- `npm run dev` starts the backend in development mode with hot reload.
+- `npm run start:web` starts only the web process from compiled output.
+- `npm run start:worker` starts only the scheduled-work process from compiled output.
 
 ### Dashboard load workflow
 
@@ -69,11 +80,6 @@ docker compose -f docker-compose.local.yml up -d --build
 BASE_URL=http://localhost:3000 k6 run scripts/k6/dashboard-workflow.js
 ```
 
-- `npm run migrate:init` initializes SQLite tables and applies migrations.
-- `npm run dev` starts the backend in development mode with hot reload.
-- `npm run start:web` starts only the web process from compiled output.
-- `npm run start:worker` starts only the scheduled-work process from compiled output.
-
 ### Local Docker with sample data
 
 The local Compose file keeps data in the `portfolio-data` volume and starts a
@@ -93,17 +99,17 @@ docker compose -f docker-compose.local.yml down -v
 
 ### Frontend
 
-The frontend is primarily static HTML and can be opened directly in the browser from the repository root.
-
-Alternatively, run the backend to serve the same pages over `http://localhost:3000/pages/`.
+The frontend is static HTML, CSS and plain JavaScript with no build step: four
+pages under `pages/`, their scripts and stylesheets under `static/`. Start the
+backend and open `http://localhost:3000` — it serves both the pages and the
+`/api/*` endpoints they call, so opening the HTML over `file://` will render
+the layout but not the data.
 
 ## Backend API docs
 
 - The backend API is documented in `apps/api/openapi.yaml`.
 - Swagger UI is available at `http://localhost:3000/api/docs` when the backend is running.
 - Backend-specific usage notes are in `docs/README-backend.md`.
-
-## Testing
 
 ## Testing
 
@@ -134,5 +140,9 @@ npm run check
 
 - `docs/README-backend.md` — backend API documentation
 - `apps/api/openapi.yaml` — OpenAPI endpoint definitions and schemas
+- `docs/ARCHITECTURE-OVERVIEW.md` — architecture, caching layers and schema diagrams
+- `docs/SERVER-SETUP.md` — Ubuntu, Docker and Dokploy deployment
+- `docs/HOME_ASSISTANT_SETUP.md` — alert notifications via Home Assistant
 - `docs/MODERNIZATION-PLAN.md` — phased plan for moving the static frontend to Vue 3 + Vite
+- `AGENTS.md` — conventions and pitfalls for working on this codebase
 - `fixtures/` — synthetic dataset used for seeding

@@ -21,11 +21,9 @@ From this directory:
 bash benchmark.sh before-cache
 ```
 
-The default target is:
-
-```text
-Application: http://192.168.15.82
-```
+The default target is `http://localhost:3000` (the script's `BASE_URL`
+default), so it works against a local stack out of the box. Point it at a
+deployed host by exporting `BASE_URL` — see **Configuration** below.
 
 Each endpoint runs a 3-second warm-up followed by a 10-second test. The full run takes about one minute.
 
@@ -81,7 +79,7 @@ Keep the endpoint, concurrency, duration, warm-up, database state, and load-gene
 All settings can be overridden with environment variables:
 
 ```bash
-BASE_URL=http://192.168.15.82 \
+BASE_URL=http://<deployed-host>:3000 \
 CONNECTIONS=10 \
 WARMUP_SECONDS=3 \
 TEST_SECONDS=10 \

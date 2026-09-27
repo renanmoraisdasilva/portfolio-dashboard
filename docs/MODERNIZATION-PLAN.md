@@ -4,7 +4,7 @@
 
 **Invariant:** every phase ends with a running app and a green test suite. One PR per step, conventional commits.
 
-> **Status: Phase 0, Phase 1 and Phase 1.5 are complete, and the scrubbed history has been force-pushed.** This file now lives in `docs/` (the Phase 1 rename). Completed items are checked, with any deviation from the original wording noted in place.
+> **Status: Phases 0, 1, 1.5 and 1.6 are complete, the real-data purge is live, and the history itself has been squashed to a 13-commit showcase log.** This file now lives in `docs/` (the Phase 1 rename). Completed items are checked, with any deviation from the original wording noted in place. Remaining work: the Phase 1.6 data cutover below, then Phases 2–8.
 
 ### Decisions made while executing Phases 0–1
 
@@ -16,11 +16,11 @@
 - **`scripts/README.md` stays where it is** — it is a folder-local readme for the scripts next to it, not a top-level doc. Deviation from the "move all docs" step.
 - **The vocabulary module is being deleted, not migrated** (decision recorded after Phase 1). It is unused and will not be used, so instead of porting it to Vue it is removed outright — see **Phase 1.5**. That takes the app from three SQLite databases down to two and drops one of the five pages from the Phase 5 migration order.
 - **Finance moves to its own private repository** (decision recorded after Phase 1). This repo is going public as a portfolio showcase, so the genuinely personal material — income, fixed and eventual expenses, credit-card balances, tithes, multi-year records — has to live somewhere GitHub-private. A repository has exactly **one** visibility flag, so a workspace folder inside this monorepo *cannot* be private: Finance gets its own repo and its own `finance.db`. This repo keeps only portfolio — dashboard + asset charts, simulation, analytics. See **Phase 1.6**.
-- **✅ Real data purged from git history** (done after Phase 1). `backup-data/**`, the root-level `portfolio_data.json` and `hist.json` were stripped from **every one of the 134 commits** reachable from all refs, so those paths never existed at any point in history. Messages, authors, dates, the 3 merge commits and the `pre-modernization` tag were all preserved; both GPG signatures were dropped (a signature cannot survive a rewrite). `npm run check` stayed green (build + 387 tests) and the resulting tree is byte-identical to the pre-rewrite tree. **Nothing has been pushed yet** — a `git push --force` is what actually removes it from GitHub, and the two stale `copilot/create-sql-query-tool-page*` branches still carry the old objects until they are deleted server-side. One local artifact remains on purpose: a single line in the `refs/stash` reflog still pins the pre-rewrite objects (reflogs are never pushed).
+- **✅ Real data purged from git history** (done after Phase 1). `backup-data/**`, the root-level `portfolio_data.json` and `hist.json` were stripped from **every commit reachable from all refs**, so those paths never existed at any point in history. Messages, authors and dates were preserved (a GPG signature cannot survive a rewrite), `npm run check` stayed green, and the resulting tree was byte-identical to the pre-rewrite tree. The purge was **force-pushed**, the two stale `copilot/create-sql-query-tool-page*` branches were deleted server-side, and `git ls-remote origin` shows a single ref (`refs/heads/main`) and no tags. **The log has since been squashed a second time** — the whole pre-modernization era now collapses to one import commit, so the full history reads as 13 commits instead of 134. Recovery handle: the **local-only** `pre-modernization` tag still points into the pre-squash history; never `git push --tags`.
 
 ---
 
-## Current state (baseline findings)
+## Baseline findings (recorded at Phase 0)
 
 - **Frontend:** 6 plain-script files, no build step, all global scope, loaded via `<script>` tags in `pages/*.html`.
 
@@ -115,7 +115,7 @@ Numbered out of sequence on purpose: it is a deletion, not a build-out, and it m
 
 Also numbered out of sequence: it is an extraction, not a build-out, and it must land **before Phase 2** (don't write shared helpers that are about to leave the repo), **before Phase 3** (backend consolidation should see one database, not two) and **before Phase 5** (the `finance` page stops being migrated here at all).
 
-**Why a separate repository and not a workspace:** this repo is going public as a showcase. Finance holds the personal surface — income, fixed and eventual expenses, credit-card balances (`nuRenal` / `nuJu` / `nomad`), tithes, multi-year records — and GitHub gives a repository exactly **one** visibility flag. A folder inside a public monorepo cannot be private, so Finance must be its **own private repository** with its own `finance.db`.
+**Why a separate repository and not a workspace:** this repo is going public as a showcase. Finance holds the personal surface — income, fixed and eventual expenses, credit-card balances (`nuRenan` / `nuJu` / `nomad`), tithes, multi-year records — and GitHub gives a repository exactly **one** visibility flag. A folder inside a public monorepo cannot be private, so Finance must be its **own private repository** with its own `finance.db`.
 
 **The boundary is already clean**, which makes this mostly a deletion rather than a refactor: `finance.db` and `routes/finance.ts` are the only Finance-owned persistence and routing. The four finance-*looking* modules — `cash`, `interest`, `scenarios`, `alerts` — are `portfolio.db` tables used by pages that stay, so they remain here.
 
@@ -157,7 +157,7 @@ The failure mode to design against: `initFinanceDB()` creates every table on fir
 - [ ] **Manual backup before the cutover** — the nightly job is a safety net, not a rehearsal
 - [ ] **Deploy the portfolio half first** — `portfolio.db` and its mount are untouched, so this is safe standing alone; finance data just sits in its file until the relocation step
 - [ ] **Relocate `finance.db`** - stop both containers, **move** (not copy) `/opt/portfolio/data/finance.db` -> `/opt/finance/data/finance.db` (the path `finance-app/docker-compose.yml` already mounts - create the directory first), start, then spot-check row counts in each app against the backup taken above
-- [ ] **Close the backup gap** — `server-infra/ansible/roles/backups/templates/backup-databases.sh.j2` hardcodes `PORTFOLIO_DATA=/opt/portfolio/data` and loops `for database in portfolio.db finance.db vocabulary.db`. Once `finance.db` moves out, the `if [[ -f ]]` guard means it is **silently skipped**: income, expense, credit-card and tithes data stops being backed up with no error, while dead `vocabulary.db` keeps being backed up forever. Repoint it at the new path, drop `vocabulary.db`, and update `server-infra/docs/recovery.md` step 6. *(separate PR in `server-infra` — infra changes stay in their owning repo)*
+- [x] **Close the backup gap** — ✅ **done in `server-infra`** (separate repo, as planned): `backup-databases.sh.j2` now takes `backup_finance_data_dir` alongside `backup_portfolio_data_dir`, loops over exactly `portfolio.db` + `finance.db` (no more `vocabulary.db`), and **hard-fails if either file is missing** instead of skipping silently. `docs/recovery.md` step 6 now restores `finance.db` into `/opt/finance/data` and warns against putting it back under `/opt/portfolio/data`.
 
 ### Building it
 
@@ -275,24 +275,24 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 
 | Landmine | Where | When it bites |
 |----------|-------|---------------|
-| Two `normalizeFinanceData` definitions, both loaded | `finance.html:414-415` | **Leaves this repo with Phase 1.6** — only `finance.html` loads both scripts, so the investigation and the fix move to `finance-app` |
+| ~~Two `normalizeFinanceData` definitions, both loaded~~ **left with Phase 1.6** | `finance.html` → `finance-app` | — |
 | ~~Jest `roots` reaches across folders~~ **resolved in Phase 1** | `apps/api/jest.config.cjs:5` → `../../static/js` | — |
-| 80% coverage gate on 5 instrumented files | `apps/api/jest.config.cjs:14-30` | Phase 3 — widening before adding tests fails CI. **Phase 1.6 removes 2 of the 5** (`src/financeDb.ts`, `src/services/financeService.ts`), so the gate narrows to 3 files — revisit it there |
+| 80% coverage gate on 5 instrumented files | `apps/api/jest.config.cjs:14-30` | Phase 3 — widening before adding tests fails CI. **Phase 1.6 removed 2 of the 5** (`src/financeDb.ts`, `src/services/financeService.ts`), so the gate rests on **3 files today** — revisit it there |
 | Routes silently absent when DB init throws | `AGENTS.md` known pitfalls | **Resolved by Phases 1.5 + 1.6** — both conditionally-mounted routers are gone, so nothing can silently miss `/api/vocab` or `/api/finance` |
 | `lib/` is CJS/ESM mixed and loaded by nothing | `lib/format.js`, `lib/api.js` | Phase 2 — don't assume `lib/` is the good code |
 | Global-scope files with no modules | `AGENTS.md` known pitfalls | Phase 5 — removes this constraint file by file |
-| ~~Real personal finance data in fixtures~~ **replaced in Phase 1** | `fixtures/*.json` is synthetic | — **history scrubbed after Phase 1**; still needs the force-push and deletion of the stale `copilot/*` branches to finish |
+| ~~Real personal finance data in fixtures~~ **replaced in Phase 1** | `fixtures/*.json` is synthetic | — **history scrubbed and force-pushed, then squashed**; the `copilot/*` branches are gone |
 | `migrate:init` does not import `alerts` / `scenarios` | `apps/api/src/services/migration.ts` | Phase 3 — the legacy import drops those two tables *(both are `portfolio.db`, so they stay with this repo)* |
 | `pages/sql-explorer.html` exposes arbitrary SQL over HTTP | `apps/api/src/routes/sqlExplorer.ts` | Phase 3 — gate it behind `ENABLE_SQL_EXPLORER` |
-| **`VALID_DBS` test hard-codes three database names** | `apps/api/src/routes/sqlExplorer.test.ts:158` | Phase 1.5 (`3` → `2`), then Phase 1.6 (`2` → `1`). Drop the name **and** fix the tuple + length assertion in the same commit, or the suite goes red |
-| Docker image asserts the vocabulary page exists | `apps/api/Dockerfile:60` | Phase 1.5 — the healthcheck-style `test -f` fails the build once the page is gone |
-| **`dashboard.js` calls `/api/finance/import`** | `static/js/dashboard.js` | Phase 1.6 — the one cross-boundary call; left in place the dashboard POSTs to a route that no longer exists |
+| ~~**`VALID_DBS` test hard-codes three database names**~~ **resolved in Phases 1.5 + 1.6** | `sqlExplorer.test.ts` → `['portfolio']` alone | — |
+| ~~Docker image asserts the vocabulary page exists~~ **resolved in Phase 1.5** | `apps/api/Dockerfile` | — |
+| ~~**`dashboard.js` calls `/api/finance/import`**~~ **resolved in Phase 1.6** | `static/js/dashboard.js` | — |
 
 ---
 
 ## Suggested next PRs
 
-**Step 0 (not a PR):** ~~push the scrubbed history~~ **done** - `git push --force origin main` moved `main` to `11b7611`, both stale `copilot/create-sql-query-tool-page*` branches were deleted, and `git ls-remote origin` now shows a single ref (`refs/heads/main`) and no tags. The purge is live on GitHub.
+**Step 0 (not a PR):** ~~push the scrubbed history~~ **done** — the purge was `git push --force`d to `main`, both stale `copilot/create-sql-query-tool-page*` branches were deleted, and `git ls-remote origin` shows a single ref (`refs/heads/main`) with no tags. The log was then **squashed**: `main` now runs from a single import commit to the current tip in 13 commits. The purge is live on GitHub. *(This step no longer names a SHA — every pre-squash SHA is reachable only from the local `pre-modernization` tag.)*
 
 1. ~~**Phase 0** — baseline~~ ✅
 2. ~~**Phase 1** — monorepo moves + doc cleanup~~ ✅
