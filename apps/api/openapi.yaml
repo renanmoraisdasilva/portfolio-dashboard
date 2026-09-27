@@ -28,6 +28,12 @@ tags:
     description: Configuration endpoints
   - name: Scenarios
     description: Scenario persistence endpoints
+  - name: Analytics
+    description: Analytics snapshot endpoints
+  - name: Migrations
+    description: Maintenance backfill migrations
+  - name: SQL Explorer
+    description: Read-only SQL console endpoints
 paths:
   /state:
     get:
@@ -104,6 +110,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CashPositions'
+  /cash/entries:
+    get:
+      tags: [Cash]
+      summary: List cash ledger entries
+      responses:
+        '200':
+          description: Cash entries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CashEntry'
+    post:
+      tags: [Cash]
+      summary: Append a cash ledger entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashEntryCreate'
+      responses:
+        '201':
+          description: Entry created, with recomputed totals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/CashEntry'
+                  totals:
+                    $ref: '#/components/schemas/CashTotals'
+        '400':
+          description: currency must be BRL or USD, amount must be a non-zero number
+  /cash/entries/{id}:
+    delete:
+      tags: [Cash]
+      summary: Delete a cash ledger entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Entry deleted, with recomputed totals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  totals:
+                    $ref: '#/components/schemas/CashTotals'
   /interest/months:
     get:
       tags: [Interest]
@@ -182,6 +246,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssetHistory'
+  /asset/{symbol}/ohlc:
+    get:
+      tags: [Asset]
+      summary: Get OHLC candles for an asset symbol
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: days
+          in: query
+          required: false
+          description: Lookback window in days; values above 1825 are capped
+          schema:
+            type: integer
+            default: 60
+      responses:
+        '200':
+          description: Candles bucketed to 4h, 1d or 7d depending on the window
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OhlcCandle'
+        '400':
+          description: Invalid days parameter
   /history:
     get:
       tags: [History]
@@ -226,6 +318,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HistoryPoint'
+  /history/ohlc:
+    get:
+      tags: [History]
+      summary: Get OHLC candles of portfolio value or profit and loss
+      parameters:
+        - name: range
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [day, week, month, 6months, year, all]
+            default: 6months
+        - name: metric
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [value, pnl]
+            default: value
+      responses:
+        '200':
+          description: Candles, chained so each open equals the previous close
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OhlcCandle'
+  /history/fill-gaps:
+    post:
+      tags: [History]
+      summary: Recompute history points across gaps
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                interval:
+                  type: string
+                  enum: [1h, 1d]
+                  default: 1d
+                from:
+                  type: integer
+                  description: Start timestamp in milliseconds; defaults to the first trade
+                to:
+                  type: integer
+                  description: End timestamp in milliseconds; defaults to now
+      responses:
+        '200':
+          description: Counts of inserted and skipped points
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryFillGapsResult'
+        '400':
+          description: interval must be 1h or 1d
   /history/{id}:
     delete:
       tags: [History]
@@ -500,6 +650,22 @@ paths:
                 properties:
                   ok:
                     type: boolean
+  /analytics:
+    get:
+      tags: [Analytics]
+      summary: Get the latest analytics snapshot per period
+      responses:
+        '200':
+          description: Snapshots ordered by period
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnalyticsSnapshot'
   /health:
     get:
       tags: [Health]
@@ -508,6 +674,18 @@ paths:
         '200':
           description: Health info
   /trades:
+    get:
+      tags: [Trades]
+      summary: List trades
+      responses:
+        '200':
+          description: All trades, ordered by execution time
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trade'
     post:
       tags: [Trades]
       summary: Add a trade
@@ -533,6 +711,147 @@ paths:
       responses:
         '204':
           description: Deleted
+  /migrations/backfill-prices:
+    post:
+      tags: [Migrations]
+      summary: Backfill about two years of daily closes into price_ticks
+      description: >
+        Calls Yahoo Finance for every configured symbol with an 800 ms pause
+        between symbols, so the request takes roughly 30 seconds.
+      responses:
+        '200':
+          description: Per-symbol insert counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  totalInserted:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        symbol:
+                          type: string
+                        inserted:
+                          type: integer
+                        fetched:
+                          type: integer
+                        status:
+                          type: string
+        '500':
+          description: Backfill failed
+  /migrations/backfill-cash:
+    post:
+      tags: [Migrations]
+      summary: Rebuild the cash ledger from portfolio snapshots
+      description: >
+        Clears every existing cash entry before inserting the derived deltas.
+        Run backfill-prices first, otherwise there are no prices to subtract.
+      responses:
+        '200':
+          description: Counts for the backfill, or an explanatory error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  snapshotsTotal:
+                    type: integer
+                  sampled:
+                    type: integer
+                  estimated:
+                    type: integer
+                  inserted:
+                    type: integer
+                  error:
+                    type: string
+  /sql/tables:
+    get:
+      tags: [SQL Explorer]
+      summary: List tables in the database
+      parameters:
+        - name: db
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [portfolio]
+            default: portfolio
+      responses:
+        '200':
+          description: Table names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tables:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Unknown database
+  /sql/schema:
+    get:
+      tags: [SQL Explorer]
+      summary: List the columns of a table
+      parameters:
+        - name: db
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [portfolio]
+            default: portfolio
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Column definitions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  columns:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          description: Missing table parameter or unknown database
+  /sql/query:
+    post:
+      tags: [SQL Explorer]
+      summary: Run a single statement
+      description: >
+        SELECT statements are returned as rows; anything else is executed as a
+        write. The endpoint is unauthenticated today and is gated behind
+        ENABLE_SQL_EXPLORER in Phase 3 of the modernization plan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SqlQueryRequest'
+      responses:
+        '200':
+          description: Query result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SqlQueryResult'
+        '400':
+          description: Missing sql field, unknown database, or rejected statement
 components:
   schemas:
     Trade:
@@ -758,3 +1077,131 @@ components:
           type: string
         data:
           type: object
+    CashEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        currency:
+          type: string
+          enum: [BRL, USD]
+        amount:
+          type: number
+          description: Signed amount; negative for outflows
+        description:
+          type: string
+        ts:
+          type: integer
+          description: Unix timestamp in milliseconds
+    CashEntryCreate:
+      type: object
+      required: [currency, amount]
+      properties:
+        currency:
+          type: string
+          enum: [BRL, USD]
+        amount:
+          type: number
+          description: Non-zero signed amount
+        description:
+          type: string
+        ts:
+          type: integer
+          description: Unix timestamp in milliseconds; defaults to now
+    CashTotals:
+      type: object
+      description: Re-summed cash ledger totals
+      properties:
+        cashReais:
+          type: number
+        cashDollars:
+          type: number
+    OhlcCandle:
+      type: object
+      properties:
+        ts:
+          type: integer
+          description: Bucket start in milliseconds
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+    HistoryFillGapsResult:
+      type: object
+      properties:
+        inserted:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: integer
+        from:
+          type: integer
+        to:
+          type: integer
+    AnalyticsSnapshot:
+      type: object
+      properties:
+        id:
+          type: string
+        computed_at:
+          type: integer
+        period:
+          type: string
+        return_pct:
+          type: number
+          nullable: true
+        max_drawdown_pct:
+          type: number
+          nullable: true
+        max_drawdown_start:
+          type: integer
+          nullable: true
+        max_drawdown_end:
+          type: integer
+          nullable: true
+        sharpe_ratio:
+          type: number
+          nullable: true
+        allocation_json:
+          type: string
+          nullable: true
+        cost_vs_market_json:
+          type: string
+          nullable: true
+    SqlQueryRequest:
+      type: object
+      required: [sql]
+      properties:
+        sql:
+          type: string
+        db:
+          type: string
+          enum: [portfolio]
+          default: portfolio
+    SqlQueryResult:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [select, write]
+        rows:
+          type: array
+          items:
+            type: object
+          description: Present when type is select
+        columns:
+          type: array
+          items:
+            type: string
+        rowCount:
+          type: integer
+        lastInsertRowid:
+          description: Present when type is write
+        message:
+          type: string
+          description: Present when type is write
