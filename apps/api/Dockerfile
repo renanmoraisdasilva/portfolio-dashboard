@@ -22,14 +22,16 @@ COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
 RUN npm ci
 
-# API sources and the frontend assets served at runtime.
+# Sources and the frontend assets served at runtime. packages/shared comes in
+# too: apps/api imports it, and npm workspaces symlink it into node_modules.
 COPY apps/api/ apps/api/
+COPY packages/shared/ packages/shared/
 COPY pages/ pages/
 COPY static/ static/
 COPY icon.png icon.png
 
-# Build TypeScript (produces apps/api/dist)
-RUN npm run build --workspace apps/api
+# Build TypeScript (produces packages/shared/dist and apps/api/dist)
+RUN npm run build --workspace packages/shared && npm run build --workspace apps/api
 
 # Prune dev deps so we copy a lean node_modules to the final image.
 # This is deliberately its own stage rather than a step at the end of
@@ -52,6 +54,7 @@ WORKDIR /app
 COPY --from=pruned /app/node_modules ./node_modules
 COPY --from=pruned /app/package.json ./package.json
 COPY --from=pruned /app/package-lock.json ./package-lock.json
+COPY --from=pruned /app/packages/shared ./packages/shared
 COPY --from=pruned /app/apps/api ./apps/api
 COPY --from=pruned /app/pages ./pages
 COPY --from=pruned /app/static ./static
