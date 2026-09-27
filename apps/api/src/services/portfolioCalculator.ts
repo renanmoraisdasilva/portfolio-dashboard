@@ -1,4 +1,8 @@
 import { SYMBOLS as SYMBOL_CONFIGS } from '../config/symbols';
+import { brlToUSD, createSymbolClassifier } from '@portfolio-dashboard/shared';
+
+/** Money rules bound to the configured symbol registry. */
+const moneyRules = createSymbolClassifier(SYMBOL_CONFIGS);
 
 export interface LotEntry {
   qty: number;
@@ -29,8 +33,7 @@ export interface PortfolioResult {
  * Their prices and trade prices are natively in BRL and must be converted to USD.
  */
 export function isBRLNonBond(symbol: string): boolean {
-  const cfg = SYMBOL_CONFIGS[symbol];
-  return !!(cfg && cfg.denominatedInBRL);
+  return moneyRules.isBRLNonBond(symbol);
 }
 
 /**
@@ -75,15 +78,15 @@ export function computePortfolioValue(input: PortfolioInput): PortfolioResult {
   for (const symbol of Object.keys(lots)) {
     const needsBRLConversion = isBRLNonBond(symbol);
     for (const lot of lots[symbol]) {
-      const lotPriceUSD = needsBRLConversion ? lot.price * brlUsdRate : lot.price;
+      const lotPriceUSD = needsBRLConversion ? brlToUSD(lot.price, brlUsdRate) : lot.price;
       invested += lot.qty * lotPriceUSD;
     }
   }
-  invested += cashReais * brlUsdRate;
+  invested += brlToUSD(cashReais, brlUsdRate);
   invested += cashDollars;
 
   // Realized gains reduce the net invested basis
-  const realized = realizedFromSells + (interestBRLMonthsTotal * brlUsdRate) + interestUSDMonthsTotal;
+  const realized = realizedFromSells + brlToUSD(interestBRLMonthsTotal, brlUsdRate) + interestUSDMonthsTotal;
   const investedNet = Math.max(0, invested - realized);
 
   // Market value of all open positions + cash
@@ -95,11 +98,11 @@ export function computePortfolioValue(input: PortfolioInput): PortfolioResult {
       if (!price || price === 0) {
         throw new Error(`Missing price for ${symbol}; skipping history point`);
       }
-      const priceUSD = isBRLNonBond(symbol) ? price * brlUsdRate : price;
+      const priceUSD = isBRLNonBond(symbol) ? brlToUSD(price, brlUsdRate) : price;
       total += positionQty * priceUSD;
     }
   }
-  total += cashReais * brlUsdRate;
+  total += brlToUSD(cashReais, brlUsdRate);
   total += cashDollars;
 
   return { total, investedNet, p: total - invested, brlUsdRate };
