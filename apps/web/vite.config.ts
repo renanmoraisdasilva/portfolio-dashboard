@@ -15,6 +15,10 @@ export default defineConfig({
     // through the API, which runs separately on :3000.
     proxy: {
       '/api': { target: apiTarget, changeOrigin: false },
+      // The shell links the shared stylesheets from the API's static mount,
+      // so the dev server has to forward them too.
+      '/static': { target: apiTarget, changeOrigin: false },
+      '/icon.png': { target: apiTarget, changeOrigin: false },
     },
   },
 });

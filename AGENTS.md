@@ -93,10 +93,14 @@ These are plain scripts, not modules — the strangler keeps serving them until 
 
 ```
 apps/web/
-  index.html            # Vite entry
-  vite.config.ts        # vue plugin, dist/ output, dev proxy /api → API_URL (default :3000)
-  src/main.ts           # createApp().mount('#app')
-  src/App.vue           # root component
+  index.html            # Vite entry; links base/components/layout.css from /static so the shell and pages/ match
+  vite.config.ts        # vue plugin, dist/ output, dev proxy /api + /static → API_URL (default :3000)
+  src/main.ts           # createApp().use(router).mount('#app')
+  src/App.vue           # shell chrome: .shell > .app-nav + .page-header, then <RouterView/>
+  src/router/index.ts   # one route per page; unmigrated ones render LegacyHandoff
+  src/config/nav.ts     # the migration table — mark a page `migrated` and give it a real route
+  src/composables/useApi.ts # openapi-fetch client typed from the generated `paths`
+  src/views/            # HomeView.vue, LegacyHandoff.vue (pages land here in Phase 5)
 ```
 
 `npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (Phase 4 strangler seam, in `mountWebRoutes`):
@@ -110,6 +114,8 @@ apps/web/
 | `/api/*` | the API routers |
 
 `apps/api/src/seam.test.ts` covers that routing. Note the mount order: `pages/` is registered **before** the SPA fallback, otherwise `/legacy/index.html` would be swallowed by the Vue app and the redirects would loop.
+
+To migrate a page (Phase 5): build the view under `src/views/`, flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, then delete the vanilla file from `pages/` and its `<script>` tag. Until the last page is gone, `pages/` must keep building — the Docker image asserts all four page files exist.
 
 ## Key conventions
 

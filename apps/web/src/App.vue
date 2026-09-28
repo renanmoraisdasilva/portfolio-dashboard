@@ -1,14 +1,20 @@
-<template>
-  <main class="shell">
-    <h1>Portfolio Dashboard</h1>
-    <p>Strangler shell — the layout, nav and migrated pages land in later steps.</p>
-  </main>
-</template>
+<script setup lang="ts">
+import { RouterView } from 'vue-router';
+import AppNav from './components/AppNav.vue';
+</script>
 
-<style scoped>
-.shell {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 32px;
-}
-</style>
+<template>
+  <div class="shell">
+    <AppNav />
+    <header class="page-header">
+      <div class="page-brand">
+        <div class="logo">₿</div>
+        <div>
+          <h1 class="page-title">Portfolio Dashboard</h1>
+          <p class="page-subtitle">Vue shell — one page at a time</p>
+        </div>
+      </div>
+    </header>
+    <RouterView />
+  </div>
+</template>
