@@ -35,12 +35,29 @@ export interface PortfolioResult {
   brlUsdRate: number;
 }
 
+export interface ReplayResult {
+  lots: Record<string, LotEntry[]>;
+  /** Open quantity per symbol, summed across its lots. Zero positions included. */
+  positions: Record<string, number>;
+  /** Realized P/L booked by sells, priced at the sell price. */
+  realized: number;
+}
+
 export interface PortfolioCalculator {
   isBRLNonBond(symbol: string): boolean;
   replayFIFOLots(
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
     fallbackPrices?: Record<string, number>
   ): Record<string, LotEntry[]>;
+  /**
+   * The same FIFO walk as `replayFIFOLots`, but also books realized P/L as
+   * sells consume lots. The simulator needs that; the history manager does not
+   * — it reads realized P/L from the `trades.profit` column instead.
+   */
+  replayTradesWithRealized(
+    trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
+    fallbackPrices?: Record<string, number>
+  ): ReplayResult;
   computePortfolioValue(input: PortfolioInput): PortfolioResult;
 }
 
@@ -71,6 +88,36 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
       }
     }
     return lots;
+  }
+
+  function replayTradesWithRealized(
+    trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
+    fallbackPrices: Record<string, number> = {}
+  ): ReplayResult {
+    const lots: Record<string, LotEntry[]> = {};
+    let realized = 0;
+    for (const t of trades) {
+      if (!lots[t.symbol]) lots[t.symbol] = [];
+      if (t.side === 'buy') {
+        lots[t.symbol].push({ qty: t.qty, price: t.price ?? (fallbackPrices[t.symbol] ?? 0) });
+      } else if (t.side === 'sell') {
+        let qtyToSell = t.qty;
+        const price = t.price ?? (fallbackPrices[t.symbol] ?? 0);
+        while (qtyToSell > 0 && lots[t.symbol].length > 0) {
+          const lot = lots[t.symbol][0];
+          const used = Math.min(lot.qty, qtyToSell);
+          realized += used * (price - lot.price);
+          lot.qty -= used;
+          qtyToSell -= used;
+          if (lot.qty <= 0) lots[t.symbol].shift();
+        }
+      }
+    }
+    const positions: Record<string, number> = {};
+    for (const s of Object.keys(lots)) {
+      positions[s] = lots[s].reduce((a, b) => a + b.qty, 0);
+    }
+    return { lots, positions, realized };
   }
 
   function computePortfolioValue(input: PortfolioInput): PortfolioResult {
@@ -110,5 +157,5 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
     return { total, investedNet, p: total - invested, brlUsdRate };
   }
 
-  return { isBRLNonBond, replayFIFOLots, computePortfolioValue };
+  return { isBRLNonBond, replayFIFOLots, replayTradesWithRealized, computePortfolioValue };
 }

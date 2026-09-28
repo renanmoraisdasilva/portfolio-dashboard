@@ -1031,7 +1031,7 @@ export interface paths {
                             stocks?: string[];
                             currencies?: string[];
                             detailed?: {
-                                [key: string]: Record<string, never>;
+                                [key: string]: components["schemas"]["SymbolConfig"];
                             };
                         };
                     };
@@ -1756,6 +1756,17 @@ export interface components {
             threshold?: number;
             condition?: string;
         };
+        SymbolConfig: {
+            id?: string;
+            name?: string;
+            /** @enum {string} */
+            type?: "crypto" | "stock" | "currency";
+            coingeckoId?: string;
+            yahooTicker?: string;
+            historicalFallbacks?: string[];
+            /** @description Price and value are natively in BRL, not USD */
+            denominatedInBRL?: boolean;
+        };
         ScenarioSummary: {
             id?: string;
             name?: string;
@@ -1771,7 +1782,14 @@ export interface components {
         };
         ScenarioCreate: {
             name: string;
-            data: Record<string, never>;
+            /**
+             * @description Simulator blob. Its shape is owned by apps/web, not by the API:
+             *     { version, simPrices, simPricePcts, simTrades, simCashReais,
+             *       simCashDollars }. Stored verbatim and handed back unchanged.
+             */
+            data: {
+                [key: string]: unknown;
+            };
         };
         CashEntry: {
             id?: string;

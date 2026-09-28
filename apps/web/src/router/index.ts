@@ -9,8 +9,9 @@ export const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     // Migrated pages get a real route here and stop rendering the hand-off.
     // The router is deliberately explicit so the generated list below only
-    // covers what is left: analytics moved out of it in Phase 5.
+    // covers what is left: analytics and simulation moved out of it in Phase 5.
     { path: '/analytics', name: 'analytics', component: () => import('../views/AnalyticsView.vue') },
+    { path: '/simulation', name: 'simulation', component: () => import('../views/SimulationView.vue') },
     ...legacyEntries().map((entry) => ({
       path: entry.path,
       name: entry.path.slice(1),

@@ -58,7 +58,7 @@ export function mountWebRoutes(app: Express): void {
   // Old bookmarks keep resolving: /pages/x.html and /x.html land on /legacy/x.html,
   // except for the pages Phase 5 has already moved into the Vue app — their
   // bookmarks must follow to the new route, not to a file that no longer exists.
-  const migratedPages: Record<string, string> = { analytics: '/analytics' };
+  const migratedPages: Record<string, string> = { analytics: '/analytics', simulation: '/simulation' };
   const pageTarget = (file: string): string => {
     const name = file.replace(/\.html$/, '');
     return migratedPages[name] ?? `/legacy/${name}.html`;

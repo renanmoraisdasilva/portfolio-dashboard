@@ -6,7 +6,7 @@ const calculator = createPortfolioCalculator({
   IVVB11: { type: 'stock', denominatedInBRL: true },
 });
 
-const { isBRLNonBond, replayFIFOLots, computePortfolioValue } = calculator;
+const { isBRLNonBond, replayFIFOLots, replayTradesWithRealized, computePortfolioValue } = calculator;
 
 
 describe('isBRLNonBond', () => {
@@ -25,6 +25,48 @@ describe('isBRLNonBond', () => {
   });
 });
 
+
+describe('replayTradesWithRealized', () => {
+  test('returns the same lots as replayFIFOLots', () => {
+    const trades = [
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 100 },
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 200 },
+      { symbol: 'BTC', side: 'sell', qty: 1.5, price: 300 },
+    ];
+    expect(replayTradesWithRealized(trades).lots).toEqual(replayFIFOLots(trades));
+  });
+
+  test('books realized P/L as sells consume the oldest lots first', () => {
+    // The sell of 1.5 takes the whole first lot, then half of the second:
+    // 1.0 × (300−100) + 0.5 × (300−200) = 200 + 50.
+    const out = replayTradesWithRealized([
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 100 },
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 200 },
+      { symbol: 'BTC', side: 'sell', qty: 1.5, price: 300 },
+    ]);
+    expect(out.realized).toBeCloseTo(250);
+    expect(out.positions.BTC).toBeCloseTo(0.5);
+    expect(out.lots.BTC).toEqual([{ qty: 0.5, price: 200 }]);
+  });
+
+  test('falls back to the market price when a trade has none', () => {
+    const out = replayTradesWithRealized(
+      [
+        { symbol: 'BTC', side: 'buy', qty: 1 },
+        { symbol: 'BTC', side: 'sell', qty: 1, price: 250 },
+      ],
+      { BTC: 100 },
+    );
+    expect(out.realized).toBeCloseTo(150);
+    expect(out.positions.BTC).toBe(0);
+  });
+
+  test('ignores sells with no open lots', () => {
+    const out = replayTradesWithRealized([{ symbol: 'ETH', side: 'sell', qty: 2, price: 50 }]);
+    expect(out.realized).toBe(0);
+    expect(out.positions.ETH).toBe(0);
+  });
+});
 
 describe('replayFIFOLots', () => {
   test('empty trade list returns empty lots', () => {

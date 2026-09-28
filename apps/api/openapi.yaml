@@ -545,7 +545,7 @@ paths:
                   detailed:
                     type: object
                     additionalProperties:
-                      type: object
+                      $ref: '#/components/schemas/SymbolConfig'
   /config/symbols/{symbol}:
     get:
       tags: [Config]
@@ -1060,6 +1060,27 @@ components:
           type: number
         condition:
           type: string
+    SymbolConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [crypto, stock, currency]
+        coingeckoId:
+          type: string
+        yahooTicker:
+          type: string
+        historicalFallbacks:
+          type: array
+          items:
+            type: string
+        denominatedInBRL:
+          type: boolean
+          description: Price and value are natively in BRL, not USD
     ScenarioSummary:
       type: object
       properties:
@@ -1092,6 +1113,11 @@ components:
           type: string
         data:
           type: object
+          additionalProperties: true
+          description: |
+            Simulator blob. Its shape is owned by apps/web, not by the API:
+            { version, simPrices, simPricePcts, simTrades, simCashReais,
+              simCashDollars }. Stored verbatim and handed back unchanged.
     CashEntry:
       type: object
       properties:

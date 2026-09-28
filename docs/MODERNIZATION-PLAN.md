@@ -227,7 +227,7 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 | # | Page | Lines | Why this position |
 |---|------|-------|-------------------|
 | 1 | `analytics` ✅ | 190 + 926 | Read-only, consumes `/api/analytics`; `analytics-insights.js` becomes a shared module — the low-risk page that proves the pattern. **Done**, see below |
-| 2 | `simulation` | 190 + 1042 | Duplicate FIFO math → replace with `packages/shared` |
+| 2 | `simulation` ✅ | 198 + 973 | Duplicate FIFO math → replace with `packages/shared`. **Done**, see below |
 | 3 | `index` (dashboard) | 538 + 2144 | The flagship — trades, history, allocation, asset charts, cash/interest/alerts. Do last, with every pattern proven |
 
 `sql-explorer` is not migrated: Phase 3 gates it behind `ENABLE_SQL_EXPLORER` (or drops it outright).
@@ -242,6 +242,23 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 - [ ] After the **last** page migrates: delete `apps/api/src/routes/state.ts` and `GET /api/export` — the Vue views read granular endpoints, so the aggregation endpoint has no consumers left (Phase 3 decision)
 
 The typed client paid for itself here: `vue-tsc` refused `brlusd_rate`, `return_inputs`, `drawdown_inputs` and `sharpe_inputs` — four fields the API has always returned and the OpenAPI spec never documented. They are in the spec now (`npm run api:types` regenerated `packages/shared/src/generated/api.ts`), so the contract test and the UI agree.
+
+**`simulation` — completed.**
+
+- [x] Extract state → Pinia store. `stores/simulation.ts` replaces ~15 module-level `let`s: real inputs, scenario overrides, the trade form, the allocation preference and the scenario modals. `simAllocCurrency` is declared through the **new persisted store plugin** (`stores/persistPlugin.ts`), which writes strings bare so a preference set by the vanilla page is still read after the migration. The other four `localStorage` keys belong to the dashboard and land with it.
+- [x] Move pure logic → `packages/shared`. The page's own `computePortfolioFromCombined()` FIFO walk is now `replayTradesWithRealized()` on the shared calculator, with four tests. `isBRLAsset` / `isBRLNonBond` / `isBRLBond` and the money helpers now come from the shared module instead of being re-implemented.
+- [x] Build components: `views/SimulationView.vue`, `components/simulation/{AssetRows,AllocationPanel,PositionsTable,ScenarioModals,SimulationMetrics,TradeForm,AssetIcon}.vue`, the doughnut label plugin, and `sliderBackground()`. `PageHeader` grew an `actions` slot for the page's own buttons.
+- [x] Parity. Every field was compared against the vanilla page on the same data, in the same order, driving both: the five metric cards (`$42,635.13` / `R$ 217.526,20` / `+$127.25 (0.30%)` …), all ten price rows, the eight allocation slices, the six position rows, cash, the asset select and the canvas size. Then the interactions: 50% slider → qty `0.1562` and total `$9,997.11`; **Max** → qty `0.3125`, total `$20,000.63`; BTC +50% → allocation `$5,043.08`, position `$96,003.00`, unrealized `+$1,808.27`; a BRL-funded BOVA11 buy → the same `Not enough BRL cash in scenario` rejection and unchanged cash. All identical.
+- [x] Delete the old JS file and its `<script>` tag, flip the router redirect to the Vue view. `pages/simulation.html` and `static/js/simulation.js` are gone; `/simulation.html` and `/pages/simulation.html` follow the page to `/simulation`.
+- [ ] After the **last** page migrates: delete `apps/api/src/routes/state.ts` and `GET /api/export` — the Vue views read granular endpoints, so the aggregation endpoint has no consumers left (Phase 3 decision)
+
+Three deliberate departures, all visible in the parity diff:
+
+- **Dead code dropped.** `simValue`, `simImpact`, `sim_realReturn` and `sim_realReturnPct` are written by `updateAll()` but have no element in `simulation.html` — the inflation-adjusted "real return" was computed on every recalculation and never shown. It is gone; nothing on screen changes.
+- **Two formatting fixes.** The "Total Invested" BRL sub-line had no `R$` prefix while every sibling line had one, and it printed `∞` when the rate was missing. Both are fixed.
+- **One quirk kept.** Switching the cash currency is the only path that left the total field as a raw number (`refreshPctComputed` with no follow-up), so it still does. Reproducing a bug on purpose is cheap; silently "improving" it during a port would be a surprise review could not catch.
+
+The typed client caught two more contract gaps here: `/config/symbols` documented `detailed` as a bare `object`, so `.type` did not exist on it, and the scenario `data` blob was typed `{}` and rejected the payload. Both schemas are specified now.
 
 **Exit per page:** old file gone, route renders Vue, parity documented in the PR.
 

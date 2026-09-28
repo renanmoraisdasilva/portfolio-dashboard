@@ -4,9 +4,8 @@ A full-stack portfolio dashboard repository: a Vue 3 frontend (`apps/web`) being
 
 ## What is included
 
-- `apps/web/` — the Vue app. The Analytics Lab (`/analytics`) is migrated; the other pages are still served untouched from `pages/`.
+- `apps/web/` — the Vue app. Analytics and Simulation are migrated; the dashboard and SQL Explorer are still served untouched from `pages/`.
 - `pages/index.html` — dashboard and asset charts: holdings, trades, history, allocation, cash and alerts.
-- `pages/simulation.html` — what-if simulator with per-asset price overrides.
 - `pages/sql-explorer.html` — read-only SQL console over `portfolio.db`.
 - `apps/api/` — backend implementation with Express, SQLite, routes, migrations, and tests.
 - `packages/shared/` — API types generated from the OpenAPI spec, plus pure domain logic shared by both apps.

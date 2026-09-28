@@ -15,5 +15,9 @@ defineProps<{
         <p class="page-subtitle">{{ subtitle }}</p>
       </div>
     </div>
+    <!-- Pages with their own buttons (the simulator) fill this slot. -->
+    <div v-if="$slots.actions" class="page-actions">
+      <slot name="actions" />
+    </div>
   </header>
 </template>

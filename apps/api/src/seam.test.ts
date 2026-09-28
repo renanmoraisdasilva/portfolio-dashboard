@@ -23,35 +23,44 @@ describe('strangler seam', () => {
   test('the legacy dashboard is served from /legacy/', async () => {
     const res = await request('/legacy/index.html');
     expect(res.status).toBe(200);
-    expect(res.body).toContain('/legacy/simulation.html');
+    expect(res.body).toContain('/legacy/sql-explorer.html');
   });
 
-  test('the migrated analytics page is gone from /legacy/', async () => {
-    // No such file any more: the static mount misses and the SPA fallback
+  test('migrated pages are no longer served from /legacy/', async () => {
+    // No such files any more: the static mount misses and the SPA fallback
     // answers with the shell, so assert on what the body is not.
-    const res = await request('/legacy/analytics.html');
-    expect(res.body).not.toContain('period-tabs');
-    expect(res.body).not.toContain('/static/js/analytics.js');
+    for (const page of ['analytics', 'simulation']) {
+      const res = await request(`/legacy/${page}.html`);
+      expect(res.body).not.toContain('period-tabs');
+      expect(res.body).not.toContain('asset-rows');
+      expect(res.body).not.toContain(`/static/js/${page}.js`);
+    }
   });
 
   test('old /pages/* links redirect to /legacy/*', async () => {
-    const res = await request('/pages/simulation.html');
+    const res = await request('/pages/sql-explorer.html');
     expect([301, 302]).toContain(res.status);
-    expect(res.location).toBe('/legacy/simulation.html');
+    expect(res.location).toBe('/legacy/sql-explorer.html');
   });
 
   test('bookmarks of a migrated page follow it to its Vue route', async () => {
-    for (const pathname of ['/analytics.html', '/pages/analytics.html']) {
+    const expected: Array<[string, string]> = [
+      ['/analytics.html', '/analytics'],
+      ['/pages/analytics.html', '/analytics'],
+      ['/simulation.html', '/simulation'],
+      ['/pages/simulation.html', '/simulation'],
+    ];
+    for (const [pathname, target] of expected) {
       const res = await request(pathname);
       expect([301, 302]).toContain(res.status);
-      expect(res.location).toBe('/analytics');
+      expect(res.location).toBe(target);
     }
   });
 
   test('old bookmark paths redirect to /legacy/', async () => {
-    const res = await request('/simulation.html');
+    const res = await request('/sql-explorer.html');
     expect([301, 302]).toContain(res.status);
-    expect(res.location).toBe('/legacy/simulation.html');
+    expect(res.location).toBe('/legacy/sql-explorer.html');
   });
 
   test('the root serves the Vue app, never the legacy dashboard', async () => {
