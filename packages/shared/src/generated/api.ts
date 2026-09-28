@@ -380,7 +380,10 @@ export interface paths {
         /** Delete an interest month */
         delete: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Which interest row to delete; months are keyed by currency */
+                    currency?: "BRL" | "USD";
+                };
                 header?: never;
                 path: {
                     month: string;
@@ -1354,7 +1357,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["Trade"];
+                    "application/json": components["schemas"]["TradeCreate"];
                 };
             };
             responses: {
@@ -1363,7 +1366,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["TradeCreateResponse"];
+                    };
                 };
             };
         };
@@ -1695,6 +1700,7 @@ export interface components {
             trades?: components["schemas"]["Trade"][];
             history?: components["schemas"]["HistoryPoint"][];
             interestReaisMonths?: components["schemas"]["InterestMonth"][];
+            interestDollarsMonths?: components["schemas"]["InterestMonth"][];
             cashReais?: number;
             cashDollars?: number;
             interestReais?: number;
@@ -1749,12 +1755,27 @@ export interface components {
         TriggeredAlert: {
             id?: string;
             alert_id?: string;
-            triggered_at?: number;
-            is_dismissed?: boolean;
-            dismissed_at?: number | null;
+            symbol?: string;
             alert_type?: string;
             threshold?: number;
             condition?: string;
+            triggered_at?: number;
+            is_dismissed?: boolean;
+            dismissed_at?: number | null;
+            current_price?: number | null;
+            previous_price?: number | null;
+            percentage_change?: number | null;
+        };
+        TradeCreate: components["schemas"]["Trade"] & {
+            /**
+             * @description Which cash balance the trade is settled against
+             * @enum {string}
+             */
+            cashSource?: "USD" | "BRL";
+        };
+        TradeCreateResponse: {
+            trade?: components["schemas"]["Trade"];
+            cashEntry?: components["schemas"]["CashEntry"];
         };
         SymbolConfig: {
             id?: string;

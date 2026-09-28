@@ -207,6 +207,14 @@ paths:
           required: true
           schema:
             type: string
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [BRL, USD]
+            default: BRL
+          description: Which interest row to delete; months are keyed by currency
       responses:
         '204':
           description: Deleted
@@ -704,10 +712,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Trade'
+              $ref: '#/components/schemas/TradeCreate'
       responses:
         '201':
           description: Trade created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeCreateResponse'
   /trades/{id}:
     delete:
       tags: [Trades]
@@ -938,6 +950,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/InterestMonth'
+        interestDollarsMonths:
+          type: array
+          items:
+            $ref: '#/components/schemas/InterestMonth'
         cashReais:
           type: number
         cashDollars:
@@ -1047,6 +1063,14 @@ components:
           type: string
         alert_id:
           type: string
+        symbol:
+          type: string
+        alert_type:
+          type: string
+        threshold:
+          type: number
+        condition:
+          type: string
         triggered_at:
           type: integer
         is_dismissed:
@@ -1054,12 +1078,32 @@ components:
         dismissed_at:
           type: integer
           nullable: true
-        alert_type:
-          type: string
-        threshold:
+        current_price:
           type: number
-        condition:
-          type: string
+          nullable: true
+        previous_price:
+          type: number
+          nullable: true
+        percentage_change:
+          type: number
+          nullable: true
+    TradeCreate:
+      allOf:
+        - $ref: '#/components/schemas/Trade'
+        - type: object
+          properties:
+            cashSource:
+              type: string
+              enum: [USD, BRL]
+              description: Which cash balance the trade is settled against
+    TradeCreateResponse:
+      type: object
+      properties:
+        trade:
+          $ref: '#/components/schemas/Trade'
+        cashEntry:
+          allOf:
+            - $ref: '#/components/schemas/CashEntry'
     SymbolConfig:
       type: object
       properties:

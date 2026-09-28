@@ -228,7 +228,7 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 |---|------|-------|-------------------|
 | 1 | `analytics` ✅ | 190 + 926 | Read-only, consumes `/api/analytics`; `analytics-insights.js` becomes a shared module — the low-risk page that proves the pattern. **Done**, see below |
 | 2 | `simulation` ✅ | 198 + 973 | Duplicate FIFO math → replace with `packages/shared`. **Done**, see below |
-| 3 | `index` (dashboard) | 538 + 2144 | The flagship — trades, history, allocation, asset charts, cash/interest/alerts. Do last, with every pattern proven |
+| 3 | `index` (dashboard) ✅ | 532 + 2 231 | The flagship. **Done**, see below |
 
 `sql-explorer` is not migrated: Phase 3 gates it behind `ENABLE_SQL_EXPLORER` (or drops it outright).
 
@@ -259,6 +259,24 @@ Three deliberate departures, all visible in the parity diff:
 - **One quirk kept.** Switching the cash currency is the only path that left the total field as a raw number (`refreshPctComputed` with no follow-up), so it still does. Reproducing a bug on purpose is cheap; silently "improving" it during a port would be a surprise review could not catch.
 
 The typed client caught two more contract gaps here: `/config/symbols` documented `detailed` as a bare `object`, so `.type` did not exist on it, and the scenario `data` blob was typed `{}` and rejected the payload. Both schemas are specified now.
+
+**`index` (dashboard) — completed.** The last page and the largest: 2,231 lines of script behind a 532-line page, spanning trades, the cash ledger, interest, allocation, two chart libraries, alerts, per-asset charts and a maintenance modal.
+
+- [x] Extract state → Pinia store. `stores/dashboard.ts` absorbs ~20 module-level variables and the 60-second poll loop; the four remaining `localStorage` keys (`allocationShowCash`, `allocCurrency`, `interestMonthsCollapsed`, `interestUSDMonthsCollapsed`) are declared through the persisted store plugin, and all four still read what the vanilla page wrote (`'true'` parses as `true`; a bare `'USD'` falls through to the raw string).
+- [x] Move pure logic → `packages/shared`. FIFO is `createPortfolioCalculator(...).replayFIFOLots` — the page's own `buildLotsFromTrades` is gone — and the symbol classifiers and money helpers come from the shared module. Realized P/L still comes from `trades.profit`, as before.
+- [x] Build components: `views/DashboardView.vue` plus `components/dashboard/{ValueChart,AllocationPanel,PlByAssetChart,MetricCards,PositionsTable,TradeHistoryTable,AddTradeForm,CashPanel,AlertsPanel,AssetChartsSection,AssetChartCard,SettingsModal}.vue`, the dashboard's own doughnut-label plugin, and `useToast()` for the app-wide toast host.
+- [x] Parity. Compared against the vanilla page on the same data: the five metric cards (`$42,635.13` / `$20,283.13` / `$38,548.88` / `+$127.25` / `+$3,959.01` and every BRL sub-line), all eight position rows including the two cash rows, all six trade rows, the eight allocation slices, the four cash-ledger rows, both balances, the interest summaries and the alloc/series chip states match exactly.
+- [x] Delete the old JS file and its `<script>` tag, flip the router redirect to the Vue view. `pages/index.html` and `static/js/dashboard.js` are gone; `/` is the Vue dashboard and `/index.html` redirects to it.
+- [ ] After the **last** page migrates: delete `apps/api/src/routes/state.ts` and `GET /api/export` — the Vue views read granular endpoints, so the aggregation endpoint has no consumers left (Phase 3 decision)
+
+Four things the port changed on purpose, each found by reading the old code rather than by the diff:
+
+- **Five dead functions and one dead element.** `#lastProfit` was in the markup and written by nothing; `formatHistoryLabelPoint`, `clearAllDismissedAlerts` and `updateCashPositions` were never called (`updateCashPositions` also read `#cashReais`/`#cashDollars`, inputs the page no longer has); and `realReturn`/`realReturnPct` were computed on every refresh and never rendered — the same dead inflation maths the simulator had. Gone.
+- **The price-error state used to latch.** `refresh()` returned early whenever the error banner existed, and the line that removed it sat *after* that return, so one bad fetch blanked the dashboard with `***` until a reload. The port recomputes each cycle and only reacts to genuinely zero prices. Caught live: the legacy tab went blank mid-session while `/api/prices` was healthy.
+- **Test Notify was broken.** `testNotify()` looked up `#testNotifyBtn`, but the button's id is `settingsTestNotifyBtn`, so its first line threw. Fixed while porting.
+- **`static/js/__tests__/dashboard-trades.test.js` tested nothing.** 279 lines and ~30 assertions that never import `dashboard.js` — they mock `fetch` and `showToast` and then assert against their own fixtures. It passed with the file deleted. Removed rather than left as pretend coverage.
+
+`routes/state.ts` and `GET /api/export` are the one Phase 5 checkbox left: retiring them needs the dashboard on granular endpoints and the k6 workflow repointed, which is its own change.
 
 **Exit per page:** old file gone, route renders Vue, parity documented in the PR.
 

@@ -20,19 +20,20 @@ async function request(pathname: string): Promise<{ status: number; location: st
 }
 
 describe('strangler seam', () => {
-  test('the legacy dashboard is served from /legacy/', async () => {
-    const res = await request('/legacy/index.html');
+  test('the SQL Explorer is the only page still served from /legacy/', async () => {
+    const res = await request('/legacy/sql-explorer.html');
     expect(res.status).toBe(200);
-    expect(res.body).toContain('/legacy/sql-explorer.html');
+    expect(res.body).toContain('sql');
   });
 
-  test('migrated pages are no longer served from /legacy/', async () => {
+  test('every migrated page is gone from /legacy/', async () => {
     // No such files any more: the static mount misses and the SPA fallback
     // answers with the shell, so assert on what the body is not.
-    for (const page of ['analytics', 'simulation']) {
+    for (const page of ['index', 'analytics', 'simulation']) {
       const res = await request(`/legacy/${page}.html`);
       expect(res.body).not.toContain('period-tabs');
       expect(res.body).not.toContain('asset-rows');
+      expect(res.body).not.toContain('metrics-grid');
       expect(res.body).not.toContain(`/static/js/${page}.js`);
     }
   });
@@ -57,17 +58,24 @@ describe('strangler seam', () => {
     }
   });
 
+  test('the dashboard bookmark lands on the Vue app', async () => {
+    const res = await request('/index.html');
+    expect([301, 302]).toContain(res.status);
+    expect(res.location).toBe('/');
+  });
+
   test('old bookmark paths redirect to /legacy/', async () => {
     const res = await request('/sql-explorer.html');
     expect([301, 302]).toContain(res.status);
     expect(res.location).toBe('/legacy/sql-explorer.html');
   });
 
-  test('the root serves the Vue app, never the legacy dashboard', async () => {
+  test('the root serves the Vue dashboard, never the legacy page', async () => {
     const res = await request('/');
     if (hasWebBuild) {
       expect(res.status).toBe(200);
       expect(res.body).toContain('id="app"');
+      expect(res.body).not.toContain('metrics-grid');
     } else {
       // No build yet (bare `npm test`): the root must still not fall back to
       // the legacy page, which is what the seam is for.

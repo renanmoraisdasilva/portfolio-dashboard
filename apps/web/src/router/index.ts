@@ -1,15 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { legacyEntries } from '../config/nav';
-import HomeView from '../views/HomeView.vue';
 import LegacyHandoff from '../views/LegacyHandoff.vue';
 
+/**
+ * Every route is lazy, `/` included: the dashboard pulls in lightweight-charts,
+ * which would otherwise weigh 400 kB on the shell's first paint.
+ *
+ * `/` is the dashboard — the last page of Phase 5, so the Vue app now owns the
+ * whole thing. `legacyEntries()` only carries what is left: the SQL Explorer,
+ * which Phase 3 gates behind ENABLE_SQL_EXPLORER and never migrated.
+ */
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', name: 'home', component: HomeView },
-    // Migrated pages get a real route here and stop rendering the hand-off.
-    // The router is deliberately explicit so the generated list below only
-    // covers what is left: analytics and simulation moved out of it in Phase 5.
+    { path: '/', name: 'dashboard', component: () => import('../views/DashboardView.vue') },
     { path: '/analytics', name: 'analytics', component: () => import('../views/AnalyticsView.vue') },
     { path: '/simulation', name: 'simulation', component: () => import('../views/SimulationView.vue') },
     ...legacyEntries().map((entry) => ({

@@ -18,7 +18,7 @@ export interface NavEntry {
 }
 
 export const NAV_ENTRIES: NavEntry[] = [
-  { path: '/', label: 'Dashboard', status: 'legacy', legacyHref: '/legacy/index.html' },
+  { path: '/', label: 'Dashboard', status: 'migrated' },
   { path: '/analytics', label: 'Analytics', status: 'migrated' },
   { path: '/simulation', label: 'Simulation', status: 'migrated' },
   { path: '/sql-explorer', label: 'SQL Explorer', status: 'legacy', legacyHref: '/legacy/sql-explorer.html' },
