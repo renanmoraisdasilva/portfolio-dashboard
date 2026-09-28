@@ -1,20 +1,21 @@
-jest.mock('../db', () => ({
-  run: jest.fn(),
-  get: jest.fn(),
-  all: jest.fn(),
+vi.mock('../db', () => ({
+  run: vi.fn(),
+  get: vi.fn(),
+  all: vi.fn(),
 }));
 
+import type { Mock } from 'vitest';
 import * as db from '../db';
 import { recomputeHistoryAt } from './historyManager';
 
 const mockedDb = db as unknown as {
-  run: jest.Mock;
-  get: jest.Mock;
-  all: jest.Mock;
+  run: Mock;
+  get: Mock;
+  all: Mock;
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockedDb.run.mockResolvedValue(undefined);
   mockedDb.get.mockResolvedValue(undefined);
   mockedDb.all.mockResolvedValue([]);

@@ -38,7 +38,7 @@ scripts/         Benchmark and k6 load-test scripts
 
 - `apps/api/package.json` — backend install and runtime scripts
 - `apps/api/tsconfig.json` — TypeScript config
-- `apps/api/jest.config.cjs` — Jest test config
+- `vitest.config.ts` - one test runner for the whole workspace (API, web, shared)
 - `package.json` — workspace root: `dev`, `build`, `test`, `check`
 
 ## Getting started

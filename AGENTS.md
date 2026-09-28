@@ -24,7 +24,8 @@ npm run build:web      # type-check (vue-tsc) and bundle apps/web → apps/web/d
 npm run dev:web        # Vite dev server for apps/web on :5173, proxying /api to the API
 npm run api:types      # regenerate packages/shared/src/generated/api.ts from openapi.yaml
 npm start              # run compiled apps/api/dist/web.js
-npm test               # Jest test suite (apps/api/src tests + static/js tests)
+npm test               # Vitest suite across apps/api, apps/web, packages/shared and static/js
+npm run test:watch     # the same, in watch mode
 npm run test:coverage  # coverage report; thresholds: 80% on all metrics
 npm run check          # build + test in one command (what CI runs)
 npm run db:generate    # generate Drizzle migration from schema.ts changes
@@ -227,7 +228,7 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
 - Price fetching uses multiple external APIs — tests that exercise `priceFetcher.ts` should mock network calls.
 - Coverage thresholds are enforced at 80%; new code in `src/` should include tests or the build will fail.
 - **Always use the promisified helpers** `run()`, `get()`, `all()` from `db.ts` — never call the raw `sqlite` instance directly in routes (it bypasses the async contract the rest of the codebase expects).
-- **Coverage collection is narrow by design** — Jest's `rootDir` is the repo root (the babel coverage provider only instruments files under it), and `collectCoverageFrom` lists exactly the files that are genuinely test-covered: `apps/api/src/config/`, `apps/api/src/schema.ts`, `apps/api/src/routes/health.ts`, `apps/api/src/services/cashBackfill.ts`, `apps/api/src/services/portfolioCalculator.ts` and `packages/shared/src/domain/`. Widen that list only _after_ adding tests — the gate is 80% on all four metrics, globally.
+- **Coverage collection is narrow by design** - `vitest.config.ts` `coverage.include` lists exactly the files that are genuinely test-covered: `apps/api/src/config/`, `apps/api/src/schema.ts`, `apps/api/src/routes/health.ts`, `apps/api/src/routes/portfolio.ts`, `apps/api/src/services/cashBackfill.ts`, `apps/api/src/services/portfolioCalculator.ts` and `packages/shared/src/domain/`. Widen that list only _after_ adding tests - the gate is 80% on all four metrics, globally.
+- **Store tests replace `openapi-fetch`, not `fetch`** - `apps/web/src/test/networkHarness.ts` is a `setupFiles` entry that mocks the module. The reason is mechanical: `openapi-fetch` constructs a `Request` _before_ calling `fetch`, and jsdom's `Request` rejects a relative URL, which `baseUrl: '/api'` always is. Stubbing `fetch` alone fails inside the client. The mock keeps the real contract (`{ data, error, response }`), so `request()`, the stores and all error handling are the real code; a test declares what the server answers with `stubNetwork([...])` and can flip `network.offline` for the no-response case.
 - **`apps/api` imports `@portfolio-dashboard/shared`**, which compiles to `packages/shared/dist`. The root `build`, `typecheck` and `dev` scripts build it first, and the Docker image copies `packages/shared` into the runtime stage — running `tsc` inside `apps/api` on its own fails on the missing declarations.
-- **ts-jest type-checks with `apps/api/tsconfig.jest.json`**, which is `tsconfig.json` without `rootDir`/`outDir`: `rootDir: src` makes the compiler reject every file outside `apps/api/src`, including `packages/shared` (which Jest maps to its source).
-- **Frontend JS files are plain scripts, not ES modules** — no page scripts remain; only `static/js/__tests__` is left, and those suites import `packages/shared` directly.
+- **Vitest reads the same source the app bundles.** `vitest.config.ts` aliases `@portfolio-dashboard/shared` to `packages/shared/src/index.ts`, so a test never needs `npm run build` first, and the two remaining `static/js/__tests__` suites (plain CommonJS, not ES modules) are included by the same runner. `apps/api/tsconfig.json` lists `"types": ["node", "vitest/globals"]` so `vi` type-checks; the two `tsconfig.*.json` files that existed only for ts-jest are gone.

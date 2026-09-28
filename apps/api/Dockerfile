@@ -37,7 +37,7 @@ RUN npm run build --workspace packages/shared && npm run build --workspace apps/
 # Prune dev deps so we copy a lean node_modules to the final image.
 # This is deliberately its own stage rather than a step at the end of
 # `builder`: `test:docker` builds --target builder and runs the suite from
-# that image, and jest, typescript and ts-jest are all devDependencies -
+# that image, and vitest, typescript and the linters are all devDependencies -
 # pruning them inside `builder` would leave the stage with no test runner.
 FROM builder AS pruned
 RUN npm prune --omit=dev

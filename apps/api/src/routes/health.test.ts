@@ -1,10 +1,13 @@
+vi.mock('../db', () => ({
+  get: vi.fn(),
+}));
+
+import type { MockedFunction } from 'vitest';
 import express from 'express';
 import { get } from '../db';
 import { healthRouter } from './health';
 
-jest.mock('../db', () => ({ get: jest.fn() }));
-
-const mockedGet = get as jest.MockedFunction<typeof get>;
+const mockedGet = get as MockedFunction<typeof get>;
 
 async function requestHealth(): Promise<{ status: number; body: any }> {
   const app = express();
