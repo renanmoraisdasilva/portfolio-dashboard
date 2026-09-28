@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
 import { computePnlReturns, stdDev } from '@portfolio-dashboard/shared';
-import { useApi } from '../composables/useApi';
+import { useApi, ApiError, request } from '../composables/useApi';
 
 export type AnalyticsSnapshot = components['schemas']['AnalyticsSnapshot'];
 export type HistoryPoint = components['schemas']['HistoryPoint'];
@@ -108,55 +108,63 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
     // `/cash` returns both balances and both interest totals in one query; the
     // month lists are not needed here. Phase 5 retired the `/api/state` blob.
-    const [analyticsResult, cashResult, pricesResult, entriesResult] = await Promise.all([
-      api.GET('/analytics'),
-      api.GET('/cash'),
-      api.GET('/prices'),
-      api.GET('/cash/entries'),
-    ]);
+    try {
+      const [snapshotsPayload, state, prices, entries] = await Promise.all([
+        request(api.GET('/analytics'), 'GET', '/analytics'),
+        request(api.GET('/cash'), 'GET', '/cash'),
+        request(api.GET('/prices'), 'GET', '/prices'),
+        request(api.GET('/cash/entries'), 'GET', '/cash/entries'),
+      ]);
 
-    const snapshotsPayload = analyticsResult.data;
-    if (analyticsResult.error || !snapshotsPayload || !Array.isArray(snapshotsPayload.snapshots)) {
+      if (!snapshotsPayload || !Array.isArray(snapshotsPayload.snapshots)) {
+        throw new ApiError('GET', '/analytics', 200, 'Malformed payload: snapshots missing');
+      }
+
+      const next: Record<string, AnalyticsSnapshot> = {};
+      for (const snap of snapshotsPayload.snapshots) {
+        if (snap.period) next[snap.period] = snap as AnalyticsSnapshot;
+      }
+      snapshots.value = next;
+      online.value = true;
+
+      if (state && prices) {
+        const brlUsd = typeof prices.BRLUSD === 'number' ? prices.BRLUSD : 1;
+        const cashBRL = Number(state.cashReais) || 0;
+        const cashUSDNative = Number(state.cashDollars) || 0;
+        cashContext.value = {
+          cashUSD: cashUSDNative + cashBRL * brlUsd,
+          cashBRL,
+          cashUSDNative,
+          brlUsd,
+        };
+      } else {
+        cashContext.value = null;
+      }
+
+      cashEntries.value = Array.isArray(entries) ? entries : [];
+    } catch (err) {
       online.value = false;
-      error.value = 'Could not load analytics';
+      error.value = err instanceof ApiError ? err.message : 'Could not load analytics';
+      console.warn('[analytics] load failed:', err);
+    } finally {
       loading.value = false;
-      return;
     }
-
-    const next: Record<string, AnalyticsSnapshot> = {};
-    for (const snap of snapshotsPayload.snapshots) {
-      if (snap.period) next[snap.period] = snap as AnalyticsSnapshot;
-    }
-    snapshots.value = next;
-    online.value = true;
-
-    const state = cashResult.data;
-    const prices = pricesResult.data;
-    if (state && prices) {
-      const brlUsd = typeof prices.BRLUSD === 'number' ? prices.BRLUSD : 1;
-      const cashBRL = Number(state.cashReais) || 0;
-      const cashUSDNative = Number(state.cashDollars) || 0;
-      cashContext.value = {
-        cashUSD: cashUSDNative + cashBRL * brlUsd,
-        cashBRL,
-        cashUSDNative,
-        brlUsd,
-      };
-    } else {
-      cashContext.value = null;
-    }
-
-    cashEntries.value = Array.isArray(entriesResult.data) ? entriesResult.data : [];
-    loading.value = false;
   }
 
   /** Refetches only the chart series for the new window. */
   async function selectPeriod(id: PeriodId): Promise<void> {
     period.value = id;
     loadingHistory.value = true;
-    const { data } = await api.GET('/history', { params: { query: { range: range.value } } });
-    history.value = Array.isArray(data) ? data : [];
-    loadingHistory.value = false;
+    try {
+      const points = await request(api.GET('/history', { params: { query: { range: range.value } } }), 'GET', '/history');
+      history.value = Array.isArray(points) ? points : [];
+    } catch (err) {
+      // A failed window refresh leaves the previous series on screen; the page
+      // stays usable and the status dot already reflects the failed load.
+      console.warn('[analytics] history refresh failed:', err);
+    } finally {
+      loadingHistory.value = false;
+    }
   }
 
   function setCashChartMode(mode: CashChartMode): void {

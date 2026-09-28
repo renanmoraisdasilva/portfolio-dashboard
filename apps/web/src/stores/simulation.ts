@@ -9,7 +9,7 @@ import {
   type Currency,
   type SymbolMap,
 } from '@portfolio-dashboard/shared';
-import { useApi } from '../composables/useApi';
+import { useApi, request } from '../composables/useApi';
 
 export type Trade = components['schemas']['Trade'];
 export type ScenarioSummary = components['schemas']['ScenarioSummary'];
@@ -595,20 +595,30 @@ export const useSimulationStore = defineStore(
     // --- Scenarios ----------------------------------------------------------------
 
     async function fetchScenarios(): Promise<ScenarioSummary[]> {
-      const { data } = await api.GET('/scenarios');
-      scenarios.value = Array.isArray(data) ? data : [];
+      const list = await request(api.GET('/scenarios'), 'GET', '/scenarios');
+      scenarios.value = Array.isArray(list) ? list : [];
       return scenarios.value;
     }
 
     async function openSaveModal(): Promise<void> {
       scenarioName.value = '';
       scenarioOverwriteId.value = '';
-      await fetchScenarios();
+      try {
+        await fetchScenarios();
+      } catch (err) {
+        // The list only populates the "overwrite" picker; opening with it empty
+        // is better than not opening the modal at all.
+        console.warn('[simulation] could not load scenarios:', err);
+      }
       saveModalOpen.value = true;
     }
 
     async function openScenariosModal(): Promise<void> {
-      await fetchScenarios();
+      try {
+        await fetchScenarios();
+      } catch (err) {
+        console.warn('[simulation] could not load scenarios:', err);
+      }
       openModalOpen.value = true;
     }
 
@@ -629,15 +639,19 @@ export const useSimulationStore = defineStore(
       if (!name) return 'Please enter a scenario name';
       const body = { name, data: scenarioPayload() };
 
-      if (scenarioOverwriteId.value) {
-        const { error } = await api.PUT('/scenarios/{id}', {
-          params: { path: { id: scenarioOverwriteId.value } },
-          body,
-        });
-        if (error) return 'Failed to save scenario';
-      } else {
-        const { error } = await api.POST('/scenarios', { body });
-        if (error) return 'Failed to save scenario';
+      try {
+        if (scenarioOverwriteId.value) {
+          await request(
+            api.PUT('/scenarios/{id}', { params: { path: { id: scenarioOverwriteId.value } }, body }),
+            'PUT',
+            '/scenarios/{id}',
+          );
+        } else {
+          await request(api.POST('/scenarios', { body }), 'POST', '/scenarios');
+        }
+      } catch (err) {
+        console.warn('[simulation] save scenario failed:', err);
+        return 'Failed to save scenario';
       }
       await fetchScenarios();
       saveModalOpen.value = false;
@@ -646,10 +660,14 @@ export const useSimulationStore = defineStore(
 
     /** Returns a warning when the blob came from a newer app version, else null. */
     async function loadScenario(id: string): Promise<string | null> {
-      const { data, error } = await api.GET('/scenarios/{id}', { params: { path: { id } } });
-      if (error || !data) return 'Failed to load scenario';
-
-      const blob = (data.data ?? {}) as ScenarioData;
+      let blob: ScenarioData;
+      try {
+        const payload = await request(api.GET('/scenarios/{id}', { params: { path: { id } } }), 'GET', '/scenarios/{id}');
+        blob = (payload?.data ?? {}) as ScenarioData;
+      } catch (err) {
+        console.warn('[simulation] load scenario failed:', err);
+        return 'Failed to load scenario';
+      }
       // Version guard: unversioned blobs are treated as v1 (schema evolution).
       const warning = (blob.version ?? 1) !== 1
         ? 'Scenario was saved with a newer version of this app and may not load correctly.'
@@ -667,8 +685,12 @@ export const useSimulationStore = defineStore(
     }
 
     async function deleteScenario(id: string): Promise<string | null> {
-      const { error } = await api.DELETE('/scenarios/{id}', { params: { path: { id } } });
-      if (error) return 'Failed to delete scenario';
+      try {
+        await request(api.DELETE('/scenarios/{id}', { params: { path: { id } } }), 'DELETE', '/scenarios/{id}');
+      } catch (err) {
+        console.warn('[simulation] delete scenario failed:', err);
+        return 'Failed to delete scenario';
+      }
       await fetchScenarios();
       return null;
     }
@@ -680,53 +702,57 @@ export const useSimulationStore = defineStore(
 
       // Trades come from `/trades` and the balances from `/cash`; Phase 5
       // retired the `/api/state` aggregation that used to bundle both.
-      const [tradesRes, cashRes, pricesRes, symbolsRes] = await Promise.all([
-        api.GET('/trades'),
-        api.GET('/cash'),
-        api.GET('/prices'),
-        api.GET('/config/symbols'),
-      ]);
+      try {
+        const [tradeRows, cashPositions, priceMap, symbolsPayload] = await Promise.all([
+          request(api.GET('/trades'), 'GET', '/trades'),
+          request(api.GET('/cash'), 'GET', '/cash'),
+          request(api.GET('/prices'), 'GET', '/prices'),
+          request(api.GET('/config/symbols'), 'GET', '/config/symbols'),
+        ]);
 
-      realTrades.value = (tradesRes.data ?? []) as Trade[];
-      realCash.value = {
-        cashReais: Number(cashRes.data?.cashReais) || 0,
-        cashDollars: Number(cashRes.data?.cashDollars) || 0,
-      };
-      if (!simCashReais.value) simCashReais.value = realCash.value.cashReais || 0;
-      if (!simCashDollars.value) simCashDollars.value = realCash.value.cashDollars || 0;
-      simCashReais.value = +Number(simCashReais.value).toFixed(2);
-      simCashDollars.value = +Number(simCashDollars.value).toFixed(2);
+        realTrades.value = (tradeRows ?? []) as Trade[];
+        realCash.value = {
+          cashReais: Number(cashPositions?.cashReais) || 0,
+          cashDollars: Number(cashPositions?.cashDollars) || 0,
+        };
+        if (!simCashReais.value) simCashReais.value = realCash.value.cashReais || 0;
+        if (!simCashDollars.value) simCashDollars.value = realCash.value.cashDollars || 0;
+        simCashReais.value = +Number(simCashReais.value).toFixed(2);
+        simCashDollars.value = +Number(simCashDollars.value).toFixed(2);
 
-      if (pricesRes.data) {
-        const next: Record<string, number> = {};
-        for (const [k, v] of Object.entries(pricesRes.data)) {
-          if (k === 'ts' || k === 'cacheTTLms') continue;
-          next[k] = v;
+        if (priceMap) {
+          const next: Record<string, number> = {};
+          for (const [k, v] of Object.entries(priceMap)) {
+            if (k === 'ts' || k === 'cacheTTLms') continue;
+            next[k] = v;
+          }
+          prices.value = next;
+          brlUsdRate.value = next['BRLUSD'] || brlUsdRate.value || 0;
+          simPrices.value = { ...next };
+          for (const s of assetList.value) {
+            const base = next[s] || 0;
+            const pct = Number(simPricePcts.value[s]) || 0;
+            if (base) simPrices.value[s] = +(base * (1 + pct / 100)).toFixed(2);
+          }
         }
-        prices.value = next;
-        brlUsdRate.value = next['BRLUSD'] || brlUsdRate.value || 0;
-        simPrices.value = { ...next };
-        for (const s of assetList.value) {
-          const base = next[s] || 0;
-          const pct = Number(simPricePcts.value[s]) || 0;
-          if (base) simPrices.value[s] = +(base * (1 + pct / 100)).toFixed(2);
+
+        if (symbolsPayload) {
+          symbols.value = (symbolsPayload.detailed ?? {}) as SymbolMap;
+          const tradeable = (symbolsPayload.all ?? []).filter((s) => {
+            const cfg = (symbolsPayload.detailed ?? {})[s];
+            return cfg && cfg.type !== 'currency';
+          });
+          if (tradeable.length > 0) assetList.value = tradeable;
+          if (!symbol.value && assetList.value.length > 0) symbol.value = assetList.value[0];
         }
-      }
 
-      const symbolsPayload = symbolsRes.data;
-      if (symbolsPayload) {
-        symbols.value = (symbolsPayload.detailed ?? {}) as SymbolMap;
-        const tradeable = (symbolsPayload.all ?? []).filter((s) => {
-          const cfg = (symbolsPayload.detailed ?? {})[s];
-          return cfg && cfg.type !== 'currency';
-        });
-        if (tradeable.length > 0) assetList.value = tradeable;
-        if (!symbol.value && assetList.value.length > 0) symbol.value = assetList.value[0];
+        syncPriceToSymbol();
+      } catch (err) {
+        console.warn('[simulation] load failed:', err);
+      } finally {
+        loading.value = false;
       }
-
-      loading.value = false;
-      syncPriceToSymbol();
-      await fetchScenarios();
+      await fetchScenarios().catch((err) => console.warn('[simulation] scenarios failed:', err));
     }
 
     return {

@@ -280,12 +280,12 @@ The typed client caught two more contract gaps here: `/config/symbols` documente
 
 ---
 
-## Phase 6 — Push logic out of the browser
+## Phase 6 - Push logic out of the browser
 
-- [ ] **FIFO lot math out of the client** — `simulation.js` `buildLotsFromTradesCombined()` / `computePortfolioFromCombined()` become a `/api/simulate` call *or* an import of the shared module both API and web use; the point is one implementation
+- [x] **FIFO lot math out of the client** — **Done by the import route**: both `stores/dashboard.ts` and `stores/simulation.ts` call `createPortfolioCalculator(...).replayFIFOLots` / `replayTradesWithRealized` from `packages/shared`, the same functions `historyManager`, `analyticsService` and `cashBackfill` use. No FIFO arithmetic is left in the client, and a `/api/simulate` round-trip would only have put the shared module behind HTTP.
 - [ ] **Server owns derived values** — portfolio totals, invested cost, BRL conversion. The browser renders, it doesn't compute
-- [ ] **Give the API client a typed error contract** — the old `lib/api.js` `null`-on-error wrapper left with the Phase 2 `lib/` deletion; build the typed client (throws `ApiError`) together with `apps/web` in Phase 4
-- [ ] Update `AGENTS.md` as you go — it is currently the most accurate document in the repo and should stay that way
+- [x] **Give the API client a typed error contract** — **Done**: `ApiError` carries status, method, path and the parsed body, plus `isNotFound` / `isConflict` / `isValidation`; `request(api.GET('/trades'), 'GET', '/trades')` awaits a call and either returns its payload or throws. All API calls in the three stores go through it — the twelve ad-hoc `if (error)` / `data ?? []` checks are gone. The trade path improves most: a rejected trade (409 currency mismatch, 400 missing sell price) now surfaces the *server's* message instead of the old page's `Error: Server rejected trade`. `runMaintenance` stays on `fetch` on purpose — those endpoints answer with route-specific progress reports the spec does not describe.
+- [x] Update `AGENTS.md` as you go — it is currently the most accurate document in the repo and should stay that way
 
 **Exit:** no domain arithmetic in `.vue` files; AGENTS.md pitfalls list shrinks.
 

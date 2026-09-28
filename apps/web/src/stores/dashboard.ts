@@ -8,7 +8,7 @@ import {
   parseMoney,
   type SymbolMap,
 } from '@portfolio-dashboard/shared';
-import { useApi } from '../composables/useApi';
+import { ApiError, request, useApi } from '../composables/useApi';
 
 export type Trade = components['schemas']['Trade'];
 export type CashEntry = components['schemas']['CashEntry'];
@@ -722,20 +722,24 @@ export const useDashboardStore = defineStore(
       resetTradeForm();
 
       try {
-        const { data, error } = await api.POST('/trades', {
-          // Only the fields the API stores: `_tmpId` and `profit` are local.
-          body: {
-            symbol: trade.symbol,
-            side: trade.side,
-            qty: trade.qty,
-            price: trade.price ?? undefined,
-            time: trade.time,
-            cashSource: formCashSource.value,
-          },
-        });
-        if (error || !data) throw new Error('Server rejected trade');
+        const data = await request(
+          api.POST('/trades', {
+            // Only the fields the API stores: `_tmpId` and `profit` are local.
+            body: {
+              symbol: trade.symbol,
+              side: trade.side,
+              qty: trade.qty,
+              price: trade.price ?? undefined,
+              time: trade.time,
+              cashSource: formCashSource.value,
+            },
+          }),
+          'POST',
+          '/trades',
+        );
+        if (!data) throw new ApiError('POST', '/trades', 200, 'Server rejected trade');
 
-        const idx = trades.value.findIndex((t) => '_tmpId' in t && t._tmpId === trade._tmpId);
+        const idx = trades.value.findIndex((t) => t._tmpId === trade._tmpId);
         if (idx >= 0 && data.trade) {
           trades.value[idx] = normalizeTrade(data.trade);
           await Promise.all([loadCashEntries(1), reloadState(), loadTriggeredAlerts()]);
@@ -751,8 +755,11 @@ export const useDashboardStore = defineStore(
         }
         return null;
       } catch (err) {
-        await reloadState();
-        return `Error: ${err instanceof Error ? err.message : String(err)}`;
+        console.warn('[dashboard] add trade failed:', err);
+        await reloadState().catch(() => undefined);
+        // A rejected trade (409 currency mismatch, 400 missing sell price) comes
+        // back with the server's own message, which is what the user needs.
+        return err instanceof ApiError ? err.message : `Error: ${String(err)}`;
       }
     }
 
@@ -765,11 +772,15 @@ export const useDashboardStore = defineStore(
       if (idx === null) return;
       const t = trades.value[idx];
       if (t?.id) {
-        await api.DELETE('/trades/{id}', { params: { path: { id: t.id } } });
+        try {
+          await request(api.DELETE('/trades/{id}', { params: { path: { id: t.id } } }), 'DELETE', '/trades/{id}');
+        } catch (err) {
+          console.warn('[dashboard] delete trade failed on the server, removing locally:', err);
+        }
       }
       trades.value.splice(idx, 1);
       deleteTradeIndex.value = null;
-      await reloadState();
+      await reloadState().catch((err) => console.warn('[dashboard] reload after delete failed:', err));
     }
 
     // --- Interest --------------------------------------------------------------
@@ -790,21 +801,29 @@ export const useDashboardStore = defineStore(
       if (currency === 'BRL') interestMonthsCollapsed.value = false;
       else interestUSDMonthsCollapsed.value = false;
 
-      await api.POST('/interest/months', {
-        body: currency === 'USD' ? { month, amount, currency: 'USD' } : { month, amount },
-      });
+      await request(
+        api.POST('/interest/months', {
+          body: currency === 'USD' ? { month, amount, currency: 'USD' } : { month, amount },
+        }),
+        'POST',
+        '/interest/months',
+      );
       return truncated ? 'Keeping only latest 12 months; oldest entry removed.' : null;
     }
 
     async function deleteInterestMonth(currency: Currency, month: string): Promise<void> {
       if (currency === 'BRL') interestReaisMonths.value = interestReaisMonths.value.filter((m) => m.month !== month);
       else interestDollarsMonths.value = interestDollarsMonths.value.filter((m) => m.month !== month);
-      await api.DELETE('/interest/months/{month}', {
-        params: {
-          path: { month },
-          ...(currency === 'USD' ? { query: { currency: 'USD' } } : {}),
-        },
-      });
+      await request(
+        api.DELETE('/interest/months/{month}', {
+          params: {
+            path: { month },
+            ...(currency === 'USD' ? { query: { currency: 'USD' } } : {}),
+          },
+        }),
+        'DELETE',
+        '/interest/months/{month}',
+      );
       await reloadState();
     }
 
@@ -812,8 +831,8 @@ export const useDashboardStore = defineStore(
 
     async function loadCashEntries(page?: number): Promise<void> {
       if (page !== undefined) cashEntriesPage.value = page;
-      const { data } = await api.GET('/cash/entries');
-      cashEntries.value = Array.isArray(data) ? data : [];
+      const entries = await request(api.GET('/cash/entries'), 'GET', '/cash/entries');
+      cashEntries.value = Array.isArray(entries) ? entries : [];
     }
 
     const cashEntriesPages = computed(() => Math.ceil(cashEntries.value.length / CASH_ENTRIES_PAGE_SIZE));
@@ -836,18 +855,23 @@ export const useDashboardStore = defineStore(
       if (!raw || isNaN(amount) || amount === 0) return 'Enter a non-zero amount (e.g. +1000 or -500)';
       const ts = date ? new Date(`${date}T12:00:00`).getTime() : Date.now();
 
-      const { error } = await api.POST('/cash/entries', {
-        body: { currency: entryCurrency.value, amount, ts },
-      });
-      if (error) return 'Failed to add cash entry';
-
+      try {
+        await request(api.POST('/cash/entries', { body: { currency: entryCurrency.value, amount, ts } }), 'POST', '/cash/entries');
+      } catch (err) {
+        console.warn('[dashboard] add cash entry failed:', err);
+        return 'Failed to add cash entry';
+      }
       await Promise.all([loadCashEntries(1), reloadState()]);
       return null;
     }
 
     async function deleteCashEntry(id: string): Promise<string | null> {
-      const { error } = await api.DELETE('/cash/entries/{id}', { params: { path: { id } } });
-      if (error) return 'Failed to delete cash entry';
+      try {
+        await request(api.DELETE('/cash/entries/{id}', { params: { path: { id } } }), 'DELETE', '/cash/entries/{id}');
+      } catch (err) {
+        console.warn('[dashboard] delete cash entry failed:', err);
+        return 'Failed to delete cash entry';
+      }
       await Promise.all([loadCashEntries(), reloadState()]);
       return null;
     }
@@ -893,13 +917,13 @@ export const useDashboardStore = defineStore(
     );
 
     async function loadAlerts(): Promise<void> {
-      const { data } = await api.GET('/alerts');
-      alerts.value = Array.isArray(data) ? data : [];
+      const list = await request(api.GET('/alerts'), 'GET', '/alerts');
+      alerts.value = Array.isArray(list) ? list : [];
     }
 
     async function loadTriggeredAlerts(): Promise<void> {
-      const { data } = await api.GET('/alerts/triggered');
-      triggeredAlerts.value = Array.isArray(data) ? data : [];
+      const triggered = await request(api.GET('/alerts/triggered'), 'GET', '/alerts/triggered');
+      triggeredAlerts.value = Array.isArray(triggered) ? triggered : [];
     }
 
     async function createAlert(body: {
@@ -909,35 +933,52 @@ export const useDashboardStore = defineStore(
       condition: 'above' | 'below';
       reference_price?: number;
     }): Promise<string | null> {
-      const { error } = await api.POST('/alerts', { body });
-      if (error) return 'Error: Failed to create alert';
+      try {
+        await request(api.POST('/alerts', { body }), 'POST', '/alerts');
+      } catch (err) {
+        console.warn('[dashboard] create alert failed:', err);
+        return 'Error: Failed to create alert';
+      }
       await Promise.all([loadAlerts(), loadTriggeredAlerts()]);
       return null;
     }
 
     async function deleteAlert(id: string): Promise<string | null> {
-      const { error } = await api.DELETE('/alerts/{id}', { params: { path: { id } } });
-      if (error) return 'Error deleting alert';
+      try {
+        await request(api.DELETE('/alerts/{id}', { params: { path: { id } } }), 'DELETE', '/alerts/{id}');
+      } catch (err) {
+        console.warn('[dashboard] delete alert failed:', err);
+        return 'Error deleting alert';
+      }
       await Promise.all([loadAlerts(), loadTriggeredAlerts()]);
       return null;
     }
 
     async function dismissAlert(id: string): Promise<void> {
-      await api.POST('/alerts/dismiss/{triggeredAlertId}', { params: { path: { triggeredAlertId: id } } });
-      await loadTriggeredAlerts();
+      try {
+        await request(
+          api.POST('/alerts/dismiss/{triggeredAlertId}', { params: { path: { triggeredAlertId: id } } }),
+          'POST',
+          '/alerts/dismiss/{triggeredAlertId}',
+        );
+      } catch (err) {
+        console.warn('[dashboard] dismiss alert failed:', err);
+        return;
+      }
+      await loadTriggeredAlerts().catch((err) => console.warn('[dashboard] reload triggered alerts failed:', err));
     }
 
     // --- Settings and maintenance ---------------------------------------------
 
     async function clearHistory(): Promise<void> {
-      await api.DELETE('/history');
+      await request(api.DELETE('/history'), 'DELETE', '/history');
       history.value = [];
       historyOHLC.value = [];
       pnlOHLC.value = [];
     }
 
     async function eraseAll(): Promise<void> {
-      await api.DELETE('/state');
+      await request(api.DELETE('/state'), 'DELETE', '/state');
       trades.value = [];
       history.value = [];
       cashReais.value = 0;
@@ -957,17 +998,21 @@ export const useDashboardStore = defineStore(
      * loaded state, which is all the page can offer if the request fails.
      */
     async function exportData(): Promise<void> {
-      const { data, error } = await api.GET('/state/export');
-      if (error && !data) console.warn('Server export failed, falling back to a local snapshot', error);
-      const payload = data ?? {
-        trades: trades.value,
-        history: history.value,
-        cashReais: cashReais.value,
-        cashDollars: cashDollars.value,
-        interestReais: interestReais.value,
-        interestDollars: interestDollars.value,
-        interestReaisMonths: interestReaisMonths.value,
-      };
+      let payload: unknown;
+      try {
+        payload = await request(api.GET('/state/export'), 'GET', '/state/export');
+      } catch (err) {
+        console.warn('[dashboard] server export failed, falling back to a local snapshot:', err);
+        payload = {
+          trades: trades.value,
+          history: history.value,
+          cashReais: cashReais.value,
+          cashDollars: cashDollars.value,
+          interestReais: interestReais.value,
+          interestDollars: interestDollars.value,
+          interestReaisMonths: interestReaisMonths.value,
+        };
+      }
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -991,8 +1036,12 @@ export const useDashboardStore = defineStore(
       }
       if (!Array.isArray(parsed.trades) || !Array.isArray(parsed.history)) return 'Invalid file format.';
 
-      const { error } = await api.POST('/state/import', { body: parsed });
-      if (error) return 'Server import failed';
+      try {
+        await request(api.POST('/state/import', { body: parsed }), 'POST', '/state/import');
+      } catch (err) {
+        console.warn('[dashboard] import failed:', err);
+        return err instanceof ApiError ? err.message : 'Server import failed';
+      }
       await reloadState();
       return 'Data imported to server!';
     }
@@ -1001,6 +1050,9 @@ export const useDashboardStore = defineStore(
       busyMigration.value = key;
       maintenanceLog.value[key] = `Calling ${path}…`;
       try {
+        // Maintenance endpoints answer with a progress report whose shape is
+        // route-specific, so this one stays on `fetch` rather than pretending
+        // the typed client knows it.
         const res = await fetch(path, { method: 'POST' });
         maintenanceLog.value[key] = JSON.stringify(await res.json(), null, 2);
       } catch (err) {
@@ -1011,17 +1063,24 @@ export const useDashboardStore = defineStore(
     }
 
     async function testNotify(message: string): Promise<string | null> {
-      const { error } = await api.POST('/alerts/test-notify', {
-        body: { title: 'Portfolio Test Notification', message },
-      });
-      return error ? 'Notification failed' : null;
+      try {
+        await request(
+          api.POST('/alerts/test-notify', { body: { title: 'Portfolio Test Notification', message } }),
+          'POST',
+          '/alerts/test-notify',
+        );
+        return null;
+      } catch (err) {
+        console.warn('[dashboard] test notify failed:', err);
+        return err instanceof ApiError ? err.message : 'Notification failed';
+      }
     }
 
     // --- Loading ---------------------------------------------------------------
 
     async function loadSymbols(): Promise<void> {
       if (symbolList.value.length > 0) return;
-      const { data } = await api.GET('/config/symbols');
+      const data = await request(api.GET('/config/symbols'), 'GET', '/config/symbols');
       if (data) {
         symbolList.value = data.all ?? [];
         symbolDetails.value = (data.detailed ?? {}) as SymbolMap;
@@ -1036,7 +1095,7 @@ export const useDashboardStore = defineStore(
 
     async function fetchPrices(): Promise<void> {
       priceError.value = null;
-      const { data } = await api.GET('/prices');
+      const data = await request(api.GET('/prices'), 'GET', '/prices');
       const nextPrices: Record<string, number> = {};
       const nextMeta: Record<string, PriceMeta> = {};
       const nextTs: Record<string, number> = {};
@@ -1094,41 +1153,38 @@ export const useDashboardStore = defineStore(
      * the routes already say.
      */
     async function reloadState(): Promise<void> {
-      const [tradesRes, cashRes, brlMonthsRes, usdMonthsRes] = await Promise.all([
-        api.GET('/trades'),
-        api.GET('/cash'),
-        api.GET('/interest/months', { params: { query: { currency: 'BRL' } } }),
-        api.GET('/interest/months', { params: { query: { currency: 'USD' } } }),
+      const [tradeRows, cash, brlMonths, usdMonths] = await Promise.all([
+        request(api.GET('/trades'), 'GET', '/trades'),
+        request(api.GET('/cash'), 'GET', '/cash'),
+        request(api.GET('/interest/months', { params: { query: { currency: 'BRL' } } }), 'GET', '/interest/months'),
+        request(api.GET('/interest/months', { params: { query: { currency: 'USD' } } }), 'GET', '/interest/months'),
       ]);
 
-      trades.value = (tradesRes.data ?? [])
+      trades.value = (tradeRows ?? [])
         .filter((t) => Boolean(t.symbol) && typeof t.qty === 'number')
         .map(normalizeTrade);
 
-      const cash = cashRes.data;
       cashReais.value = Number(cash?.cashReais) || 0;
       cashDollars.value = Number(cash?.cashDollars) || 0;
       interestReais.value = Number(cash?.interestReais) || 0;
       interestDollars.value = Number(cash?.interestDollars) || 0;
-      interestReaisMonths.value = (brlMonthsRes.data ?? []) as InterestMonth[];
-      interestDollarsMonths.value = (usdMonthsRes.data ?? []) as InterestMonth[];
+      interestReaisMonths.value = (brlMonths ?? []) as InterestMonth[];
+      interestDollarsMonths.value = (usdMonths ?? []) as InterestMonth[];
     }
 
     async function loadHistorySeries(): Promise<void> {
-      const { data: rows } = await api.GET('/history', { params: { query: { range: 'all' } } });
+      const rows = await request(api.GET('/history', { params: { query: { range: 'all' } } }), 'GET', '/history');
       if (Array.isArray(rows)) history.value = rows;
 
-      const [valueRes, pnlRes] = await Promise.all([
-        api.GET('/history/ohlc', { params: { query: { range: 'all', metric: 'value' } } }),
-        api.GET('/history/ohlc', { params: { query: { range: 'all', metric: 'pnl' } } }),
+      const [valueCandles, pnlCandles] = await Promise.all([
+        request(api.GET('/history/ohlc', { params: { query: { range: 'all', metric: 'value' } } }), 'GET', '/history/ohlc'),
+        request(api.GET('/history/ohlc', { params: { query: { range: 'all', metric: 'pnl' } } }), 'GET', '/history/ohlc'),
       ]);
 
-      const valueCandles = valueRes.data;
       if (Array.isArray(valueCandles) && valueCandles.length > 0) historyOHLC.value = valueCandles;
       else if (history.value.length > 0) {
         historyOHLC.value = history.value.map((h) => ({ ts: h.ts ?? 0, open: h.v ?? 0, high: h.v ?? 0, low: h.v ?? 0, close: h.v ?? 0 }));
       }
-      const pnlCandles = pnlRes.data;
       if (Array.isArray(pnlCandles) && pnlCandles.length > 0) pnlOHLC.value = pnlCandles;
     }
 
@@ -1141,11 +1197,19 @@ export const useDashboardStore = defineStore(
 
     async function load(): Promise<void> {
       loading.value = true;
-      await Promise.all([reloadState(), loadSymbols()]);
-      await refresh();
-      await Promise.all([loadAlerts(), loadTriggeredAlerts(), loadCashEntries()]);
-      if (!tradeDate.value) tradeDate.value = new Date().toISOString().slice(0, 10);
-      loading.value = false;
+      try {
+        await Promise.all([reloadState(), loadSymbols()]);
+        await refresh();
+        await Promise.all([loadAlerts(), loadTriggeredAlerts(), loadCashEntries()]);
+        if (!tradeDate.value) tradeDate.value = new Date().toISOString().slice(0, 10);
+      } catch (err) {
+        // One failed call must not blank the page: whatever loaded stays on
+        // screen, and the log names the endpoint that failed.
+        console.warn('[dashboard] load failed:', err);
+        priceError.value = err instanceof ApiError ? err.message : 'Could not load the dashboard';
+      } finally {
+        loading.value = false;
+      }
     }
 
     // --- UI actions ------------------------------------------------------------

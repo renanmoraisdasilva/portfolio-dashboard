@@ -97,7 +97,7 @@ apps/web/
   src/App.vue           # shell chrome: .shell > .app-nav, then <RouterView/> (views render their own PageHeader)
   src/router/index.ts   # one route per page; unmigrated ones render LegacyHandoff
   src/config/nav.ts     # the migration table — mark a page `migrated` and give it a real route
-  src/composables/useApi.ts # openapi-fetch client typed from the generated `paths` (baseUrl /api)
+  src/composables/useApi.ts # openapi-fetch client (baseUrl /api) + ApiError and request()
   src/composables/useMoney.ts # display helpers; currency math comes from packages/shared
   src/composables/useAnalyticsCharts.ts # the three Chart.js configurations, as computed refs
   src/composables/useAnalyticsTooltips.ts # metric tooltip content as structured data (no v-html)
@@ -113,6 +113,8 @@ apps/web/
 Chart.js is imported as `chart.js/auto` in `ChartCanvas.vue` — the bare `chart.js` entry does not register the scale controllers and fails at runtime with `"category" is not a registered scale`. `ChartCanvas` takes a Chart.js `config` prop and owns create/destroy, so a chart cannot leak when the period changes.
 
 The simulator's allocation currency lives in the store as `simAllocCurrency`, and the persist plugin writes string values **bare** rather than JSON-quoted: that is what the vanilla pages wrote, so a preference set before the migration is still read afterwards.
+
+**Every API call goes through `request()`.** `openapi-fetch` never throws — it resolves to `{ data, error }`, which is how the old `lib/api.js` wrapper could turn a 500 into an `undefined` the page then rendered as zero. `request(api.GET('/trades'), 'GET', '/trades')` returns the typed payload or throws `ApiError`, which carries `status`, `method`, `path`, `details` and `isNotFound` / `isConflict` / `isValidation`. Catch it where a failure is expected (a rejected trade shows the server's own message) and let it propagate where it is not. The one deliberate exception is the Settings modal's maintenance buttons: those endpoints return route-specific progress reports the spec does not describe, so they stay on `fetch`.
 
 `npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (Phase 4 strangler seam, in `mountWebRoutes`):
 
