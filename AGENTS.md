@@ -7,8 +7,9 @@ A full-stack portfolio dashboard. Backend: TypeScript + Express + SQLite (via **
 Run everything from the **repository root** (npm workspaces):
 
 ```bash
-npm install            # installs apps/api + packages/* into the root node_modules
+npm install            # installs apps/api + apps/web + packages/* into the root node_modules
 npm run dev            # dev server with hot reload (ts-node-dev), port 3000
+npm run dev:web        # Vite dev server for the Vue app, port 5173, proxying /api → :3000
 ```
 
 Schema initialization runs **automatically** on server start via Drizzle migrations. `npm run migrate:init` is only needed to import `fixtures/portfolio_data.json` into a fresh database — skip it for new setups.
@@ -18,7 +19,9 @@ Frontend HTML files (`pages/index.html`, `pages/analytics.html`, etc.) are serve
 ## Build & test
 
 ```bash
-npm run build          # compile packages/shared → dist, then apps/api → dist (CommonJS, ES2020)
+npm run build          # compile packages/shared → dist, then apps/api → dist, then build apps/web
+npm run build:web      # type-check (vue-tsc) and bundle apps/web → apps/web/dist
+npm run dev:web        # Vite dev server for apps/web on :5173, proxying /api to the API
 npm run api:types      # regenerate packages/shared/src/generated/api.ts from openapi.yaml
 npm start              # run compiled apps/api/dist/web.js
 npm test               # Jest test suite (apps/api/src tests + static/js tests)
@@ -73,7 +76,7 @@ packages/shared/
   dist/                  # Build output, gitignored. `main`/`types` point here; apps/api imports the package through it
 ```
 
-### Frontend layout
+### Legacy frontend (still being migrated)
 
 ```
 static/js/
@@ -83,6 +86,20 @@ static/js/
   lib/analytics-insights.js # Analytics Lab helpers (moves into the Vue app in Phase 5)
 static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics, explorer
 ```
+
+These are plain scripts, not modules — the strangler keeps serving them until each page is rewritten in Vue (Phase 5).
+
+### Vue app (`apps/web`)
+
+```
+apps/web/
+  index.html            # Vite entry
+  vite.config.ts        # vue plugin, dist/ output, dev proxy /api → API_URL (default :3000)
+  src/main.ts           # createApp().mount('#app')
+  src/App.vue           # root component
+```
+
+`npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`. The shell, router and migrated pages arrive in the next Phase 4 steps; nothing here is served by the API yet.
 
 ## Key conventions
 

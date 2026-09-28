@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "dev": "npm run build --workspace packages/shared && npm run dev --workspace apps/api",
-    "build": "npm run build --workspace packages/shared && npm run build --workspace apps/api",
+    "dev:web": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace packages/shared && npm run build --workspace apps/api && npm run build --workspace apps/web",
+    "build:web": "npm run build --workspace apps/web",
     "start": "npm run start --workspace apps/api",
     "start:web": "npm run start:web --workspace apps/api",
     "start:worker": "npm run start:worker --workspace apps/api",

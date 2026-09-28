@@ -211,8 +211,8 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 
 ## Phase 4 — Strangler seam: scaffold `apps/web`
 
-- [ ] `apps/web`: Vite + Vue 3 + TS + `vue-router` + `pinia` + `chart.js` + `lightweight-charts` — both already used via CDN `<script>` tags, so moving to npm deps removes them
-- [ ] Vite dev proxy `/api` → `:3000`
+- [x] `apps/web`: Vite + Vue 3 + TS + `vue-router` + `pinia` + `chart.js` + `lightweight-charts` — **done**: scaffolded with `index.html`, `vite.config.ts`, a strict `tsconfig.json` and `src/{main.ts, App.vue, env.d.ts}`. `npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, and the root `build` now includes it so CI covers it. Versions are current but chosen for API stability over newest: `lightweight-charts@4` (what the pages load from CDN today) rather than 5, `vue-router@4` rather than 5, and `typescript@5.9` to match `apps/api` rather than adding a second TypeScript to the workspace. Original wording: — both already used via CDN `<script>` tags, so moving to npm deps removes them
+- [x] Vite dev proxy `/api` → `:3000` — **done** in `apps/web/vite.config.ts`, with the target overridable through `API_URL`; verified by fetching `/api/health` through the dev server on `:5173`
 - [ ] **The strangler seam:** Express serves `apps/web/dist` at `/` and mounts `pages/` at **`/legacy/`**; Vue router renders migrated routes and redirects unmigrated ones to `/legacy/<page>` — progress is visible in the router table
 - [ ] Build the shell only: app layout, nav, theme (reuse `static/css/base.css` + `components.css` as-is — no CSS framework yet), `useApi` composable backed by the typed client, `LegacyRedirect` view
 

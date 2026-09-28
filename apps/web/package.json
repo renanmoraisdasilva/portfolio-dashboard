@@ -2,5 +2,24 @@
   "name": "@portfolio-dashboard/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Vue 3 + TypeScript + Vite frontend. Scaffolded in Phase 4 of docs/MODERNIZATION-PLAN.md."
+  "type": "module",
+  "description": "Vue 3 + TypeScript + Vite frontend. The strangler shell and migrated pages live here; the vanilla pages stay under pages/ until Phase 5 moves them.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "lightweight-charts": "^4.2.0",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.43",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.1",
+    "vue-tsc": "^3.3.11"
+  }
 }
