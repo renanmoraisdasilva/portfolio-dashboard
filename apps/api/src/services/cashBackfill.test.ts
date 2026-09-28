@@ -85,6 +85,29 @@ describe('computeCashEstimates – basic USD portfolio', () => {
     expect(estimates[0].cashBRL).toBeCloseTo(25_000, 2);
     expect(estimates[1].cashBRL).toBeCloseTo(50_000, 2);
   });
+
+  test('a fully sold position contributes no investment', () => {
+    const snapshots = [{ ts: t(3600_000), v: 50_000, brlusd_rate: 0.2 }];
+    const trades = [
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 40_000, time: iso(0) },
+      { symbol: 'BTC', side: 'sell', qty: 1, price: 45_000, time: iso(1000) },
+    ];
+    const prices = { BTC: 45_000, BRLUSD: 0.2 };
+
+    const estimates = computeCashEstimates(snapshots, trades, () => prices);
+
+    expect(estimates[0].cashBRL).toBeCloseTo(250_000, 2);
+  });
+
+  test('a zero BRLUSD rate yields 0 BRL instead of Infinity', () => {
+    const snapshots = [{ ts: t(3600_000), v: 50_000, brlusd_rate: 0 }];
+    const trades = [{ symbol: 'BTC', side: 'buy', qty: 1, price: 40_000, time: iso(0) }];
+    const prices = { BTC: 45_000, BRLUSD: 0.2 };
+
+    const estimates = computeCashEstimates(snapshots, trades, () => prices);
+
+    expect(estimates[0].cashBRL).toBe(0);
+  });
 });
 
 describe('computeCashEstimates – trade filtering', () => {

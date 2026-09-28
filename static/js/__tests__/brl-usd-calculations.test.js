@@ -230,6 +230,15 @@ describe('parseMoney', () => {
     expect(parseMoney(undefined, 'USD')).toBe(0);
   });
 
+  test('whitespace-only string → 0', () => {
+    expect(parseMoney('   ', 'BRL')).toBe(0);
+    expect(parseMoney('   ', 'USD')).toBe(0);
+  });
+
+  test('BRL: separator-only input falls back to 0', () => {
+    expect(parseMoney(',', 'BRL')).toBe(0);
+  });
+
   test('BRL round-trip: formatMoney → parseMoney is lossless', () => {
     expect(parseMoney(formatMoney(1234.56, 'BRL'), 'BRL')).toBeCloseTo(1234.56, 2);
   });
