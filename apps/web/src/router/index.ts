@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { NAV_ENTRIES } from '../config/nav';
+import { legacyEntries } from '../config/nav';
 import HomeView from '../views/HomeView.vue';
 import LegacyHandoff from '../views/LegacyHandoff.vue';
 
@@ -7,10 +7,11 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: HomeView },
-    // Every page the strangler has not reached yet hands off to /legacy/.
-    // As Phase 5 migrates one, its entry moves in config/nav.ts and gets a
-    // real route here instead — this table is the migration's progress display.
-    ...NAV_ENTRIES.filter((entry) => entry.path !== '/').map((entry) => ({
+    // Migrated pages get a real route here and stop rendering the hand-off.
+    // The router is deliberately explicit so the generated list below only
+    // covers what is left: analytics moved out of it in Phase 5.
+    { path: '/analytics', name: 'analytics', component: () => import('../views/AnalyticsView.vue') },
+    ...legacyEntries().map((entry) => ({
       path: entry.path,
       name: entry.path.slice(1),
       component: LegacyHandoff,

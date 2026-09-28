@@ -8,6 +8,7 @@
  *
  * Populated incrementally in Phase 2 of docs/MODERNIZATION-PLAN.md.
  */
+export * from './domain/analyticsInsights';
 export * from './domain/money';
 export * from './domain/portfolio';
 export * from './generated/api';

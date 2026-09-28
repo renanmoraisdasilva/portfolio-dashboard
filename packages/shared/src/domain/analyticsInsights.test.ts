@@ -1,13 +1,11 @@
-'use strict';
-
-const {
+import {
   buildCashAssetSeries,
   buildCashCurrencySeries,
   computeCorrelatedAxisMax,
   computePnlReturns,
-  stdDev,
   computeRiskProfile,
-} = require('../lib/analytics-insights');
+  stdDev,
+} from './analyticsInsights';
 
 describe('buildCashAssetSeries', () => {
   test('builds cash and assets using cumulative cash entries and FX', () => {
@@ -122,11 +120,7 @@ describe('buildCashAssetSeries', () => {
 
 describe('buildCashCurrencySeries', () => {
   test('reconstructs BRL and USD native running balances by timestamp', () => {
-    const history = [
-      { ts: 10 },
-      { ts: 20 },
-      { ts: 30 },
-    ];
+    const history = [{ ts: 10 }, { ts: 20 }, { ts: 30 }];
     const cashEntries = [
       { ts: 20, currency: 'USD', amount: 50 },
       { ts: 10, currency: 'BRL', amount: 1000 },
@@ -152,7 +146,7 @@ describe('computeCorrelatedAxisMax', () => {
   });
 
   test('falls back to fx=1 when invalid fx is provided', () => {
-    const out = computeCorrelatedAxisMax([100], [50], 0);
+    const out = computeCorrelatedAxisMax([100], [50], 0, 1.08);
     expect(out.fx).toBe(1);
     expect(out.ratio).toBeCloseTo(1);
     expect(out.yBRLMax).toBeGreaterThan(0);
@@ -172,6 +166,14 @@ describe('computePnlReturns', () => {
     expect(returns).toHaveLength(2);
     expect(returns[0]).toBeCloseTo(0.01);
     expect(returns[1]).toBeCloseTo(-0.015);
+  });
+
+  test('skips steps with a non-positive invested base', () => {
+    const history = [
+      { ts: 1, i: 0, p: 100 },
+      { ts: 2, i: 10000, p: 200 },
+    ];
+    expect(computePnlReturns(history)).toEqual([]);
   });
 });
 
@@ -241,5 +243,49 @@ describe('computeRiskProfile', () => {
 
     expect(fullCoverage.score).toBeLessThan(weakCoverage.score);
     expect(fullCoverage.components.cashBufferCredit).toBeGreaterThan(0);
+  });
+
+  test('flags an emergency shortfall as extra risk', () => {
+    const p = computeRiskProfile({
+      drawdownPct: 0,
+      sharpeRatio: 2,
+      cashPct: 0,
+      deployableCashPct: 0,
+      emergencyCoverage: 0.5,
+      maxAssetAllocPct: 10,
+      periodReturnPct: 1,
+      pnlStdPct: 0,
+    });
+    expect(p.components.emergencyShortfallRisk).toBeGreaterThan(0);
+  });
+
+  test('charges less opportunity cost for idle cash in a losing period', () => {
+    const base = {
+      drawdownPct: 2,
+      sharpeRatio: 1,
+      cashPct: 40,
+      emergencyCoverage: 1.5,
+      maxAssetAllocPct: 30,
+      pnlStdPct: 0.5,
+    };
+    const winning = computeRiskProfile({ ...base, deployableCashPct: 30, periodReturnPct: 5 });
+    const losing = computeRiskProfile({ ...base, deployableCashPct: 30, periodReturnPct: -5 });
+    expect(losing.components.deployableCashRisk).toBeLessThan(winning.components.deployableCashRisk);
+  });
+
+  test('penalises a deeply negative Sharpe more than a mildly negative one', () => {
+    const base = {
+      drawdownPct: 5,
+      cashPct: 20,
+      deployableCashPct: 10,
+      emergencyCoverage: 1.2,
+      maxAssetAllocPct: 30,
+      periodReturnPct: 2,
+      pnlStdPct: 1,
+    };
+    const mild = computeRiskProfile({ ...base, sharpeRatio: -0.5 });
+    const deep = computeRiskProfile({ ...base, sharpeRatio: -1.5 });
+    expect(deep.components.sharpeRisk).toBeGreaterThan(mild.components.sharpeRisk);
+    expect(deep.score).toBeGreaterThan(mild.score);
   });
 });

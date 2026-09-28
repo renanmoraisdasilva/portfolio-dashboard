@@ -6,15 +6,8 @@ import AppNav from './components/AppNav.vue';
 <template>
   <div class="shell">
     <AppNav />
-    <header class="page-header">
-      <div class="page-brand">
-        <div class="logo">₿</div>
-        <div>
-          <h1 class="page-title">Portfolio Dashboard</h1>
-          <p class="page-subtitle">Vue shell — one page at a time</p>
-        </div>
-      </div>
-    </header>
+    <!-- Each view renders its own PageHeader, so every page keeps the logo and
+         wording the vanilla page had. -->
     <RouterView />
   </div>
 </template>

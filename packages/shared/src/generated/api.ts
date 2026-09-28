@@ -1678,6 +1678,8 @@ export interface components {
             p?: number;
             manual?: boolean;
             note?: string;
+            /** @description FX rate captured with the snapshot; NULL for rows written before the column existed */
+            brlusd_rate?: number | null;
         };
         CashPositions: {
             cashReais?: number;
@@ -1821,6 +1823,33 @@ export interface components {
             sharpe_ratio?: number | null;
             allocation_json?: string | null;
             cost_vs_market_json?: string | null;
+            /** @description Inputs behind return_pct, so the UI can show the formula */
+            return_inputs?: {
+                start_ts?: number;
+                end_ts?: number;
+                start_invested?: number;
+                start_pnl?: number;
+                end_pnl?: number;
+                interest_period_usd?: number;
+                numerator_usd?: number;
+            } | null;
+            /** @description Inputs behind max_drawdown_pct, so the UI can show the formula */
+            drawdown_inputs?: {
+                series?: string;
+                points_count?: number;
+                peak_ts?: number;
+                trough_ts?: number;
+                peak_value?: number;
+                trough_value?: number;
+            } | null;
+            /** @description Inputs behind sharpe_ratio, so the UI can show the formula */
+            sharpe_inputs?: {
+                observations?: number;
+                mean_return?: number;
+                std_return?: number;
+                periods_per_year?: number;
+                rf_per_period?: number;
+            } | null;
         };
         SqlQueryRequest: {
             sql: string;

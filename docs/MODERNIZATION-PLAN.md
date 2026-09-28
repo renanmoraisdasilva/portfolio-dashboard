@@ -226,20 +226,22 @@ Do this *before* the Vue work — the frontend needs one predictable API to buil
 
 | # | Page | Lines | Why this position |
 |---|------|-------|-------------------|
-| 1 | `analytics` | 190 + 926 | Read-only, consumes `/api/analytics`; `analytics-insights.js` becomes a composable — the low-risk page that proves the pattern |
+| 1 | `analytics` ✅ | 190 + 926 | Read-only, consumes `/api/analytics`; `analytics-insights.js` becomes a shared module — the low-risk page that proves the pattern. **Done**, see below |
 | 2 | `simulation` | 190 + 1042 | Duplicate FIFO math → replace with `packages/shared` |
 | 3 | `index` (dashboard) | 538 + 2144 | The flagship — trades, history, allocation, asset charts, cash/interest/alerts. Do last, with every pattern proven |
 
 `sql-explorer` is not migrated: Phase 3 gates it behind `ENABLE_SQL_EXPLORER` (or drops it outright).
 
-**Per-page checklist (repeat verbatim):**
+**`analytics` — completed.** Per-page checklist, as ticked:
 
-- [ ] Extract state → Pinia store; centralize the scattered `localStorage` keys (`allocCurrency`, `allocationShowCash`, `interestMonthsCollapsed`, `interestUSDMonthsCollapsed`, `simAllocCurrency`) into a persisted store plugin
-- [ ] Move pure logic → `packages/shared`, **importing the real functions** — ~~specifically fix `__tests__/brl-usd-calculations.test.js`, which currently tests a copy defined inside the test file~~ *(done in Phase 2: it now imports the real helpers; what remains is moving the compute* mirrors into `packages/shared`)*
-- [ ] Build components: `views/` + `components/{charts,tables,forms,overlays}` + `composables/` (`useMoney`, `useCurrency`, `useApi`)
-- [ ] Parity: screenshot vs. Phase 0, same numbers on the golden fixture, `k6 run scripts/k6/dashboard-workflow.js` still under 1% failures / p95 < 500 ms
-- [ ] **Delete the old JS file and its `<script>` tag**, flip the router redirect to the Vue view — nothing deleted before parity passes
+- [x] Extract state → Pinia store. `stores/analytics.ts` holds the five period snapshots, the period selection, history, cash context and the cash-chart mode; switching period refetches only the chart series. *(no `localStorage` to centralize: the Analytics Lab had none — the five scattered keys listed below all belong to `simulation` and `index`, so the persisted store plugin lands with them.)*
+- [x] Move pure logic → `packages/shared`. `static/js/lib/analytics-insights.js` became `packages/shared/src/domain/analyticsInsights.ts` (same thresholds, same order of operations) with its Jest suite ported alongside. `formatMoney` gained an optional `maxFractionDigits` so chart axes can drop the cents.
+- [x] Build components: `views/AnalyticsView.vue`, `components/{ChartCanvas,MetricCard,PageHeader,AllocationTable}.vue`, `components/analysis/{OverallAnalysisCard,CashDragCard,RiskProfileCard}.vue`, and `composables/{useApi,useMoney,useAnalyticsCharts,useAnalyticsTooltips,useDocumentTitle}.ts`.
+- [x] Parity. Every number was compared against the vanilla page in a real browser, same period and same database: return `-1.3%`, max drawdown `−2.4%` (May 14 → Aug 4 · 82 days), Sharpe `22.03`, "Low Risk · 16/100", the cash-drag breakdown, the six allocation rows and all four tooltip formulas match exactly. The three canvases paint, and the BRL/USD toggle redraws to the same 20 071 painted pixels as the legacy chart. *Deliberate fixes found by the comparison:* the status dot now actually turns green (`setStatus` bailed out early because no `#statusText` element existed), the browser tab gets a per-page title, and empty charts render an HTML message instead of text painted onto the canvas.
+- [x] Delete the old JS file and its `<script>` tag, flip the router redirect to the Vue view. `pages/analytics.html`, `static/js/analytics.js` and `static/js/lib/analytics-insights.js` are gone; `/analytics` renders the Vue view; `/analytics.html` and `/pages/analytics.html` follow the page to its new route (`migratedPages` in `app.ts`), covered by `seam.test.ts`.
 - [ ] After the **last** page migrates: delete `apps/api/src/routes/state.ts` and `GET /api/export` — the Vue views read granular endpoints, so the aggregation endpoint has no consumers left (Phase 3 decision)
+
+The typed client paid for itself here: `vue-tsc` refused `brlusd_rate`, `return_inputs`, `drawdown_inputs` and `sharpe_inputs` — four fields the API has always returned and the OpenAPI spec never documented. They are in the spec now (`npm run api:types` regenerated `packages/shared/src/generated/api.ts`), so the contract test and the UI agree.
 
 **Exit per page:** old file gone, route renders Vue, parity documented in the PR.
 

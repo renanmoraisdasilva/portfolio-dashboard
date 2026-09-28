@@ -14,7 +14,7 @@ npm run dev:web        # Vite dev server for the Vue app, port 5173, proxying /a
 
 Schema initialization runs **automatically** on server start via Drizzle migrations. `npm run migrate:init` is only needed to import `fixtures/portfolio_data.json` into a fresh database — skip it for new setups.
 
-Frontend HTML files (`pages/index.html`, `pages/analytics.html`, etc.) are served statically by the backend. Open `http://localhost:3000` after starting the server.
+Frontend HTML files in `pages/` are served statically by the backend at `/legacy/`. Open `http://localhost:3000` after starting the server — that is the Vue shell, which links each page at its clean path.
 
 ## Build & test
 
@@ -82,12 +82,12 @@ packages/shared/
 static/js/
   dashboard.js          # Portfolio dashboard UI (trades, history, allocation charts)
   simulation.js         # What-if simulator with price overrides per asset
-  analytics.js          # Analytics Lab page (return%, drawdown, Sharpe, cost-vs-market charts)
-  lib/analytics-insights.js # Analytics Lab helpers (moves into the Vue app in Phase 5)
 static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics, explorer
 ```
 
 These are plain scripts, not modules — the strangler keeps serving them until each page is rewritten in Vue (Phase 5).
+
+`analytics.js` is gone: the Analytics Lab moved to `apps/web/src/views/AnalyticsView.vue`, and its helpers became `packages/shared/src/domain/analyticsInsights.ts`. Its stylesheet (`static/css/analytics.css`) is imported from there by the Vue view, so page CSS stays in `static/css/` until the last page migrates.
 
 ### Vue app (`apps/web`)
 
@@ -95,27 +95,35 @@ These are plain scripts, not modules — the strangler keeps serving them until 
 apps/web/
   index.html            # Vite entry; links base/components/layout.css from /static so the shell and pages/ match
   vite.config.ts        # vue plugin, dist/ output, dev proxy /api + /static → API_URL (default :3000)
-  src/main.ts           # createApp().use(router).mount('#app')
-  src/App.vue           # shell chrome: .shell > .app-nav + .page-header, then <RouterView/>
+  src/main.ts           # createApp().use(createPinia()).use(router).mount('#app')
+  src/App.vue           # shell chrome: .shell > .app-nav, then <RouterView/> (views render their own PageHeader)
   src/router/index.ts   # one route per page; unmigrated ones render LegacyHandoff
   src/config/nav.ts     # the migration table — mark a page `migrated` and give it a real route
-  src/composables/useApi.ts # openapi-fetch client typed from the generated `paths`
-  src/views/            # HomeView.vue, LegacyHandoff.vue (pages land here in Phase 5)
+  src/composables/useApi.ts # openapi-fetch client typed from the generated `paths` (baseUrl /api)
+  src/composables/useMoney.ts # display helpers; currency math comes from packages/shared
+  src/composables/useAnalyticsCharts.ts # the three Chart.js configurations, as computed refs
+  src/composables/useAnalyticsTooltips.ts # metric tooltip content as structured data (no v-html)
+  src/composables/useDocumentTitle.ts # per-page <title> (client-side navigation does not reload)
+  src/stores/           # Pinia stores, one per migrated page (analytics first)
+  src/components/       # ChartCanvas.vue (Chart.js lifecycle), MetricCard.vue, PageHeader.vue, AllocationTable.vue, analysis/
+  src/views/            # HomeView.vue, LegacyHandoff.vue, AnalyticsView.vue (pages land here in Phase 5)
 ```
+
+Chart.js is imported as `chart.js/auto` in `ChartCanvas.vue` — the bare `chart.js` entry does not register the scale controllers and fails at runtime with `"category" is not a registered scale`. `ChartCanvas` takes a Chart.js `config` prop and owns create/destroy, so a chart cannot leak when the period changes.
 
 `npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (Phase 4 strangler seam, in `mountWebRoutes`):
 
 | Path | Served by |
 |------|-----------|
 | `/` and any client-side route | `apps/web/dist/index.html` (SPA fallback) |
-| `/legacy/<page>.html` | the untouched vanilla pages in `pages/` |
+| `/legacy/<page>.html` | the remaining vanilla pages in `pages/` |
 | `/static/...`, `/icon.png` | shared assets, referenced by absolute path from the legacy pages |
-| `/pages/x.html`, `/x.html` | 302 → `/legacy/x.html`; `/index.html` → `/` |
+| `/pages/x.html`, `/x.html` | 302 → `/legacy/x.html`, or to the Vue route for pages already migrated (see `migratedPages` in `app.ts`); `/index.html` → `/` |
 | `/api/*` | the API routers |
 
 `apps/api/src/seam.test.ts` covers that routing. Note the mount order: `pages/` is registered **before** the SPA fallback, otherwise `/legacy/index.html` would be swallowed by the Vue app and the redirects would loop.
 
-To migrate a page (Phase 5): build the view under `src/views/`, flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, then delete the vanilla file from `pages/` and its `<script>` tag. Until the last page is gone, `pages/` must keep building — the Docker image asserts all four page files exist.
+To migrate a page (Phase 5): build the view under `src/views/` (and its store/composables), flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, add the old name to `migratedPages` in `apps/api/src/app.ts` so bookmarks follow the page, then delete the vanilla file from `pages/` and its `<script>` tag. Until the last page is gone, `pages/` must keep building — the Docker image asserts the three remaining page files exist.
 
 ## Key conventions
 
@@ -184,4 +192,4 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
 - **Coverage collection is narrow by design** — Jest's `rootDir` is the repo root (the babel coverage provider only instruments files under it), and `collectCoverageFrom` lists exactly the files that are genuinely test-covered: `apps/api/src/config/`, `apps/api/src/schema.ts`, `apps/api/src/routes/health.ts`, `apps/api/src/services/cashBackfill.ts`, `apps/api/src/services/portfolioCalculator.ts` and `packages/shared/src/domain/`. Widen that list only *after* adding tests — the gate is 80% on all four metrics, globally.
 - **`apps/api` imports `@portfolio-dashboard/shared`**, which compiles to `packages/shared/dist`. The root `build`, `typecheck` and `dev` scripts build it first, and the Docker image copies `packages/shared` into the runtime stage — running `tsc` inside `apps/api` on its own fails on the missing declarations.
 - **ts-jest type-checks with `apps/api/tsconfig.jest.json`**, which is `tsconfig.json` without `rootDir`/`outDir`: `rootDir: src` makes the compiler reject every file outside `apps/api/src`, including `packages/shared` (which Jest maps to its source).
-- **Frontend JS files are plain scripts, not ES modules** — `dashboard.js`, `simulation.js`, `analytics.js` use global scope. Only files under `static/js/lib/` use ES module `export` syntax.
+- **Frontend JS files are plain scripts, not ES modules** — `dashboard.js` and `simulation.js` use global scope.

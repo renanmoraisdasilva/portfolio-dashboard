@@ -13,16 +13,24 @@ export interface NavEntry {
   path: string;
   label: string;
   status: PageStatus;
-  /** Where the untouched page lives until it is migrated. */
-  legacyHref: string;
+  /** Where the untouched page lives. Absent once the page is migrated. */
+  legacyHref?: string;
 }
 
 export const NAV_ENTRIES: NavEntry[] = [
   { path: '/', label: 'Dashboard', status: 'legacy', legacyHref: '/legacy/index.html' },
-  { path: '/analytics', label: 'Analytics', status: 'legacy', legacyHref: '/legacy/analytics.html' },
+  { path: '/analytics', label: 'Analytics', status: 'migrated' },
   { path: '/simulation', label: 'Simulation', status: 'legacy', legacyHref: '/legacy/simulation.html' },
   { path: '/sql-explorer', label: 'SQL Explorer', status: 'legacy', legacyHref: '/legacy/sql-explorer.html' },
 ];
+
+/** A page still served untouched from `/legacy/`, with its hand-off target. */
+export function legacyEntries(): (NavEntry & { legacyHref: string })[] {
+  return NAV_ENTRIES.filter(
+    (entry): entry is NavEntry & { legacyHref: string } =>
+      entry.status === 'legacy' && entry.path !== '/' && Boolean(entry.legacyHref),
+  );
+}
 
 export function isActive(path: string, currentPath: string): boolean {
   return path === currentPath;

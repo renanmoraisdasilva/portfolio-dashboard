@@ -47,12 +47,22 @@ export function usdToBRL(amount: number, brlUsdRate: number): number {
   return amount / brlUsdRate;
 }
 
-export function formatMoney(val: number | string | null | undefined, currency: Currency): string {
+/**
+ * `maxFractionDigits` defaults to the locale default (2). Chart axes and
+ * tooltips pass 0 — they render thousands of values and the cents are noise.
+ */
+export function formatMoney(
+  val: number | string | null | undefined,
+  currency: Currency,
+  maxFractionDigits?: number,
+): string {
   const value = typeof val === 'number' ? val : Number(val) || 0;
+  const options: Intl.NumberFormatOptions =
+    maxFractionDigits == null ? { style: 'currency', currency } : { style: 'currency', currency, maximumFractionDigits: maxFractionDigits };
   if (currency === 'BRL') {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    return new Intl.NumberFormat('pt-BR', options).format(value);
   }
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+  return new Intl.NumberFormat('en-US', options).format(value);
 }
 
 export function parseMoney(str: number | string | null | undefined, currency: Currency): number {

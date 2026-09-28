@@ -55,10 +55,17 @@ export function mountWebRoutes(app: Express): void {
   app.get('/icon.png', (_req, res) => res.sendFile(path.join(repoRoot, 'icon.png')));
   app.use('/legacy', express.static(path.join(repoRoot, 'pages')));
 
-  // Old bookmarks keep resolving: /pages/x.html and /x.html both land on /legacy/x.html.
-  app.get('/pages/:file', (req, res) => res.redirect(`/legacy/${req.params.file}`));
+  // Old bookmarks keep resolving: /pages/x.html and /x.html land on /legacy/x.html,
+  // except for the pages Phase 5 has already moved into the Vue app — their
+  // bookmarks must follow to the new route, not to a file that no longer exists.
+  const migratedPages: Record<string, string> = { analytics: '/analytics' };
+  const pageTarget = (file: string): string => {
+    const name = file.replace(/\.html$/, '');
+    return migratedPages[name] ?? `/legacy/${name}.html`;
+  };
+  app.get('/pages/:file', (req, res) => res.redirect(pageTarget(req.params.file)));
   app.get('/index.html', (_req, res) => res.redirect('/'));
-  app.get('/:page.html', (req, res) => res.redirect(`/legacy/${req.params.page}.html`));
+  app.get('/:page.html', (req, res) => res.redirect(pageTarget(req.params.page)));
 
   const webDist = path.join(repoRoot, 'apps', 'web', 'dist');
   app.use(express.static(webDist));

@@ -1,8 +1,15 @@
 <script setup lang="ts">
-defineProps<{ label: string; legacyHref: string }>();
+import PageHeader from '../components/PageHeader.vue';
+import { useDocumentTitle } from '../composables/useDocumentTitle';
+
+const props = defineProps<{ label: string; legacyHref: string }>();
+
+useDocumentTitle(props.label);
 </script>
 
 <template>
+  <PageHeader icon="🚧" :title="label" subtitle="Not migrated to Vue yet" />
+
   <section class="card">
     <h2>{{ label }} is not migrated yet</h2>
     <p>

@@ -65,11 +65,11 @@ COPY --from=pruned /app/pages ./pages
 COPY --from=pruned /app/static ./static
 COPY --from=pruned /app/icon.png ./icon.png
 
-# Fail the image build early if any required root page is missing.
+# Fail the image build early if any required root page is missing. Analytics
+# migrated to Vue in Phase 5 and no longer ships a vanilla page.
 RUN test -f /app/pages/index.html \
 	&& test -f /app/pages/simulation.html \
 	&& test -f /app/pages/sql-explorer.html \
-	&& test -f /app/pages/analytics.html \
 	&& test -f /app/apps/web/dist/index.html
 
 # Tests belong to the builder stage only: `npm run test:docker` builds that

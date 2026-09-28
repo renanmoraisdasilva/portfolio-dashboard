@@ -901,6 +901,10 @@ components:
           type: boolean
         note:
           type: string
+        brlusd_rate:
+          type: number
+          nullable: true
+          description: FX rate captured with the snapshot; NULL for rows written before the column existed
     CashPositions:
       type: object
       properties:
@@ -1184,6 +1188,57 @@ components:
         cost_vs_market_json:
           type: string
           nullable: true
+        return_inputs:
+          type: object
+          nullable: true
+          description: Inputs behind return_pct, so the UI can show the formula
+          properties:
+            start_ts:
+              type: integer
+            end_ts:
+              type: integer
+            start_invested:
+              type: number
+            start_pnl:
+              type: number
+            end_pnl:
+              type: number
+            interest_period_usd:
+              type: number
+            numerator_usd:
+              type: number
+        drawdown_inputs:
+          type: object
+          nullable: true
+          description: Inputs behind max_drawdown_pct, so the UI can show the formula
+          properties:
+            series:
+              type: string
+            points_count:
+              type: integer
+            peak_ts:
+              type: integer
+            trough_ts:
+              type: integer
+            peak_value:
+              type: number
+            trough_value:
+              type: number
+        sharpe_inputs:
+          type: object
+          nullable: true
+          description: Inputs behind sharpe_ratio, so the UI can show the formula
+          properties:
+            observations:
+              type: integer
+            mean_return:
+              type: number
+            std_return:
+              type: number
+            periods_per_year:
+              type: number
+            rf_per_period:
+              type: number
     SqlQueryRequest:
       type: object
       required: [sql]

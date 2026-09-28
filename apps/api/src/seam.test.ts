@@ -23,13 +23,29 @@ describe('strangler seam', () => {
   test('the legacy dashboard is served from /legacy/', async () => {
     const res = await request('/legacy/index.html');
     expect(res.status).toBe(200);
-    expect(res.body).toContain('/legacy/analytics.html');
+    expect(res.body).toContain('/legacy/simulation.html');
+  });
+
+  test('the migrated analytics page is gone from /legacy/', async () => {
+    // No such file any more: the static mount misses and the SPA fallback
+    // answers with the shell, so assert on what the body is not.
+    const res = await request('/legacy/analytics.html');
+    expect(res.body).not.toContain('period-tabs');
+    expect(res.body).not.toContain('/static/js/analytics.js');
   });
 
   test('old /pages/* links redirect to /legacy/*', async () => {
-    const res = await request('/pages/analytics.html');
+    const res = await request('/pages/simulation.html');
     expect([301, 302]).toContain(res.status);
-    expect(res.location).toBe('/legacy/analytics.html');
+    expect(res.location).toBe('/legacy/simulation.html');
+  });
+
+  test('bookmarks of a migrated page follow it to its Vue route', async () => {
+    for (const pathname of ['/analytics.html', '/pages/analytics.html']) {
+      const res = await request(pathname);
+      expect([301, 302]).toContain(res.status);
+      expect(res.location).toBe('/analytics');
+    }
   });
 
   test('old bookmark paths redirect to /legacy/', async () => {
