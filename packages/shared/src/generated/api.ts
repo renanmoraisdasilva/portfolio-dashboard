@@ -1292,7 +1292,18 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["HealthStatus"];
+                    };
+                };
+                /** @description The database could not be read — the container healthcheck fails */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HealthFailure"];
+                    };
                 };
             };
         };
@@ -1830,6 +1841,22 @@ export interface components {
             lastInsertRowid?: unknown;
             /** @description Present when type is write */
             message?: string;
+        };
+        HealthStatus: {
+            ok?: boolean;
+            /** @description Process uptime in seconds */
+            uptime?: number;
+            /** @description Newest `price_cache` timestamp, Unix ms */
+            lastPriceFetch?: number | null;
+            /** @description Newest `asset_chart_cache` timestamp, Unix ms */
+            lastAssetHistory?: number | null;
+            dbFile?: string | null;
+        };
+        HealthFailure: {
+            ok?: boolean;
+            uptime?: number;
+            /** @description Why the database read failed */
+            error?: string;
         };
     };
     responses: never;

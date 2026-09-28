@@ -14,7 +14,7 @@ Getting started (dev):
 API notes:
 - `GET /api/state` returns the compact app state (trades, cash, interest months). Historical snapshots are loaded separately through `/api/history` or `/api/history/ohlc` so the dashboard does not download them twice. The assembled response uses a 10-second process-local LRU cache and is invalidated after successful mutations.
 - `GET /api/analytics` returns analytics snapshots and uses a 30-second process-local LRU cache with single-flight regeneration for concurrent misses.
-- `GET /api/health` returns basic health info.
+- `GET /api/health` returns uptime plus the last price/asset-cache timestamps, and answers `503` with `{ ok: false, error }` when the database read fails — so the container healthcheck (`r.ok ? 0 : 1`) actually fails on a broken database.
 - `GET /api/trades` and `POST /api/trades` and `DELETE /api/trades/:id` for trades CRUD.
 - `GET /api/history` (supports `?range=` of `day`, `week`, `month`, `6months`, `year` or `all`), `POST /api/history/point`, `DELETE /api/history/:id`, `DELETE /api/history` to manage history points.
 - `GET /api/prices` returns cached prices; the worker refreshes them on an 8-minute interval (`apps/api/src/jobs/priceRefresh.ts`).

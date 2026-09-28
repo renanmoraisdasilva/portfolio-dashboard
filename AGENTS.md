@@ -119,7 +119,7 @@ Key route files and what they own:
 | File | Endpoints |
 |------|-----------|
 | `routes/state.ts` | `GET /api/state` — full portfolio snapshot (legacy aggregation) |
-| `routes/health.ts` | `GET /api/health` — uptime + last price/asset-cache timestamps |
+| `routes/health.ts` | `GET /api/health` — uptime + last price/asset-cache timestamps; `503` when the DB read fails, which is what the container healthcheck keys on |
 | `routes/trades.ts` | `GET/POST/DELETE /api/trades` |
 | `routes/prices.ts` | `GET /api/prices` |
 | `routes/asset.ts` | `GET /api/asset/:symbol` — rolling price history for charts |

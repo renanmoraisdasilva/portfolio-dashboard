@@ -3,13 +3,27 @@ import { get } from '../db';
 
 export const healthRouter = Router();
 
-healthRouter.get('/', async (req: Request, res: Response) => {
+interface TimestampRow {
+  ts: number | null;
+}
+
+healthRouter.get('/', async (_req: Request, res: Response) => {
   const uptime = process.uptime();
   try {
-    const lastPrice = await (async () => { const r = await get('SELECT MAX(ts) as ts FROM price_cache'); return r ? r.ts : null; })();
-    const lastAsset = await (async () => { const r = await get('SELECT MAX(ts) as ts FROM asset_chart_cache'); return r ? r.ts : null; })();
-    res.json({ ok: true, uptime, lastPriceFetch: lastPrice, lastAssetHistory: lastAsset, dbFile: null });
+    const lastPrice = await get<TimestampRow>('SELECT MAX(ts) as ts FROM price_cache');
+    const lastAsset = await get<TimestampRow>('SELECT MAX(ts) as ts FROM asset_chart_cache');
+    res.json({
+      ok: true,
+      uptime,
+      lastPriceFetch: lastPrice?.ts ?? null,
+      lastAssetHistory: lastAsset?.ts ?? null,
+      dbFile: null,
+    });
   } catch (err) {
-    res.json({ ok: true, uptime, lastPriceFetch: null, lastAssetHistory: {}, dbFile: null });
+    res.status(503).json({
+      ok: false,
+      uptime,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 });

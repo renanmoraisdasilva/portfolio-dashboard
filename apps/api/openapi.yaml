@@ -673,6 +673,16 @@ paths:
       responses:
         '200':
           description: Health info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: The database could not be read — the container healthcheck fails
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthFailure'
   /trades:
     get:
       tags: [Trades]
@@ -1206,3 +1216,32 @@ components:
         message:
           type: string
           description: Present when type is write
+    HealthStatus:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        uptime:
+          type: number
+          description: Process uptime in seconds
+        lastPriceFetch:
+          type: integer
+          nullable: true
+          description: Newest `price_cache` timestamp, Unix ms
+        lastAssetHistory:
+          type: integer
+          nullable: true
+          description: Newest `asset_chart_cache` timestamp, Unix ms
+        dbFile:
+          type: string
+          nullable: true
+    HealthFailure:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        uptime:
+          type: number
+        error:
+          type: string
+          description: Why the database read failed
