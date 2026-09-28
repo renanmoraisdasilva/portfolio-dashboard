@@ -112,7 +112,8 @@ the layout but not the data.
 
 ## Testing
 
-Run the whole suite from the repository root:
+Run the whole unit suite from the repository root (Vitest, across the API, the
+web app and the shared package):
 
 ```bash
 npm test
@@ -124,7 +125,15 @@ To run coverage:
 npm run test:coverage
 ```
 
-To verify the build and the tests together (what CI runs):
+Browser smoke tests, which drive the built app in Chromium against a throwaway
+database seeded from the fixture (see [e2e/README.md](e2e/README.md)):
+
+```bash
+npm run build      # the suite runs dist/, not ts-node
+npm run test:e2e
+```
+
+To verify everything CI verifies — lint, formatting, build and tests:
 
 ```bash
 npm run check

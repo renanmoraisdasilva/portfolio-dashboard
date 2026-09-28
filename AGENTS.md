@@ -133,6 +133,10 @@ The simulator's allocation currency lives in the store as `simAllocCurrency`, an
 
 `apps/api/src/seam.test.ts` covers that routing. Note the mount order: `pages/` is registered **before** the SPA fallback, otherwise `/legacy/index.html` would be swallowed by the Vue app and the redirects would loop.
 
+**CI is a five-job matrix** (`.github/workflows/ci.yml`): `lint` (eslint + `prettier --check`), `build` (typecheck + build), `unit` (build first, then `npm test` — the seam test asserts against `apps/web/dist`), `e2e` (build, install Chromium, run `e2e/`, upload the report on failure), and `docker`, which `needs` all four and _smokes the built image_ rather than only building it. A green build is not a running container, and nothing tested the difference. `npm run check` locally is `lint → format:check → build → test`.
+
+**The e2e suite runs the built bundle against a temporary database.** `e2e/start-server.mjs` sets `PORTFOLIO_DATA_DIR` (an opt-in override in `db.ts`, unset in every normal run) to a fresh temp directory, seeds it from `fixtures/portfolio_data.json`, and deletes it afterwards — so a test can add a trade without any possibility of touching the real `portfolio.db`. See [e2e/README.md](e2e/README.md) before adding a test, in particular: **do not assert market prices**, because the worker is not running and `price_cache` is empty.
+
 To migrate a page (Phase 5): build the view under `src/views/` (and its store/composables), flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, add the old name to `migratedPages` in `apps/api/src/app.ts` so bookmarks follow the page, then delete the vanilla file from `pages/` and its `<script>` tag. `pages/` now holds only the SQL Explorer, so the Dockerfile's page assertion covers that one file.
 
 ## Key conventions
