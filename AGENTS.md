@@ -165,7 +165,7 @@ All routes mount at `/api/`. See [openapi.yaml](apps/api/openapi.yaml) and [READ
 Key route files and what they own:
 | File | Endpoints |
 |------|-----------|
-| `routes/state.ts` | `GET /api/state` — full portfolio snapshot (legacy aggregation) |
+| `routes/state.ts` | `GET /api/state/export`, `POST /api/state/import`, `DELETE /api/state` - whole-database backup, restore and erase. The former `GET /api/state` aggregation is gone: the Vue views read `/trades`, `/cash` and `/interest/months` |
 | `routes/health.ts` | `GET /api/health` — uptime + last price/asset-cache timestamps; `503` when the DB read fails, which is what the container healthcheck keys on |
 | `routes/trades.ts` | `GET/POST/DELETE /api/trades` |
 | `routes/prices.ts` | `GET /api/prices` |

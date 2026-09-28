@@ -678,17 +678,19 @@ export const useSimulationStore = defineStore(
     async function load(): Promise<void> {
       loading.value = true;
 
-      const [stateRes, pricesRes, symbolsRes] = await Promise.all([
-        api.GET('/state'),
+      // Trades come from `/trades` and the balances from `/cash`; Phase 5
+      // retired the `/api/state` aggregation that used to bundle both.
+      const [tradesRes, cashRes, pricesRes, symbolsRes] = await Promise.all([
+        api.GET('/trades'),
+        api.GET('/cash'),
         api.GET('/prices'),
         api.GET('/config/symbols'),
       ]);
 
-      const state = stateRes.data;
-      realTrades.value = (state?.trades ?? []) as Trade[];
+      realTrades.value = (tradesRes.data ?? []) as Trade[];
       realCash.value = {
-        cashReais: Number(state?.cashReais) || 0,
-        cashDollars: Number(state?.cashDollars) || 0,
+        cashReais: Number(cashRes.data?.cashReais) || 0,
+        cashDollars: Number(cashRes.data?.cashDollars) || 0,
       };
       if (!simCashReais.value) simCashReais.value = realCash.value.cashReais || 0;
       if (!simCashDollars.value) simCashDollars.value = realCash.value.cashDollars || 0;

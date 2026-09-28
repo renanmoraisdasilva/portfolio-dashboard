@@ -46,7 +46,8 @@ The tested endpoints are:
 ```text
 /api/prices
 /api/analytics
-/api/state
+/api/trades
+/api/cash
 /api/history/ohlc
 ```
 

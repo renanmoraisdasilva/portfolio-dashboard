@@ -12,7 +12,7 @@ Getting started (dev):
 - Start: npm start
 
 API notes:
-- `GET /api/state` returns the compact app state (trades, cash, interest months). Historical snapshots are loaded separately through `/api/history` or `/api/history/ohlc` so the dashboard does not download them twice. The assembled response uses a 10-second process-local LRU cache and is invalidated after successful mutations.
+- The Vue views read granular endpoints: `/api/trades` for the ledger, `/api/cash` for both balances *and* both interest totals, `/api/interest/months?currency=BRL|USD` for the month lists, and `/api/history` or `/api/history/ohlc` for snapshots. There is no aggregated state blob any more — Phase 5 removed `GET /api/state`, which only duplicated these and needed its own cache to hide the cost.
 - `GET /api/analytics` returns analytics snapshots and uses a 30-second process-local LRU cache with single-flight regeneration for concurrent misses.
 - `GET /api/health` returns uptime plus the last price/asset-cache timestamps, and answers `503` with `{ ok: false, error }` when the database read fails — so the container healthcheck (`r.ok ? 0 : 1`) actually fails on a broken database.
 - `GET /api/trades` and `POST /api/trades` and `DELETE /api/trades/:id` for trades CRUD.

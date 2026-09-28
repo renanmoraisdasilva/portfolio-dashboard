@@ -11,30 +11,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get full app state */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description App state */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["StateResponse"];
-                    };
-                };
-            };
-        };
+        get?: never;
         put?: never;
         post?: never;
-        /** Erase all app state data */
+        /**
+         * Erase all app state data
+         * @description Wipes trades, history, interest and cash in one go. Backup, restore and
+         *     this erase are whole-database operations with no granular equivalent, so
+         *     they keep the /api/state prefix; the former GET aggregation is gone —
+         *     read /trades, /cash and /interest/months instead.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -81,7 +67,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["StateResponse"];
+                        "application/json": components["schemas"]["StateExport"];
                     };
                 };
             };
@@ -317,7 +303,10 @@ export interface paths {
         /** List interest months */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Restrict to one currency; omit to get both ledgers, each row carrying its own `currency` */
+                    currency?: "BRL" | "USD";
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -1695,16 +1684,26 @@ export interface components {
         InterestMonth: {
             month?: string;
             amount?: number;
+            /**
+             * @description Which ledger the row belongs to; present when both are listed at once
+             * @enum {string}
+             */
+            currency?: "BRL" | "USD";
         };
-        StateResponse: {
+        StateExport: {
             trades?: components["schemas"]["Trade"][];
             history?: components["schemas"]["HistoryPoint"][];
+            cashEntries?: components["schemas"]["CashEntry"][];
             interestReaisMonths?: components["schemas"]["InterestMonth"][];
             interestDollarsMonths?: components["schemas"]["InterestMonth"][];
             cashReais?: number;
             cashDollars?: number;
             interestReais?: number;
             interestDollars?: number;
+            alerts?: components["schemas"]["Alert"][];
+            scenarios?: {
+                [key: string]: unknown;
+            }[];
         };
         StateImportPayload: {
             trades?: components["schemas"]["Trade"][];

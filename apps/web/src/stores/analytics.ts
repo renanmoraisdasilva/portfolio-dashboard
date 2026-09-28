@@ -106,9 +106,11 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     loading.value = true;
     error.value = null;
 
-    const [analyticsResult, stateResult, pricesResult, entriesResult] = await Promise.all([
+    // `/cash` returns both balances and both interest totals in one query; the
+    // month lists are not needed here. Phase 5 retired the `/api/state` blob.
+    const [analyticsResult, cashResult, pricesResult, entriesResult] = await Promise.all([
       api.GET('/analytics'),
-      api.GET('/state'),
+      api.GET('/cash'),
       api.GET('/prices'),
       api.GET('/cash/entries'),
     ]);
@@ -128,7 +130,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     snapshots.value = next;
     online.value = true;
 
-    const state = stateResult.data;
+    const state = cashResult.data;
     const prices = pricesResult.data;
     if (state && prices) {
       const brlUsd = typeof prices.BRLUSD === 'number' ? prices.BRLUSD : 1;

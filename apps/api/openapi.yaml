@@ -36,19 +36,14 @@ tags:
     description: Read-only SQL console endpoints
 paths:
   /state:
-    get:
-      tags: [State]
-      summary: Get full app state
-      responses:
-        '200':
-          description: App state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StateResponse'
     delete:
       tags: [State]
       summary: Erase all app state data
+      description: |
+        Wipes trades, history, interest and cash in one go. Backup, restore and
+        this erase are whole-database operations with no granular equivalent, so
+        they keep the /api/state prefix; the former GET aggregation is gone —
+        read /trades, /cash and /interest/months instead.
       responses:
         '204':
           description: State erased
@@ -62,7 +57,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StateResponse'
+                $ref: '#/components/schemas/StateExport'
   /state/import:
     post:
       tags: [State]
@@ -172,6 +167,14 @@ paths:
     get:
       tags: [Interest]
       summary: List interest months
+      parameters:
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [BRL, USD]
+          description: Restrict to one currency; omit to get both ledgers, each row carrying its own `currency`
       responses:
         '200':
           description: Interest months
@@ -935,7 +938,11 @@ components:
           type: string
         amount:
           type: number
-    StateResponse:
+        currency:
+          type: string
+          enum: [BRL, USD]
+          description: Which ledger the row belongs to; present when both are listed at once
+    StateExport:
       type: object
       properties:
         trades:
@@ -946,6 +953,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/HistoryPoint'
+        cashEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashEntry'
         interestReaisMonths:
           type: array
           items:
@@ -962,6 +973,15 @@ components:
           type: number
         interestDollars:
           type: number
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        scenarios:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
     StateImportPayload:
       type: object
       properties:

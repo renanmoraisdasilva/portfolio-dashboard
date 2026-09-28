@@ -33,7 +33,12 @@ function get(path) {
 export default function () {
   const startedAt = Date.now();
 
-  get('/api/state');
+  // Mirrors what DashboardView.load() asks for on first paint. Phase 5 retired
+  // the GET /api/state blob, so the workflow walks the same granular calls the
+  // page does now.
+  get('/api/trades');
+  sleep(0.1);
+  get('/api/cash');
   sleep(0.1);
   get('/api/prices');
   sleep(0.1);

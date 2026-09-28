@@ -1,9 +1,17 @@
 import { Router } from 'express';
 import { all, get, run } from '../db';
-import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { getOrSetResponse, STATE_CACHE_KEY } from '../services/responseCache';
 
+/**
+ * Backup, restore and erase for `portfolio.db`.
+ *
+ * Phase 5 retired `GET /api/state`: the Vue views read `/trades`, `/cash` and
+ * `/interest/months`, so the aggregation duplicated endpoints that already
+ * existed and needed its own 10-second cache to hide the cost. What is left
+ * cannot be expressed granularly — an export spans seven tables and an import
+ * replaces them inside one transaction — so it keeps its `/api/state/*` paths
+ * rather than pretending to be per-resource endpoints.
+ */
 export const stateRouter = Router();
 
 const CASH_SUM_SQL = `
@@ -13,32 +21,6 @@ const CASH_SUM_SQL = `
   FROM cash
 `;
 
-stateRouter.get('/', async (req: Request, res: Response) => {
-  try {
-    const state = await getOrSetResponse(STATE_CACHE_KEY, 10_000, async () => {
-      const trades = await all('SELECT * FROM trades ORDER BY time ASC');
-      const interestBRLMonths = await all('SELECT month, amount FROM interest WHERE currency = ? ORDER BY month DESC', ['BRL']);
-      const interestUSDMonths = await all('SELECT month, amount FROM interest WHERE currency = ? ORDER BY month DESC', ['USD']);
-      const cash = await get(CASH_SUM_SQL);
-      const brlInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['BRL']);
-      const usdInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['USD']);
-
-      return {
-        trades,
-        interestReaisMonths: interestBRLMonths,
-        interestDollarsMonths: interestUSDMonths,
-        cashReais: cash?.cashReais ?? 0,
-        cashDollars: cash?.cashDollars ?? 0,
-        interestReais: brlInterest?.total ?? 0,
-        interestDollars: usdInterest?.total ?? 0,
-      };
-    });
-    res.json(state);
-  } catch (err) {
-    console.error('Error fetching state:', err);
-    res.status(500).json({ error: 'Failed to fetch state' });
-  }
-});
 
 stateRouter.get('/export', async (req, res) => {
   try {

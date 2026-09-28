@@ -949,8 +949,17 @@ export const useDashboardStore = defineStore(
       eraseOpen.value = false;
     }
 
+    /**
+     * Downloads a backup.
+     *
+     * Prefers the server export — it spans cash entries, alerts and scenarios
+     * as well as what is on screen — and falls back to assembling the blob from
+     * loaded state, which is all the page can offer if the request fails.
+     */
     async function exportData(): Promise<void> {
-      const data = {
+      const { data, error } = await api.GET('/state/export');
+      if (error && !data) console.warn('Server export failed, falling back to a local snapshot', error);
+      const payload = data ?? {
         trades: trades.value,
         history: history.value,
         cashReais: cashReais.value,
@@ -959,7 +968,8 @@ export const useDashboardStore = defineStore(
         interestDollars: interestDollars.value,
         interestReaisMonths: interestReaisMonths.value,
       };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1074,19 +1084,34 @@ export const useDashboardStore = defineStore(
       }
     }
 
-    /** Server snapshot: trades, cash, interest. Financial data never lives locally. */
+    /**
+     * Trades, cash and interest, read from the granular endpoints.
+     *
+     * Phase 5 retired the `GET /api/state` aggregation: `/trades` carries the
+     * ledger, `/cash` already sums both balances *and* both interest totals,
+     * and the two `/interest/months` calls carry the month lists. Four small
+     * queries instead of one cached blob, and no endpoint that duplicates what
+     * the routes already say.
+     */
     async function reloadState(): Promise<void> {
-      const { data } = await api.GET('/state');
-      if (!data) return;
-      trades.value = (data.trades ?? [])
+      const [tradesRes, cashRes, brlMonthsRes, usdMonthsRes] = await Promise.all([
+        api.GET('/trades'),
+        api.GET('/cash'),
+        api.GET('/interest/months', { params: { query: { currency: 'BRL' } } }),
+        api.GET('/interest/months', { params: { query: { currency: 'USD' } } }),
+      ]);
+
+      trades.value = (tradesRes.data ?? [])
         .filter((t) => Boolean(t.symbol) && typeof t.qty === 'number')
         .map(normalizeTrade);
-      cashReais.value = Number(data.cashReais) || 0;
-      cashDollars.value = Number(data.cashDollars) || 0;
-      interestReais.value = Number(data.interestReais) || 0;
-      interestDollars.value = Number(data.interestDollars) || 0;
-      interestReaisMonths.value = (data.interestReaisMonths ?? []) as InterestMonth[];
-      interestDollarsMonths.value = (data.interestDollarsMonths ?? []) as InterestMonth[];
+
+      const cash = cashRes.data;
+      cashReais.value = Number(cash?.cashReais) || 0;
+      cashDollars.value = Number(cash?.cashDollars) || 0;
+      interestReais.value = Number(cash?.interestReais) || 0;
+      interestDollars.value = Number(cash?.interestDollars) || 0;
+      interestReaisMonths.value = (brlMonthsRes.data ?? []) as InterestMonth[];
+      interestDollarsMonths.value = (usdMonthsRes.data ?? []) as InterestMonth[];
     }
 
     async function loadHistorySeries(): Promise<void> {

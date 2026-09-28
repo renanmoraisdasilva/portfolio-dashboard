@@ -56,7 +56,8 @@ run_endpoint() {
 
 run_endpoint prices /api/prices
 run_endpoint analytics /api/analytics
-run_endpoint state /api/state
+run_endpoint trades /api/trades
+run_endpoint cash /api/cash
 run_endpoint history-ohlc /api/history/ohlc
 
 printf 'Benchmark summary saved to %s\n' "$SUMMARY_FILE"

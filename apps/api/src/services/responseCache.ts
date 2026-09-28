@@ -4,7 +4,6 @@ import { cacheHitsTotal, cacheMissesTotal } from '../metrics';
 const cache = new LRUCache<string, object>({ max: 10 });
 const inFlight = new Map<string, Promise<unknown>>();
 
-export const STATE_CACHE_KEY = 'state';
 export const ANALYTICS_CACHE_KEY = 'analytics';
 
 export async function getOrSetResponse<T>(

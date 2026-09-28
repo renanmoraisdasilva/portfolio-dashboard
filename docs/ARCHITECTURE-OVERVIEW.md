@@ -182,7 +182,6 @@ endpoints using the open-source `lru-cache` package:
 
 | Endpoint | TTL | Purpose |
 |---|---:|---|
-| `/api/state` | 10 seconds | Avoids repeating the SQLite reads needed for the compact dashboard state payload |
 | `/api/analytics` | 30 seconds | Avoids recalculating analytics inputs and derived fields for every request |
 
 These caches are lazy: an expired entry is regenerated only when the endpoint
@@ -271,7 +270,7 @@ The current system favors freshness and simplicity over horizontal scalability. 
 
 Record a baseline for:
 
-- Requests per second and p95 latency for `/api/health`, `/api/prices`, `/api/state`, and `/api/analytics`
+- Requests per second and p95 latency for `/api/health`, `/api/prices`, `/api/cash`, and `/api/analytics`
 - Price ticks written per refresh and expected `price_ticks` growth
 - Worker job duration and database write volume
 - Cache hit rate for `price_cache` and `asset_chart_cache`
