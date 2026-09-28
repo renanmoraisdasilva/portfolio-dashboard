@@ -41,3 +41,8 @@ apps/api/data/*.db.bak
 *.tar
 backups/
 benchmarks/
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/

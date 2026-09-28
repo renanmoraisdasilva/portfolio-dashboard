@@ -26,6 +26,7 @@ npm run api:types      # regenerate packages/shared/src/generated/api.ts from op
 npm start              # run compiled apps/api/dist/web.js
 npm test               # Vitest suite across apps/api, apps/web, packages/shared and static/js
 npm run test:watch     # the same, in watch mode
+npm run test:e2e       # Playwright smoke tests (needs a build first; see e2e/README)
 npm run test:coverage  # coverage report; thresholds: 80% on all metrics
 npm run check          # build + test in one command (what CI runs)
 npm run db:generate    # generate Drizzle migration from schema.ts changes

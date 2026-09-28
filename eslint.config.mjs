@@ -97,16 +97,29 @@ export default tseslint.config(
     },
   },
 
-  // Config files that run in Node as CommonJS.
+  // Config files and Node-run scripts: CommonJS by extension, ESM by `.mjs`.
   {
-    files: ['**/*.cjs', 'eslint.config.js'],
+    files: ['**/*.cjs', '**/*.mjs'],
     languageOptions: {
       sourceType: 'commonjs',
-      globals: { module: 'writable', require: 'readonly', __dirname: 'readonly', process: 'readonly' },
+      globals: {
+        module: 'writable',
+        require: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+      },
     },
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },
+  },
+  {
+    files: ['**/*.mjs'],
+    languageOptions: { sourceType: 'module' },
   },
 
   // The k6 script runs in k6's own runtime, not Node's and not a browser's.

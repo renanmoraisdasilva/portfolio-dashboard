@@ -14,26 +14,91 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Typecheck, test, build
+  lint:
+    name: Lint and format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - run: npm ci
+      # Phase 7: a PR cannot merge with an unused import or a stray semicolon.
+      - run: npm run lint
+      - run: npm run format:check
 
-      - name: Install dependencies
-        run: npm ci
+  build:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
 
-      - name: Typecheck
-        run: npm run typecheck
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # After a build, so the seam test can assert against apps/web/dist.
+      - run: npm run build
+      - run: npm test
 
-      - name: Build
-        run: npm run build
+  e2e:
+    name: Browser smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # The suite drives the real bundle against a temporary database seeded
+      # from the fixture; no worker, so no network calls.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
-      # After the build, so the seam test can assert against apps/web/dist.
-      - name: Test
-        run: npm test
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    # Gated on the gates above: a red image build is a symptom, not the bug.
+    needs: [lint, build, unit, e2e]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: docker build -f apps/api/Dockerfile -t portfolio-dashboard:ci .
+      # The container has to serve the SPA and answer the API, not just build.
+      - name: Smoke the built image
+        run: |
+          docker run -d --name pd -p 3300:3000 portfolio-dashboard:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3300/api/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3300/api/health
+          curl -fsS -o /dev/null -w 'dashboard %{http_code}\n' http://127.0.0.1:3300/
+          curl -fsS -o /dev/null -w 'valuation %{http_code}\n' http://127.0.0.1:3300/api/portfolio/valuation
+          docker rm -f pd

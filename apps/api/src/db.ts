@@ -6,7 +6,12 @@ import path from 'path';
 import fs from 'fs';
 import { createHash } from 'node:crypto';
 
-const DATA_DIR = path.resolve(__dirname, '..', 'data');
+// The data directory is overridable so a test run cannot touch the real
+// database. The e2e suite points it at a temporary directory and seeds the
+// fixture there; the container and every normal `npm run dev` leave it unset.
+const DATA_DIR = process.env.PORTFOLIO_DATA_DIR
+  ? path.resolve(process.env.PORTFOLIO_DATA_DIR)
+  : path.resolve(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'drizzle', 'migrations');
