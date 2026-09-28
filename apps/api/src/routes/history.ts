@@ -5,7 +5,6 @@ import { recomputeHistoryAt } from '../services/historyManager';
 
 export const historyRouter = Router();
 
-// Returns the "since" Unix-ms timestamp for a given range name, relative to `now`.
 export function sinceForRange(range: string, now: number): number {
   if (range === 'day')     return now - 24 * 60 * 60 * 1000;
   if (range === 'week')    return now - 7 * 24 * 60 * 60 * 1000;
@@ -25,21 +24,15 @@ export const BUCKET_MS: Record<string, number> = {
   year:      7 * 24 * 60 * 60 * 1000, // one point per week   → up to 52 points
 };
 
-/**
- * Reduce an ASC-sorted array of history rows to at most one row per time bucket.
- * The last (most recent) row within each bucket is kept.
- */
 export function bucketRows(rows: any[], bucketMs: number): any[] {
   const map = new Map<number, any>();
   for (const row of rows) {
     const bucket = Math.floor((row.ts as number) / bucketMs);
-    map.set(bucket, row); // later rows overwrite earlier ones in the same bucket
+    map.set(bucket, row);
   }
   return Array.from(map.values());
 }
 
-// GET /api/history
-// Supports optional query param `range` = 'day' | 'week' | 'month' | '6months' | 'year' | 'all'
 historyRouter.get('/', async (req: Request, res: Response) => {
   try {
     const range = (req.query.range as string) || 'all';
@@ -65,9 +58,6 @@ historyRouter.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/history/fill-gaps
-// Recomputes and inserts history points for any gap in [from, to] at the given interval.
-// `from` and `to` are optional Unix ms timestamps — defaults to earliest trade → now.
 // Requires price_ticks data (run npm run migrate:backfill-prices first for historical ranges).
 historyRouter.post('/fill-gaps', async (req: Request, res: Response) => {
   try {
@@ -125,7 +115,6 @@ historyRouter.post('/fill-gaps', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/history/point
 historyRouter.post('/point', async (req: Request, res: Response) => {
   try {
     const { t, ts, v, i, p, manual, note } = req.body;
@@ -141,11 +130,7 @@ historyRouter.post('/point', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/history/now removed — manual insert via API is disabled; history points are inserted by server scheduler only.
 
-// GET /api/history/ohlc?range=...&metric=value|pnl
-// Computes OHLC candlestick data from portfolio_snapshots for the Portfolio Value chart.
-// metric=pnl uses the unrealized P/L column (p) instead of portfolio value (v).
 historyRouter.get('/ohlc', async (req: Request, res: Response) => {
   try {
     const range = (req.query.range as string) || '6months';
@@ -171,7 +156,6 @@ historyRouter.get('/ohlc', async (req: Request, res: Response) => {
 
     if (rows.length === 0) return res.json([]);
 
-    // Group into OHLC buckets
     const buckets = new Map<number, { open: number; high: number; low: number; close: number; ts: number }>();
     for (const row of rows) {
       const val: number | null = metric === 'pnl' ? row.p : row.v;
@@ -189,7 +173,6 @@ historyRouter.get('/ohlc', async (req: Request, res: Response) => {
 
     const result = Array.from(buckets.values()).sort((a, b) => a.ts - b.ts);
 
-    // Chain candles: each open = previous close so there are no gaps between candles
     for (let i = 1; i < result.length; i++) {
       const prev = result[i - 1];
       result[i].open = prev.close;
@@ -204,7 +187,6 @@ historyRouter.get('/ohlc', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/history/:id
 historyRouter.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
@@ -216,7 +198,6 @@ historyRouter.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/history -> clear all history points
 historyRouter.delete('/', async (req: Request, res: Response) => {
   try {
     await run('DELETE FROM portfolio_snapshots');

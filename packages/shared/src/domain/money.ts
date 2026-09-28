@@ -12,7 +12,6 @@
 
 export type Currency = 'BRL' | 'USD';
 
-/** The subset of a symbol registry entry that the money rules care about. */
 export interface SymbolMeta {
   readonly type?: string;
   readonly denominatedInBRL?: boolean;
@@ -20,11 +19,7 @@ export interface SymbolMeta {
 
 export type SymbolMap = Record<string, SymbolMeta | undefined>;
 
-/**
- * Symbol-dependent money rules, already bound to a registry.
- */
 export interface SymbolClassifier {
-  /** True when the symbol's price is natively denominated in BRL (BOVA11, IVVB11). */
   isBRLAsset(symbol: string): boolean;
   /** BRL-denominated and not a bond: prices must be multiplied by BRLUSD to reach USD. */
   isBRLNonBond(symbol: string): boolean;
@@ -44,17 +39,14 @@ export function createSymbolClassifier(symbols: SymbolMap): SymbolClassifier {
   };
 }
 
-/** BRL amount → USD amount at the given rate (1 BRL = rate USD). */
 export function brlToUSD(amount: number, brlUsdRate: number): number {
   return amount * brlUsdRate;
 }
 
-/** USD amount → BRL amount at the given rate (1 BRL = rate USD). */
 export function usdToBRL(amount: number, brlUsdRate: number): number {
   return amount / brlUsdRate;
 }
 
-/** Formats a value as currency: `R$ 1.234,56` for BRL, `$1,234.56` for USD. Nullish input formats as 0. */
 export function formatMoney(val: number | string | null | undefined, currency: Currency): string {
   const value = typeof val === 'number' ? val : Number(val) || 0;
   if (currency === 'BRL') {
@@ -63,7 +55,6 @@ export function formatMoney(val: number | string | null | undefined, currency: C
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
-/** Parses a user-entered amount back to a number for the currency it is written in. */
 export function parseMoney(str: number | string | null | undefined, currency: Currency): number {
   if (!str && str !== 0) return 0;
   if (typeof str === 'number') return str;

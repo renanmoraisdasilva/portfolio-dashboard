@@ -32,13 +32,11 @@
   <div class="page-actions">
     <button class="btn" id="resetBtn">Reset to Real Values</button>
 
-    <!-- Scenario modals trigger -->
     <button class="btn" id="openScenariosBtn">Open Scenario</button>
     <button class="btn" id="openSaveModalBtn">Save Scenario</button>
   </div>
 </header>
 
-  <!-- Metric cards copied from dashboard (same logic) -->
   <div class="metrics-grid">
     <div class="metric-card">
       <div class="metric-label">Current Value</div>
@@ -72,7 +70,6 @@
       <div class="card">
         <div class="card-header"><div style="font-weight:600">What-If Portfolio Simulator</div></div>
         <div class="asset-rows" id="assetsList">
-          <!-- rows injected -->
         </div>
 
       </div>
@@ -120,7 +117,7 @@
 
           <div>
             <label class="small">Asset</label>
-            <select id="simAsset" class="chip" style="width:100%"><!-- populated dynamically from /api/config/symbols --></select>
+            <select id="simAsset" class="chip" style="width:100%"></select>
           </div>
 
           <div>
@@ -191,7 +188,6 @@
 
 </div>
 
-<!-- Save Scenario Modal -->
 <div id="saveModal" class="modal" style="display:none">
   <div class="modal-content">
     <h2>Save Scenario</h2>
@@ -209,7 +205,6 @@
   </div>
 </div>
 
-<!-- Open Scenario Modal -->
 <div id="openModal" class="modal" style="display:none">
   <div class="modal-content">
     <h2>Open Scenario</h2>

@@ -6,14 +6,12 @@ import { SYMBOLS } from '../config/symbols';
 
 export const tradesRouter = Router();
 
-// Helper to get default currency for an asset
 function getAssetCurrency(symbol: string): 'USD' | 'BRL' {
   const asset = SYMBOLS[symbol];
-  if (!asset) return 'USD'; // default to USD for unknown symbols
+  if (!asset) return 'USD';
   return asset.denominatedInBRL ? 'BRL' : 'USD';
 }
 
-// Validate trade request parameters
 function validateTradeRequest(symbol: string, side: string, qty: number, price: number | null, cashSource?: string): string | null {
   if (!symbol || !side || !qty) {
     return 'Missing required fields';
@@ -28,10 +26,9 @@ function validateTradeRequest(symbol: string, side: string, qty: number, price: 
     return `Asset ${symbol} uses ${assetCurrency}, but ${cashSource} selected as cash source`;
   }
   
-  return null; // validation passed
+  return null;
 }
 
-// Create auto cash entry for a trade
 async function createAutoCashEntry(symbol: string, side: string, qty: number, price: number | null, time: string): Promise<any> {
   const assetCurrency = getAssetCurrency(symbol);
   const amount = side === 'buy' ? -(qty * (price || 0)) : (qty * (price || 0));
@@ -46,7 +43,6 @@ async function createAutoCashEntry(symbol: string, side: string, qty: number, pr
   return get('SELECT * FROM cash WHERE id = ?', [cashEntryId]);
 }
 
-// GET /api/trades
 tradesRouter.get('/', async (req: Request, res: Response) => {
   try {
     const rows = await all('SELECT * FROM trades ORDER BY time ASC');
@@ -57,12 +53,10 @@ tradesRouter.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/trades
 tradesRouter.post('/', async (req, res) => {
   try {
     const { symbol, side, qty, price, time, cashSource } = req.body;
     
-    // Validate request
     const validationError = validateTradeRequest(symbol, side, qty, price, cashSource);
     if (validationError) {
       const status = validationError.includes('currency') ? 409 : 400;
@@ -72,19 +66,16 @@ tradesRouter.post('/', async (req, res) => {
     const id = randomUUID();
     const t = time || new Date().toISOString();
     
-    // Insert trade
     await run(
       'INSERT INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)',
       [id, symbol, side, qty, price ?? null, t]
     );
     const row = await get('SELECT * FROM trades WHERE id = ?', [id]);
     
-    // Create auto cash entry
     const cashEntry = await createAutoCashEntry(symbol, side, qty, price, t);
     
     res.status(201).json({ trade: row, cashEntry });
     
-    // Snapshot portfolio value immediately after the trade is recorded
     computeAndInsertHistoryPoint({ note: 'post-trade' }).catch(err =>
       console.error('History snapshot after trade insert failed', err)
     );
@@ -94,13 +85,11 @@ tradesRouter.post('/', async (req, res) => {
   }
 });
 
-// DELETE /api/trades/:id
 tradesRouter.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;
     await run('DELETE FROM trades WHERE id = ?', [id]);
     res.status(204).send();
-    // Re-snapshot after removal so history reflects the updated portfolio
     computeAndInsertHistoryPoint({ note: 'post-trade-delete' }).catch(err =>
       console.error('History snapshot after trade delete failed', err)
     );

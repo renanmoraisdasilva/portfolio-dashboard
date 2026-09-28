@@ -5,7 +5,6 @@
    override anything below.
    ============================================================ */
 
-/* --- Page background and typography --- */
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1420 100%);
@@ -18,12 +17,8 @@ body {
 
 h1, h2 { margin-top: 0; }
 
-/* --- Single content column ---
-   Every page wraps nav + header + content in .shell, so they all share
-   one left edge and one max-width however wide the viewport gets. */
 .shell { max-width: 1400px; margin: 0 auto; }
 
-/* --- Primary navigation --- */
 .app-nav {
   display: flex;
   align-items: center;
@@ -54,7 +49,6 @@ h1, h2 { margin-top: 0; }
   box-shadow: 0 0 14px var(--glow);
 }
 
-/* --- Page header --- */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -82,7 +76,6 @@ h1, h2 { margin-top: 0; }
 .page-subtitle { font-size: 0.82rem; color: var(--text-muted); margin-top: 3px; }
 .page-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-/* --- In-page view tabs (dashboard: overview / asset charts) --- */
 .view-tabs { display: flex; gap: 8px; max-width: 100%; margin-bottom: 20px; }
 .view-tab {
   padding: 8px 14px;
@@ -103,10 +96,8 @@ h1, h2 { margin-top: 0; }
   color: #fff;
 }
 
-/* --- Responsive --- */
 @media (max-width: 900px) {
   body { padding: 16px; }
-  /* Nav and view tabs scroll sideways instead of overflowing the page */
   .app-nav, .view-tabs {
     overflow-x: auto;
     flex-wrap: nowrap;

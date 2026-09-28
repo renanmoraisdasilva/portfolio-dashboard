@@ -1,6 +1,3 @@
-/* ============================================================
-   dashboard.css — Portfolio Dashboard page styles (index.html)
-   ============================================================ */
 
 /* Page shell, primary navigation and page header live in layout.css. */
 
@@ -178,20 +175,16 @@
   }
 }
 
-/* Compact segmented control for allocation view */
 .alloc-seg { display:inline-flex; border-radius:8px; background: var(--bg-tertiary); border:1px solid var(--border); overflow:hidden; align-items:center }
 .alloc-seg-btn { padding:4px 8px; font-size:0.78rem; color:var(--text-secondary); background:transparent; border:none; cursor:pointer; outline:none; line-height:1 }
 .alloc-seg-btn.active { background: linear-gradient(135deg,var(--accent-primary),var(--accent-secondary)); color:var(--text-primary); box-shadow:0 0 6px var(--glow) }
 @media (max-width:900px) { .alloc-seg-btn { padding:4px 6px; font-size:0.75rem } }
 
-/* Side control (buy/sell) */
 .side-seg .chip { padding:6px 8px; font-size:0.85rem }
 .side-seg .chip.active { box-shadow: 0 0 8px var(--glow); border-color: var(--accent-primary) }
 
-/* legacy external legend hidden */
 .allocation-legend { display:none }
 
-/* Allocation: left doughnut chart + right summary */
 .chart-container.alloc .alloc-wrap { display:flex; gap:16px; align-items:center; height:100%; }
 .chart-container.alloc .alloc-chart { flex:1; display:flex; align-items:center; justify-content:center; height:100%; position:relative }
 .chart-container.alloc .alloc-chart .currency-toggle.top { position:absolute; top:8px; right:8px; z-index:2; display:flex; gap:6px }
@@ -224,7 +217,6 @@
   margin-bottom: var(--card-gap);
 }
 
-/* Add New Trade layout */
 .trade-grid { display: grid; grid-template-columns: 1fr 260px; gap: 12px; align-items: start; }
 .trade-left { display:flex; flex-direction:column; gap:8px; padding-right:6px }
 .trade-left .row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap }
@@ -251,7 +243,6 @@
 .trade-right .btn { padding:10px 12px; }
 .trade-right .available-row { display:flex;justify-content:space-between;align-items:center;padding:6px 0 }
 
-/* Slider and stepper styles */
 .sim-slider { -webkit-appearance:none; appearance:none; width:100%; flex:1; height:12px; border-radius:999px; background:var(--bg-tertiary); outline:none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02); }
 .sim-slider:focus { box-shadow: 0 0 0 4px rgba(0,217,255,0.06); }
 .sim-slider::-webkit-slider-runnable-track { height:12px; border-radius:999px; background:transparent }
@@ -275,28 +266,23 @@
   .trade-left select#symbol { padding:6px 8px; font-size:0.95rem }
   .trade-left .row > div label { margin-bottom:4px; font-size:0.78rem }
 
-  /* Fields row: 2-column grid so Side+Asset and Qty+Price pair up */
   .trade-left .row:not(.inline-row) {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
-  /* Date (5th item) spans both columns */
   .trade-left .row:not(.inline-row) > div:nth-child(5) {
     grid-column: 1 / -1;
   }
-  /* col-side and col-asset: reset flex sizing since grid controls width */
   .trade-left .col-side,
   .trade-left .col-asset { flex: unset; min-width: unset; }
 
-  /* inline-row: stack into two full-width rows on mobile */
   .trade-left .row.inline-row { flex-direction:column; align-items:stretch; gap:10px; }
   .trade-total-wrap { justify-content:flex-start; align-items:flex-end; }
   .trade-total-wrap .total-row { flex:1; }
   .trade-total-wrap .total-row input { width:100%; text-align:left; }
 }
 
-/* Cash positions */
 .cash-columns { display: flex; gap: 16px; margin-top: 8px; margin-bottom: 12px; }
 .cash-column {
   flex: 1;
@@ -310,7 +296,6 @@
 .cash-column .subnote { font-size: 0.8rem; color: var(--text-muted); margin-bottom:8px }
 .cash-column .month-controls { margin-top: 8px }
 
-/* Cash entry form */
 .cash-entry-form { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; padding:14px; background:var(--bg-tertiary); border-radius:8px; border:1px solid var(--border); }
 .cash-entry-row { display:flex; gap:10px; align-items:flex-start; }
 .cash-entry-row:last-child { align-items:flex-end; }
@@ -353,7 +338,6 @@ tr:hover { background: #111827; }
 .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--accent-success); border: 1px solid var(--accent-success); }
 .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--accent-danger); border: 1px solid var(--accent-danger); }
 
-/* Dashboard modal */
 .modal {
   position: fixed;
   inset: 0;
@@ -374,11 +358,9 @@ tr:hover { background: #111827; }
 }
 .modal-content button { margin: 8px 10px 0 10px; min-width: 90px; }
 
-/* Asset charts grid */
 .asset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
 @media (max-width: 900px) { .asset-grid { grid-template-columns: 1fr; } }
 
-/* Alerts animation */
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -408,7 +390,6 @@ tr:hover { background: #111827; }
 }
 .alert-item-close:hover { background: rgba(239, 68, 68, 0.2); }
 
-/* Toast notifications */
 .toast {
   position: fixed;
   right: 24px;
@@ -424,22 +405,18 @@ tr:hover { background: #111827; }
 .toast.success { background: linear-gradient(90deg,#10b981,#06b6d4); }
 .toast.error { background: linear-gradient(90deg,#ef4444,#f97316); }
 
-/* Responsive */
 @media (max-width: 1200px) {
   .content-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
-  /* Remove minmax so columns can shrink freely on phones */
   .metrics-grid { grid-template-columns: repeat(3, 1fr); }
   .form-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 600px) {
-  /* 2-column grid looks better than 1 column for 5 metric cards */
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .form-grid { grid-template-columns: 1fr; }
   .metric-value { font-size: 1.5rem; }
-  /* Alerts card inner wrappers already inside a padded card — trim them */
   .alerts-inner-pad { padding: 0 !important; }
   .alerts-form-pad { padding: 10px !important; }
 }

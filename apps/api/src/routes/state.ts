@@ -13,7 +13,6 @@ const CASH_SUM_SQL = `
   FROM cash
 `;
 
-// GET /api/state -> returns aggregated state from DB
 stateRouter.get('/', async (req: Request, res: Response) => {
   try {
     const state = await getOrSetResponse(STATE_CACHE_KEY, 10_000, async () => {
@@ -41,7 +40,6 @@ stateRouter.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/export -> same as GET /api/state, kept for compatibility
 stateRouter.get('/export', async (req, res) => {
   try {
     const trades = await all('SELECT * FROM trades ORDER BY time ASC');
@@ -74,7 +72,6 @@ stateRouter.get('/export', async (req, res) => {
   }
 });
 
-// POST /api/import -> import JSON payload into DB
 stateRouter.post('/import', async (req, res) => {
   try {
     const payload = req.body;
@@ -83,29 +80,24 @@ stateRouter.post('/import', async (req, res) => {
       // Very simple validation and insertion (non-idempotent). For large imports prefer migration script.
       if (payload.trades && Array.isArray(payload.trades)) {
         for (const t of payload.trades) {
-          // Use INSERT OR REPLACE to avoid failing on existing primary keys during imports
           await run('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time, profit) VALUES (?, ?, ?, ?, ?, ?, ?)', [t.id ?? null, t.symbol, t.side, t.qty, t.price ?? null, t.time, t.profit ?? null]);
         }
       }
       if (payload.history && Array.isArray(payload.history)) {
         for (const h of payload.history) {
-          // Use INSERT OR REPLACE so repeated imports don't error on existing history IDs
           await run('INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [h.id ?? null, h.t ?? null, h.ts ?? null, h.v ?? 0, h.i ?? null, h.p ?? null, h.manual ? 1 : 0, h.note ?? null]);
         }
       }
-      // Interest months — BRL
       if (payload.interestReaisMonths && Array.isArray(payload.interestReaisMonths)) {
         for (const m of payload.interestReaisMonths) {
           await run('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'BRL', m.amount, Date.now()]);
         }
       }
-      // Interest months — USD
       if (payload.interestDollarsMonths && Array.isArray(payload.interestDollarsMonths)) {
         for (const m of payload.interestDollarsMonths) {
           await run('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'USD', m.amount, Date.now()]);
         }
       }
-      // Alerts
       if (payload.alerts && Array.isArray(payload.alerts)) {
         for (const a of payload.alerts) {
           await run(
@@ -114,7 +106,6 @@ stateRouter.post('/import', async (req, res) => {
           );
         }
       }
-      // Scenarios
       if (payload.scenarios && Array.isArray(payload.scenarios)) {
         for (const s of payload.scenarios) {
           await run(
@@ -123,7 +114,6 @@ stateRouter.post('/import', async (req, res) => {
           );
         }
       }
-      // Cash event log (preferred — preserves full history)
       if (payload.cashEntries && Array.isArray(payload.cashEntries)) {
         await run('DELETE FROM cash');
         for (const e of payload.cashEntries) {
@@ -133,7 +123,6 @@ stateRouter.post('/import', async (req, res) => {
           );
         }
       } else if (typeof payload.cashReais !== 'undefined' || typeof payload.cashDollars !== 'undefined') {
-        // Fallback: legacy export that only has totals
         const cashReais = Number(payload.cashReais) || 0;
         const cashDollars = Number(payload.cashDollars) || 0;
         await run('DELETE FROM cash');
@@ -159,7 +148,6 @@ stateRouter.post('/import', async (req, res) => {
   }
 });
 
-// DELETE /api/state -> erase all data (use with caution)
 stateRouter.delete('/', async (req, res) => {
   try {
     await run('DELETE FROM trades');

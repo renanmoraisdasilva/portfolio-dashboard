@@ -1,22 +1,9 @@
-/**
- * Pure helper functions for the cash backfill migration.
- * No DB calls here — fully testable with plain data.
- *
- * Strategy:
- *   For each sampled portfolio snapshot:
- *     1. Replay FIFO lots up to that timestamp
- *     2. Look up asset prices at that timestamp (from price_ticks)
- *     3. Derive:  cashUSD = snapshot.total_value − investment_market_value_USD
- *     4. Convert: cashBRL = cashUSD / brlusd_rate
- *   The series of running cashBRL balances is then turned into signed deltas
- *   suitable for INSERT into the append-only `cash` event log.
- */
 
 import { replayFIFOLots, isBRLNonBond } from './portfolioCalculator';
 
 export interface SnapshotPoint {
   ts: number;
-  v: number;               // total portfolio value in USD (from portfolio_snapshots.v)
+  v: number;
   brlusd_rate: number | null;
 }
 
@@ -29,7 +16,7 @@ export interface CashEstimate {
 
 export interface CashDelta {
   ts: number;
-  amount: number;          // signed BRL delta to insert into cash event log
+  amount: number;
 }
 
 export type BackfillTrade = {
@@ -37,12 +24,9 @@ export type BackfillTrade = {
   side: string;
   qty: number;
   price?: number | null;
-  time: string;            // ISO string
+  time: string;
 };
 
-/**
- * Evenly samples `n` elements from `arr`, always including the first and last.
- */
 export function sampleEvenly<T>(arr: T[], n: number): T[] {
   if (arr.length <= n) return arr;
   if (n <= 1) return [arr[0]];
@@ -55,17 +39,6 @@ export function sampleEvenly<T>(arr: T[], n: number): T[] {
   return result;
 }
 
-/**
- * Computes estimated cash balance (in BRL) at each sampled snapshot point.
- *
- * @param sampledSnapshots  Pre-sampled subset of portfolio_snapshots rows
- * @param allTrades         All trades sorted ASC by `time` (filtered internally per ts)
- * @param getPricesAt       Callback that returns the best known price map for a given ts.
- *                          Return an empty object when no price data is available — the
- *                          snapshot will be skipped.
- * @returns Array of { ts, cashBRL } in the same order as sampledSnapshots, skipping
- *          points where no prices were available.
- */
 export function computeCashEstimates(
   sampledSnapshots: SnapshotPoint[],
   allTrades: BackfillTrade[],
@@ -101,11 +74,6 @@ export function computeCashEstimates(
   return results;
 }
 
-/**
- * Converts a series of running cash balance estimates into signed deltas.
- * The first entry is the initial deposit; subsequent entries are the change
- * from the previous estimate.  Entries with |delta| < 0.001 are omitted.
- */
 export function estimatesToDeltas(estimates: CashEstimate[]): CashDelta[] {
   const deltas: CashDelta[] = [];
   let prev = 0;

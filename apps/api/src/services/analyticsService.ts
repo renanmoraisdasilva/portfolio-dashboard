@@ -1,19 +1,8 @@
-/**
- * analyticsService.ts — Analytics Lab batch computation service.
- *
- * Pure exported functions (no I/O, fully testable in isolation):
- *   medianInterval, computeReturnPct, computeMaxDrawdown,
- *   computeSharpeRatio, periodStartMs
- *
- * DB-level orchestration (not unit-tested, covered by integration):
- *   refreshAllPeriods, getLatestSnapshots
- */
 
 import { randomUUID } from 'node:crypto';
 import { run, get, all } from '../db';
 import { replayFIFOLots, isBRLNonBond } from './portfolioCalculator';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export const PERIODS = ['1W', '1M', '3M', '1Y', 'ALL'] as const;
 export type Period = (typeof PERIODS)[number];
@@ -30,20 +19,14 @@ export interface SnapshotPnLPoint {
 }
 
 export interface MaxDrawdown {
-  /** Magnitude of the maximum drawdown as a positive percentage, e.g. 12.7 means −12.7%. */
   pct: number;
-  /** Timestamp of the peak value (drawdown start). */
   startTs: number;
-  /** Timestamp of the trough value (drawdown end). */
   endTs: number;
-  /** Value at the peak point. */
   startV?: number;
-  /** Value at the trough point. */
   endV?: number;
 }
 
 export interface CashFlowEvent {
-  /** Unix-ms timestamp of the deposit or withdrawal. */
   ts: number;
   /** Signed amount in USD. Positive = deposit into portfolio; negative = withdrawal. */
   amountUSD: number;
@@ -106,14 +89,9 @@ export interface SharpeStats extends SharpeInputs {
   sharpe: number;
 }
 
-// ─── Pure helpers (exported for unit tests) ───────────────────────────────────
 
 const DAY_MS = 86_400_000;
 
-/**
- * Returns the median of the differences between consecutive sorted timestamps.
- * Returns 0 when fewer than 2 timestamps are provided.
- */
 export function medianInterval(sortedTs: number[]): number {
   if (sortedTs.length < 2) return 0;
   const diffs: number[] = [];
@@ -125,10 +103,6 @@ export function medianInterval(sortedTs: number[]): number {
   return diffs.length % 2 === 0 ? (diffs[mid - 1] + diffs[mid]) / 2 : diffs[mid];
 }
 
-/**
- * Returns (endValue − startValue) / startValue × 100.
- * Returns null when fewer than 2 points exist or the start value is zero.
- */
 export function computeReturnPct(points: SnapshotPoint[]): number | null {
   if (points.length < 2) return null;
   const start = points[0].v;
@@ -137,11 +111,6 @@ export function computeReturnPct(points: SnapshotPoint[]): number | null {
   return ((end - start) / start) * 100;
 }
 
-/**
- * Computes return from the change in snapshot P/L (p) relative to the initial
- * invested-net base (i). This tracks investment performance while avoiding
- * false gains from new capital added during the period.
- */
 export function computePnLReturnPct(
   points: SnapshotPnLPoint[],
   periodInterestUSD = 0,
@@ -155,18 +124,6 @@ export function computePnLReturnPct(
   return ((endP - startP + periodInterestUSD) / startI) * 100;
 }
 
-/**
- * Computes the Time-Weighted Return (TWR) for a series of portfolio snapshots,
- * stripping out the effect of external cash flows (deposits / withdrawals).
- *
- * For each consecutive snapshot pair the sub-period return is adjusted by
- * deducting any cash flows that occurred in that interval from the ending
- * value before computing the ratio.  This measures pure investment
- * performance regardless of when money was added or removed.
- *
- * Returns null when fewer than 2 points exist, the first value is zero, or
- * no valid sub-periods can be computed.
- */
 export function computeTWR(
   points: SnapshotPoint[],
   cashFlows: CashFlowEvent[] = [],
@@ -200,11 +157,6 @@ export function computeTWR(
   return (chainedFactor - 1) * 100;
 }
 
-/**
- * Returns a synthetic equity curve where external cash flows are removed from
- * each point's value. This keeps the curve comparable across time and lets
- * drawdown metrics reflect investment performance rather than deposits.
- */
 export function buildFlowAdjustedPoints(
   points: SnapshotPoint[],
   cashFlows: CashFlowEvent[] = [],
@@ -227,11 +179,6 @@ export function buildFlowAdjustedPoints(
   return adjusted;
 }
 
-/**
- * Compresses a time series to one point per UTC day, keeping the last point
- * of each day (daily close). This removes intraday wick-like noise from
- * drawdown calculations.
- */
 export function toDailyClosePoints(points: SnapshotPoint[]): SnapshotPoint[] {
   if (points.length === 0) return [];
 
@@ -244,11 +191,6 @@ export function toDailyClosePoints(points: SnapshotPoint[]): SnapshotPoint[] {
   return Array.from(closesByDay.values());
 }
 
-/**
- * Daily-close series for snapshot P/L values (p), used for drawdown so
- * portfolio value totals (which include capital base changes) do not distort
- * risk measurements.
- */
 export function toDailyClosePnLPoints(points: SnapshotPnLPoint[]): SnapshotPoint[] {
   if (points.length === 0) return [];
 
@@ -261,9 +203,6 @@ export function toDailyClosePnLPoints(points: SnapshotPnLPoint[]): SnapshotPoint
   return Array.from(closesByDay.values());
 }
 
-/**
- * Keeps the last SnapshotPnLPoint per UTC day.
- */
 export function toDailyClosePnLInputs(points: SnapshotPnLPoint[]): SnapshotPnLPoint[] {
   if (points.length === 0) return [];
 
@@ -276,12 +215,6 @@ export function toDailyClosePnLInputs(points: SnapshotPnLPoint[]): SnapshotPnLPo
   return Array.from(closesByDay.values());
 }
 
-/**
- * Builds a cumulative return index from P/L returns where each sub-period
- * return is delta(P/L) / previous invested base.
- *
- * Index starts at 1.0 and is chained multiplicatively.
- */
 export function buildPnLReturnIndexPoints(points: SnapshotPnLPoint[]): SnapshotPoint[] {
   if (points.length === 0) return [];
 
@@ -302,10 +235,6 @@ export function buildPnLReturnIndexPoints(points: SnapshotPnLPoint[]): SnapshotP
   return out;
 }
 
-/**
- * Walks all snapshot points and returns the largest peak-to-trough drawdown.
- * Returns null when fewer than 2 points are available or no drawdown exists.
- */
 export function computeMaxDrawdown(points: SnapshotPoint[]): MaxDrawdown | null {
   if (points.length < 2) return null;
 
@@ -336,18 +265,6 @@ export function computeMaxDrawdown(points: SnapshotPoint[]): MaxDrawdown | null 
   return { pct: maxDD, startTs: maxDDStart, endTs: maxDDEnd, startV, endV };
 }
 
-/**
- * Computes the annualised Sharpe ratio from a series of portfolio snapshots.
- *
- * - Uses TWR-adjusted returns between consecutive, normally-spaced pairs,
- *   stripping out any cash flows that fall within each interval.
- * - Skips pairs whose gap exceeds 2.5× the median interval (server-restart gaps).
- * - Returns null when fewer than 30 valid return observations are available.
- * - Annualises with √(periodsPerYear) derived from the median snapshot interval.
- *
- * @param annualRiskFreeRate  Annual risk-free rate, default 4.5% (Selic proxy).
- * @param cashFlows           Optional deposit/withdrawal events to strip out.
- */
 export function computeSharpeRatio(
   points: SnapshotPoint[],
   annualRiskFreeRate = 0.045,
@@ -367,7 +284,6 @@ export function computeSharpeRatio(
     if (gap <= 0 || gap > threshold) continue;
     if (points[i - 1].v <= 0) continue;
 
-    // Strip cash flows from this sub-period
     let cfSum = 0;
     for (const f of sortedFlows) {
       if (f.ts <= points[i - 1].ts) continue;
@@ -390,13 +306,6 @@ export function computeSharpeRatio(
   return ((mean - rfPerPeriod) / std) * Math.sqrt(periodsPerYear);
 }
 
-/**
- * Computes annualised Sharpe ratio from period-over-period P/L returns,
- * where each sub-period return is delta(P/L) divided by prior invested base.
- *
- * This keeps Sharpe aligned with computePnLReturnPct and avoids mixing a
- * value-based risk metric with a P/L-based return headline metric.
- */
 export function computePnLSharpeRatio(
   points: SnapshotPnLPoint[],
   annualRiskFreeRate = 0.045,
@@ -449,23 +358,17 @@ export function computePnLSharpeStats(
   };
 }
 
-/**
- * Returns the Unix-ms start timestamp for a given analytics period relative to `now`.
- * 'ALL' returns 0 (no lower bound).
- */
 export function periodStartMs(period: Period | string, now = Date.now()): number {
   switch (period) {
     case '1W':  return now - 7   * DAY_MS;
     case '1M':  return now - 30  * DAY_MS;
     case '3M':  return now - 90  * DAY_MS;
     case '1Y':  return now - 365 * DAY_MS;
-    default:    return 0; // ALL
+    default:    return 0;
   }
 }
 
-// ─── DB-level orchestration ───────────────────────────────────────────────────
 
-/** Returns the latest analytics snapshots for all 5 periods. */
 export async function getLatestSnapshots(): Promise<AnalyticsSnapshot[]> {
   const snapshots = await all<AnalyticsSnapshot>('SELECT * FROM analytics_snapshots ORDER BY period');
 
@@ -602,13 +505,6 @@ export async function getLatestSnapshots(): Promise<AnalyticsSnapshot[]> {
   return snapshots;
 }
 
-/**
- * Computes analytics for all periods using portfolio_snapshots + trades + price_cache,
- * then upserts one row per period into analytics_snapshots.
- *
- * Safe to call repeatedly — always overwrites with the latest computation.
- * No external API calls; uses only data already in the DB.
- */
 export async function refreshAllPeriods(): Promise<void> {
   const allSnapshots: any[] = await all(
     'SELECT ts, v, i, p, brlusd_rate FROM portfolio_snapshots WHERE v IS NOT NULL ORDER BY ts ASC',
@@ -618,7 +514,6 @@ export async function refreshAllPeriods(): Promise<void> {
   const interestRows: any[] = await all(
     'SELECT month, currency, amount, created_at FROM interest ORDER BY created_at ASC',
   );
-  // Load cash entries for historical cash lookup (ordered ASC for prefix-sum scan)
   const cashEntryRows: any[] = await all(
     `SELECT currency, amount, ts, description
        FROM cash
@@ -632,25 +527,11 @@ export async function refreshAllPeriods(): Promise<void> {
   const now = Date.now();
   const currentBrlUsd = prices['BRLUSD'] ?? 1;
 
-  /**
-   * Build cash flow events directly from the cash entry ledger.
-   *
-   * Using cash entries directly (rather than snapshot-pair deltas) ensures every
-   * deposit and withdrawal is captured regardless of its size, and avoids false
-   * positives caused by BRL/USD rate fluctuations on existing cash balances
-   * being misidentified as deposits.
-   *
-   * For BRL entries, the USD amount is computed using the BRLUSD rate from the
-   * first portfolio snapshot at or after the cash entry's timestamp, which
-   * matches how the deposit's effect appears in the next `v` snapshot value.
-   * Falls back to the current rate when no later snapshot exists.
-   */
   const allCashFlows: CashFlowEvent[] = [];
   {
     let snapIdx = 0;
     for (const row of cashEntryRows) {
       const rowTs = row.ts as number;
-      // Advance two-pointer to the first snapshot at or after this cash entry's ts
       while (snapIdx < allSnapshots.length && (allSnapshots[snapIdx].ts as number) < rowTs) {
         snapIdx++;
       }
@@ -700,7 +581,6 @@ export async function refreshAllPeriods(): Promise<void> {
     }
   }
 
-  // Replay all open FIFO lots for cost-vs-market and allocation
   const lots = replayFIFOLots(trades, prices);
 
   const costVsMarket: Record<string, CostVsMarket> = {};

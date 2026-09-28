@@ -1,16 +1,6 @@
-/**
- * Drizzle ORM schema for portfolio.db
- *
- * This file is the single source of truth for the portfolio database schema.
- * - Add a new column here, run `npm run db:generate`, commit the migration file.
- * - Never add ad-hoc ALTER TABLE calls to db.ts — create a migration instead.
- */
 
 import { sqliteTable, text, real, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
-// ---------------------------------------------------------------------------
-// trades — immutable append-only event log
-// ---------------------------------------------------------------------------
 export const trades = sqliteTable('trades', {
   id:     text('id').primaryKey(),
   symbol: text('symbol').notNull(),
@@ -22,9 +12,6 @@ export const trades = sqliteTable('trades', {
   index('idx_trades_time').on(t.time),
 ]);
 
-// ---------------------------------------------------------------------------
-// portfolio_snapshots — materialized view: portfolio value over time
-// ---------------------------------------------------------------------------
 export const portfolioSnapshots = sqliteTable('portfolio_snapshots', {
   id:         text('id').primaryKey(),
   t:          text('t'),
@@ -39,9 +26,6 @@ export const portfolioSnapshots = sqliteTable('portfolio_snapshots', {
   index('idx_portfolio_snapshots_ts').on(t.ts),
 ]);
 
-// ---------------------------------------------------------------------------
-// price_cache — write-through cache: latest price per symbol
-// ---------------------------------------------------------------------------
 export const priceCache = sqliteTable('price_cache', {
   symbol: text('symbol').primaryKey(),
   price:  real('price'),
@@ -49,9 +33,6 @@ export const priceCache = sqliteTable('price_cache', {
   meta:   text('meta'),
 });
 
-// ---------------------------------------------------------------------------
-// asset_chart_cache — serialised price series blob per (symbol, days, interval)
-// ---------------------------------------------------------------------------
 export const assetChartCache = sqliteTable('asset_chart_cache', {
   symbol:   text('symbol').notNull(),
   days:     integer('days').notNull(),
@@ -62,9 +43,6 @@ export const assetChartCache = sqliteTable('asset_chart_cache', {
   // Composite PK expressed as a unique index (Drizzle handles composite PKs via primaryKey() helper)
 ]);
 
-// ---------------------------------------------------------------------------
-// interest — BRL / USD monthly interest entries
-// ---------------------------------------------------------------------------
 export const interestMonths = sqliteTable('interest', {
   month:      text('month').notNull(),
   currency:   text('currency').notNull().default('BRL'),
@@ -72,9 +50,6 @@ export const interestMonths = sqliteTable('interest', {
   created_at: integer('created_at'),
 });
 
-// ---------------------------------------------------------------------------
-// cash — append-only ledger; balance = SUM(amount) by currency
-// ---------------------------------------------------------------------------
 export const cashEntries = sqliteTable('cash', {
   id:          text('id').primaryKey(),
   currency:    text('currency').notNull(),
@@ -85,9 +60,6 @@ export const cashEntries = sqliteTable('cash', {
   index('idx_cash_ts').on(t.ts),
 ]);
 
-// ---------------------------------------------------------------------------
-// price_ticks — immutable price event log (append-only)
-// ---------------------------------------------------------------------------
 export const priceTicks = sqliteTable('price_ticks', {
   id:     text('id').primaryKey(),
   symbol: text('symbol').notNull(),
@@ -99,9 +71,6 @@ export const priceTicks = sqliteTable('price_ticks', {
   index('idx_price_ticks_symbol_ts').on(t.symbol, t.ts),
 ]);
 
-// ---------------------------------------------------------------------------
-// scenarios — saved simulation snapshots
-// ---------------------------------------------------------------------------
 export const scenarios = sqliteTable('scenarios', {
   id:         text('id').primaryKey(),
   name:       text('name').notNull(),
@@ -110,9 +79,6 @@ export const scenarios = sqliteTable('scenarios', {
   updated_at: integer('updated_at'),
 });
 
-// ---------------------------------------------------------------------------
-// alerts — price alert rules + latest trigger state (denormalised)
-// ---------------------------------------------------------------------------
 export const alerts = sqliteTable('alerts', {
   id:               text('id').primaryKey(),
   symbol:           text('symbol').notNull(),
@@ -130,9 +96,6 @@ export const alerts = sqliteTable('alerts', {
   is_dismissed:     integer('is_dismissed').default(0),
 });
 
-// ---------------------------------------------------------------------------
-// analytics_snapshots — pre-computed analytics per period (batch job output)
-// ---------------------------------------------------------------------------
 export const analyticsSnapshots = sqliteTable('analytics_snapshots', {
   id:                  text('id').primaryKey(),
   computed_at:         integer('computed_at').notNull(),

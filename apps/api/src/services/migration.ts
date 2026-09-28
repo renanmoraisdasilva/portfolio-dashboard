@@ -5,8 +5,6 @@ import { db, run, init } from '../db';
 
 export async function migrateFromJson() {
   // __dirname is apps/api/{src,dist}/services, so the repository root is four
-  // levels up. fixtures/portfolio_data.json is the canonical location now that
-  // the old backup-data/ directory has been replaced with synthetic data.
   const candidates = [
     path.resolve(__dirname, '..', '..', '..', '..', 'fixtures', 'portfolio_data.json'),
     path.resolve(__dirname, '..', '..', '..', '..', 'portfolio_data.json'),
@@ -21,12 +19,9 @@ export async function migrateFromJson() {
 
   await init();
 
-  // Wrap in transaction
   await run('BEGIN TRANSACTION');
   try {
     // Trades
-    // trades.profit was dropped by drizzle migration 0003; the column no longer
-    // exists, so legacy profit values are intentionally discarded here.
     if (Array.isArray(json.trades)) {
       for (const t of json.trades) {
         const id = randomUUID();
@@ -35,7 +30,6 @@ export async function migrateFromJson() {
       }
     }
 
-    // History
     if (Array.isArray(json.history)) {
       for (const h of json.history) {
         const id = randomUUID();
@@ -59,9 +53,6 @@ export async function migrateFromJson() {
     }
 
     // Cash — append-only ledger; the balance is SUM(amount) per currency. There
-    // is no single-row cash_positions table (it was never part of the Drizzle
-    // schema), so import the per-entry rows when present and otherwise derive
-    // one row per currency from the exported totals.
     if (Array.isArray(json.cashEntries) && json.cashEntries.length > 0) {
       for (const e of json.cashEntries) {
         await run('INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',

@@ -3,7 +3,6 @@ import { SYMBOLS, getCryptoSymbols, getStockSymbols, getCurrencySymbols } from '
 
 export const configRouter = Router();
 
-// GET all available symbols
 configRouter.get('/symbols', (req, res) => {
   res.json({
     all: Object.keys(SYMBOLS),
@@ -14,7 +13,6 @@ configRouter.get('/symbols', (req, res) => {
   });
 });
 
-// GET a specific symbol's config
 configRouter.get('/symbols/:symbol', (req, res) => {
   const config = SYMBOLS[req.params.symbol.toUpperCase()];
   if (!config) {

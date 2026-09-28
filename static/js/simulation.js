@@ -44,7 +44,6 @@
   let realTrades = [];
   let realCash = { cashReais:0, cashDollars:0 };
 
-  // Simulation state for the current page session
   let simPrices = {};
   // percentage overrides stored per-asset (e.g., BTC: 10 means +10%)
   let simPricePcts = {};
@@ -52,13 +51,11 @@
   let simCashReais = 0;
   let simCashDollars = 0;
 
-  // Symbol metadata loaded from server (populated in loadRealState)
   let simKnownSymbols = {};
   function isBRLAsset(s) { return !!(simKnownSymbols.detailed && simKnownSymbols.detailed[s] && simKnownSymbols.detailed[s].denominatedInBRL); }
   function isBRLNonBond(s) { return isBRLAsset(s) && !(simKnownSymbols.detailed[s] && simKnownSymbols.detailed[s].type === 'bond'); }
   function isBRLBond(s) { return isBRLAsset(s) && !!(simKnownSymbols.detailed[s] && simKnownSymbols.detailed[s].type === 'bond'); }
 
-  // Pie labeling plugin: draw name + pct inside sufficiently large slices with a dark rounded background; list small slices in the center
   const pieLabelPlugin = {
     id: 'pieLabelPlugin',
     afterDraw(chart, args, options) {
@@ -69,11 +66,11 @@
       const total = dataset.data.reduce((a, b) => a + b, 0);
       ctx.save();
 
-      const threshold = (options && typeof options.threshold === 'number') ? options.threshold : 5; // percent threshold
+      const threshold = (options && typeof options.threshold === 'number') ? options.threshold : 5;
       const textColor = (options && options.textColor) || '#fff';
       const nameFont = (options && options.nameFont) || 'bold 12px system-ui, sans-serif';
       const pctFont = (options && options.pctFont) || '11px system-ui, sans-serif';
-      const pad = 10; // increased padding for readability
+      const pad = 10;
 
       function roundRect(x, y, w, h, r) {
         ctx.beginPath(); ctx.moveTo(x + r, y);
@@ -95,23 +92,20 @@
           const x = arc.x + Math.cos(midAngle) * r;
           const y = arc.y + Math.sin(midAngle) * r;
 
-          // Prepare texts
           ctx.font = nameFont;
           const nameW = ctx.measureText(label).width;
           ctx.font = pctFont;
           const pctText = `${pct.toFixed(1)}%`;
           const pctW = ctx.measureText(pctText).width;
           const rectW = Math.max(nameW, pctW) + pad * 2;
-          const rectH = 22 + pad; // slightly taller for extra padding
+          const rectH = 22 + pad;
 
-          // Draw dark rounded rect behind texts (less opaque)
           const rectX = x - rectW / 2;
           const rectY = y - rectH / 2;
           ctx.fillStyle = 'rgba(10,14,26,0.64)';
           roundRect(rectX, rectY, rectW, rectH, 6);
           ctx.fill();
 
-          // Draw texts
           ctx.fillStyle = textColor;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.font = nameFont; ctx.fillText(label, x, y - 6);
@@ -121,13 +115,12 @@
         }
       });
 
-      // Draw small items list in the center of the doughnut
       if (smallItems.length > 0) {
         const area = chart.chartArea;
         const cx = area.left + (area.right - area.left) / 2;
         const cy = area.top + (area.bottom - area.top) / 2;
         const lineH = 16;
-        const totalH = Math.min(smallItems.length, 8) * lineH; // limit visible rows
+        const totalH = Math.min(smallItems.length, 8) * lineH;
         let y = cy - totalH / 2 + lineH / 2;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
@@ -151,7 +144,6 @@
   };
   Chart.register(pieLabelPlugin);
 
-  // Enable compact mode for very small phones so cards shrink like on the dashboard
   function updateCompactMode() {
     const isCompact = window.innerWidth <= 430;
     document.body.classList.toggle('compact-sim', isCompact);
@@ -181,7 +173,6 @@
     }
   });
 
-  // DOM
   const assetsList = document.getElementById('assetsList');
   const simValueEl = document.getElementById('simValue');
   const simImpactEl = document.getElementById('simImpact');
@@ -189,14 +180,12 @@
   const simTradeHistory = document.getElementById('simTradeHistory');
   const simAllocLegend = document.getElementById('simAllocLegend');
 
-  // load data
   async function loadRealState(){
     try{
       const s = await (await fetch('/api/state')).json();
       realTrades = s.trades || [];
       realCash.cashReais = Number(s.cashReais)||0;
       realCash.cashDollars = Number(s.cashDollars)||0;
-      // init sim cash if none (round to 2 decimal places)
       if (isNaN(simCashReais) || simCashReais === 0) simCashReais = realCash.cashReais || 0;
       if (isNaN(simCashDollars) || simCashDollars === 0) simCashDollars = realCash.cashDollars || 0;
       simCashReais = +Number(simCashReais).toFixed(2);
@@ -210,7 +199,6 @@
       prices = {};
       for(const k of Object.keys(p)){ if(['ts','cacheTTLms'].includes(k)) continue; prices[k]=p[k]; }
       brlUsdRate = p.BRLUSD || brlUsdRate || 0;
-      // Initialize simulation prices from current server prices and in-memory overrides.
       simPrices = Object.assign({}, prices);
       for (const s of assets) {
         const base = prices[s] || 0;
@@ -244,7 +232,6 @@
     } catch(e) { console.warn('Failed to load symbols; using defaults', e); }
   }
 
-  // currency helpers: format for display and parse typed/formatted strings
   function formatMoney(val, currency){
     if (typeof val !== 'number') val = Number(val) || 0;
     if (currency === 'BRL') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -256,11 +243,9 @@
     const cleaned = String(str).trim().replace(/\s/g,'').replace(/[^0-9,.-]/g,'');
     if (cleaned === '') return 0;
     if (currency === 'BRL'){
-      // BRL: thousand '.' and decimal ','
       const normalized = cleaned.replace(/\./g,'').replace(/,/g,'.');
       return parseFloat(normalized) || 0;
     }
-    // USD: thousand ',', decimal '.'
     const normalized = cleaned.replace(/,/g,'');
     return parseFloat(normalized) || 0;
   }
@@ -284,7 +269,6 @@
   }
 
   function computePortfolioFromCombined(tradesCombined){
-    // iterate to compute realized and positions
     const lots = {};
     let realized = 0;
     for(const t of tradesCombined){
@@ -307,17 +291,14 @@
     const positions = {};
     for(const s of Object.keys(lots)) positions[s] = lots[s].reduce((a,b)=>a+b.qty,0);
 
-    // compute current market value using simPrices
     let totalValue = 0;
     for(const s of Object.keys(positions)){
       const current = simPrices[s] || prices[s] || 0;
       totalValue += isBRLNonBond(s) ? positions[s] * current * (brlUsdRate||1) : positions[s] * current;
     }
-    // include cash (convert BRL to USD value)
     totalValue += (simCashReais||0) * (brlUsdRate||1);
     totalValue += (simCashDollars||0);
 
-    // invested = cost basis of current lots + starting cash? For scenario we compute unrealized from lots cost basis
     let invested = 0;
     for(const s of Object.keys(lots)){
       for(const lot of lots[s]) invested += isBRLNonBond(s) ? lot.qty * lot.price * (brlUsdRate||1) : lot.qty * lot.price;
@@ -333,7 +314,6 @@
 
   function getAssetIcon(symbol) {
     if (assetIcons[symbol]) return assetIcons[symbol];
-    // Generic fallback for symbols without a custom icon
     const fs = symbol.length > 4 ? '7' : '9';
     return `<svg viewBox="0 0 48 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="20" rx="3" fill="#334155" /><text x="24" y="16" font-size="${fs}" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, Arial">${symbol}</text></svg>`;
   }
@@ -362,7 +342,6 @@
         <div style="justify-self:end" class="asset-current">Current: <span id="cur_${s}">${baseFmtSim}</span></div>`;
       assetsList.appendChild(row);
 
-      // wire events for slider and numeric input
       const slider = document.getElementById('slider_'+s);
       const priceInput = document.getElementById('price_input_'+s);
       slider.addEventListener('input', (e) => {
@@ -376,13 +355,11 @@
         const displayPrice = simBRLNB ? simPrices[s] : (simBRLB ? simPrices[s] / (brlUsdRate||1) : simPrices[s]);
         const displayCurr = (simBRLNB || simBRLB) ? 'BRL' : 'USD';
         priceInput.value = displayPrice ? formatMoney(displayPrice, displayCurr) : '';
-        // if this asset is currently selected in Plan Trade, update the sim Price input too
         if (document.getElementById('simAsset').value === s) {
           const spEl = document.getElementById('simPrice'); if(spEl) spEl.value = simPrices[s] ? formatMoney(simPrices[s], 'USD') : '';
           updateTotalFromQty();
         }
         document.getElementById('pct_'+s).textContent = (p>=0?'+':'') + p + '%';
-        // update slider fill
         setSliderBackground(slider);
         updateAll();
       });
@@ -408,16 +385,13 @@
         simPricePcts[s] = pctNew;
         document.getElementById('slider_'+s).value = pctNew;
         document.getElementById('pct_'+s).textContent = (pctNew>=0?'+':'') + pctNew + '%';
-        // if this asset is currently selected in Plan Trade, update the sim Price input too
         if (document.getElementById('simAsset').value === s) {
           const spEl = document.getElementById('simPrice'); if(spEl) spEl.value = simPrices[s] ? formatMoney(simPrices[s], 'USD') : '';
           updateTotalFromQty();
         }
-        // update slider fill
         setSliderBackground(slider);
         updateAll();
       });
-      // initialize slider fill
       setSliderBackground(slider);
       priceInput.addEventListener('change', (e) => {
         const v = Number(e.target.value) || 0;
@@ -431,7 +405,6 @@
       });
     }
 
-    // BRL row (BRL per USD input with icon + slider)
     const brlRow = document.createElement('div'); brlRow.className='asset-row';
     brlRow.innerHTML = `
       <div class="asset-icon">${assetIcons.BRL || ''}</div>
@@ -445,17 +418,13 @@
     `;
     assetsList.appendChild(brlRow);
 
-    // wire events for price inputs (including BRL rate)
     document.querySelectorAll('.asset-price').forEach(inp => {
       inp.addEventListener('change', (e)=>{
         const asset = inp.dataset.asset;
         if(asset === 'BRLUSD'){
-          // input is BRL per USD (R$ per $)
           const brlPerUsd = parseMoney(inp.value, 'BRL') || 0;
           if (brlPerUsd > 0) {
-            // store internal rate as USD per BRL
             brlUsdRate = 1 / brlPerUsd;
-            // compute pct relative to fetched base
             const baseBrPerUsd = prices['BRLUSD'] ? (1 / prices['BRLUSD']) : (brlUsdRate ? (1/brlUsdRate) : 0);
             const pctNew = baseBrPerUsd ? Math.round(((brlPerUsd - baseBrPerUsd) / baseBrPerUsd) * 100) : 0;
             simPricePcts['BRLUSD'] = pctNew;
@@ -480,7 +449,6 @@
       });
     });
 
-    // BRL slider wiring
     const brlSlider = document.getElementById('slider_BRLUSD');
     if(brlSlider){
       brlSlider.addEventListener('input', (e)=>{
@@ -518,11 +486,9 @@
     el.style.background = `linear-gradient(90deg, ${fillColor} ${pct}%, var(--bg-tertiary) ${pct}%)`;
   }
   function updateAll(){
-    // combine real trades + simTrades to compute scenario
     const combined = [...realTrades, ...simTrades];
     const st = computePortfolioFromCombined(combined);
 
-    // Update sim value and impact (if shown)
     if (simValueEl) simValueEl.textContent = '$' + st.totalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
     const totalImpact = st.unrealized + st.realized;
     if (simImpactEl) {
@@ -531,7 +497,6 @@
       simImpactEl.classList.toggle('negative', totalImpact < 0);
     }
 
-    // Update metric cards with USD and BRL lines
     const investedNet = Math.max(0, st.invested - st.realized);
     const unrealPct = st.invested > 0 ? (st.unrealized / st.invested) * 100 : 0;
     const brlInvested = brlUsdRate ? (investedNet / brlUsdRate) : null;
@@ -565,7 +530,6 @@
     const plPct = document.getElementById('sim_unrealizedPct');
     if (plPct) { plPct.textContent = `${unrealPct >= 0 ? '+' : ''}${unrealPct.toFixed(2)}%`; plPct.className = `metric-change ${st.unrealized >= 0 ? 'positive' : 'negative'}`; }
 
-    // Update Current Value change label (mirrors dashboard behavior)
     const valueChangeEl = document.getElementById('sim_valueChange');
     if (valueChangeEl) {
       if (Math.abs(st.unrealized) < 0.01) {
@@ -584,13 +548,11 @@
       rpElem.className = st.realized >= 0 ? 'metric-value positive' : 'metric-value negative';
     }
 
-    // keep the displayed simulated cash inputs in sync
     const simCashReaisEl = document.getElementById('simCashReais'); if (simCashReaisEl) simCashReaisEl.value = formatMoney(simCashReais, 'BRL');
     const simCashDollarsEl = document.getElementById('simCashDollars'); if (simCashDollarsEl) simCashDollarsEl.value = formatMoney(simCashDollars, 'USD');
     const realizedPctEl = document.getElementById('sim_realizedPLPct');
     if (realizedPctEl) realizedPctEl.textContent = `${st.realized >= 0 ? '+' : ''}${(st.realized / Math.max(1, st.invested) * 100).toFixed(2)}% from ${simTrades.filter(t => t.side === 'sell').length} sales`;
 
-    // Estimate real return (after inflation) similar to dashboard
     const combinedTrades = [...realTrades, ...simTrades];
     const firstTrade = combinedTrades.find(t => t.side === 'buy');
     const daysSinceFirst = firstTrade ? Math.max(1, (Date.now() - new Date(firstTrade.time).getTime()) / (1000*60*60*24)) : 1;
@@ -611,7 +573,6 @@
       rrPct.className = `metric-change ${realReturn >= 0 ? 'positive' : 'negative'}`;
     }
 
-    // positions table
     simPositionsTbody.innerHTML = '';
     const syms = Object.keys(st.positions);
     if(syms.length===0) simPositionsTbody.innerHTML = `<tr><td colspan="6" class="small">No open positions</td></tr>`;
@@ -666,7 +627,6 @@
       }
     }
 
-    // trade history
     simTradeHistory.innerHTML = '';
     if(simTrades.length===0) simTradeHistory.innerHTML = `<tr><td colspan="6" class="small">No simulated trades</td></tr>`;
     else{
@@ -684,7 +644,6 @@
       }
     }
 
-    // allocation chart
     const symbols = Object.keys(st.positions);
     const allocationValues = symbols.map(s => {
       const p = simPrices[s] || prices[s] || 0;
@@ -698,18 +657,16 @@
     if(simCashDollars>0){ labelsWithCash.push('Dollar'); valuesWithCash.push(simCashDollars); }
 
     const percentVals = valuesWithCash.map(v => totalVal>0? (v/totalVal)*100 : 0);
-    // use plain names as labels; display percentages and names on the chart via plugin
     simAllocChart.data.labels = labelsWithCash;
     simAllocChart.data.datasets[0].data = percentVals;
     simAllocChart.data.datasets[0].backgroundColor = labelsWithCash.map((_,i)=>palette[i%palette.length]);
     simAllocChart.update();
 
-    // Update right-side per-asset list (USD or BRL values; no percent)
     const listEl = document.getElementById('simAllocList');
     const currentCurrency = window.simAllocCurrency || localStorage.getItem('simAllocCurrency') || 'USD';
     if (listEl) {
       listEl.innerHTML = '';
-      const valuesUsd = valuesWithCash.map(v => v); // valuesWithCash already in USD-equivalent
+      const valuesUsd = valuesWithCash.map(v => v);
       for (let i = 0; i < labelsWithCash.length; i++) {
         const name = labelsWithCash[i];
         const valUsd = valuesUsd[i] || 0;
@@ -727,12 +684,10 @@
       const note = document.getElementById('simAllocNote'); if (note) note.textContent = `Values shown in ${currentCurrency}`;
     }
 
-    // external legend not used here
     if (simAllocLegend) { simAllocLegend.innerHTML = ''; simAllocLegend.style.display = 'none'; }
 
   }
 
-  // handlers
   document.getElementById('addSimTradeBtn').addEventListener('click', ()=>{
     const side = document.getElementById('simSide').value;
     const symbol = document.getElementById('simAsset').value;
@@ -746,7 +701,6 @@
     const priceUSD = isBRLNBSym ? priceToUse * (brlUsdRate||1) : priceToUse;
     const source = document.getElementById('simCashSource').value;
 
-    // If qty not provided, try to compute it from total in selected currency
     if (qty <= 0) {
       if (!isNaN(totalInput) && totalInput > 0) {
         if (!priceToUse || priceToUse <= 0) return alert('Price is required to compute quantity from total');
@@ -766,7 +720,6 @@
       }
     }
 
-    // Compute amounts in both currencies
     let usdAmount, brlAmount;
     if (isBRLNBSym) {
       brlAmount = priceToUse * qty;
@@ -786,7 +739,6 @@
         simCashReais = +(simCashReais - brlAmount).toFixed(2);
       }
     } else {
-      // sell proceeds: add to selected cash currency
       if(source === 'USD') { simCashDollars = +(simCashDollars + usdAmount).toFixed(2); }
       else {
         if (!brlUsdRate || brlUsdRate <= 0) return alert('BRL/USD rate unavailable to convert proceeds');
@@ -822,21 +774,18 @@
     updateAll();
   });
 
-  // Side toggle chips
   const sideBuy = document.getElementById('simSideBuy');
   const sideSell = document.getElementById('simSideSell');
   function setSide(side){ document.getElementById('simSide').value = side; sideBuy.classList.toggle('active', side==='buy'); sideSell.classList.toggle('active', side==='sell'); const hint = document.getElementById('simQtyHint'); }
   sideBuy.addEventListener('click', ()=> setSide('buy'));
   sideSell.addEventListener('click', ()=> setSide('sell'));
 
-  // Cash source chips
   const cashUSD = document.getElementById('simCashUSD');
   const cashBRL = document.getElementById('simCashBRL');
   function setCashSource(src){ document.getElementById('simCashSource').value = src; cashUSD.classList.toggle('active', src==='USD'); cashBRL.classList.toggle('active', src==='BRL'); const totalEl = document.getElementById('simTotal'); if(totalEl) totalEl.placeholder = src === 'USD' ? 'USD' : 'BRL'; if(typeof refreshPctComputed === 'function') refreshPctComputed(); }
   cashUSD.addEventListener('click', ()=> setCashSource('USD'));
   cashBRL.addEventListener('click', ()=> setCashSource('BRL'));
 
-  // ensure initial state reflects stored values
   setSide(document.getElementById('simSide').value || 'buy');
   setCashSource(document.getElementById('simCashSource').value || 'USD');
 
@@ -847,9 +796,7 @@
     simPrices = Object.assign({}, prices);
     simCashReais = realCash.cashReais;
     simCashDollars = realCash.cashDollars;
-    // reset inputs and sliders if they exist
     document.querySelectorAll('[id^="price_input_"]').forEach(inp=>{ const asset = inp.dataset.asset; const val = simPrices[asset] || prices[asset] || 0; if(isBRLNonBond(asset)) inp.value = val ? formatMoney(val,'BRL') : ''; else if(isBRLBond(asset)) inp.value = val ? formatMoney(val/(brlUsdRate||1),'BRL') : ''; else inp.value = val ? formatMoney(val,'USD') : ''; });
-    // update BRL input (display BRL per USD) and reset BRL slider/pct
     const baseBrPerUsd = prices['BRLUSD'] ? (1 / prices['BRLUSD']) : (brlUsdRate ? (1/brlUsdRate) : 0);
     const brlInp = document.getElementById('price_input_BRLUSD'); if(brlInp) { brlInp.value = baseBrPerUsd ? formatMoney(baseBrPerUsd,'BRL') : ''; }
     simPricePcts['BRLUSD'] = 0;
@@ -862,7 +809,6 @@
 
     document.getElementById('simCashReais').value = formatMoney(simCashReais, 'BRL');
     document.getElementById('simCashDollars').value = formatMoney(simCashDollars, 'USD');
-    // reset the plan-trade price & total
     const ssel = document.getElementById('simAsset').value; const spEl = document.getElementById('simPrice'); if(spEl) spEl.value = (simPrices[ssel] || prices[ssel]) ? formatMoney((simPrices[ssel] || prices[ssel]), 'USD') : '';
     const totalEl = document.getElementById('simTotal'); if(totalEl) totalEl.value = '';
     updateAll();
@@ -874,7 +820,6 @@
   document.getElementById('simCashReais').addEventListener('change', (e)=>{ simCashReais = +parseMoney(e.target.value,'BRL').toFixed(2); e.target.value = formatMoney(simCashReais, 'BRL'); updateAll(); if(typeof refreshPctComputed === 'function') refreshPctComputed(); });
   document.getElementById('simCashDollars').addEventListener('change', (e)=>{ simCashDollars = +parseMoney(e.target.value,'USD').toFixed(2); e.target.value = formatMoney(simCashDollars, 'USD'); updateAll(); if(typeof refreshPctComputed === 'function') refreshPctComputed(); });
 
-  // steppers for qty/price
   document.getElementById('qtyInc').addEventListener('click', ()=>{ const el=document.getElementById('simQty'); el.stepUp(1); el.dispatchEvent(new Event('change')); });
   document.getElementById('qtyDec').addEventListener('click', ()=>{ const el=document.getElementById('simQty'); el.stepDown(1); el.dispatchEvent(new Event('change')); });
   document.getElementById('priceInc').addEventListener('click', ()=>{ const el=document.getElementById('simPrice'); if(!el) return; const sym2=document.getElementById('simAsset').value; const isBRL2=isBRLAsset(sym2); const cur = parseMoney(el.value, isBRL2?'BRL':'USD') || 0; const next = +(cur + 1).toFixed(2); el.value = formatMoney(next, isBRL2?'BRL':'USD'); el.dispatchEvent(new Event('change')); });
@@ -883,7 +828,6 @@
   const simQtyEl = document.getElementById('simQty'); if(simQtyEl) simQtyEl.addEventListener('change', ()=>{ updateTotalFromQty(); });
   const simTotalEl = document.getElementById('simTotal'); if(simTotalEl) simTotalEl.addEventListener('change', ()=>{ const source = document.getElementById('simCashSource').value; const raw = simTotalEl.value; const parsed = parseMoney(raw, source === 'USD' ? 'USD' : 'BRL'); if(parsed && parsed>0) simTotalEl.value = source === 'USD' ? formatMoney(parsed,'USD') : formatMoney(parsed,'BRL'); updateQtyFromTotal(); });
 
-  // Quantity percent helpers (slider + max)
   function computeQtyFromPctFor(symbol, pct){
     const side = document.getElementById('simSide').value;
     const isBRLSym = isBRLAsset(symbol);
@@ -897,7 +841,6 @@
     } else {
       const source = document.getElementById('simCashSource').value;
       if (isBRLNonBond(symbol)) {
-        // price is in BRL; compute qty from BRL available cash
         const availBRL = source === 'USD' ? (simCashDollars||0) / (brlUsdRate||1) : (simCashReais||0);
         return +((availBRL * pct / 100) / price).toFixed(4);
       }
@@ -963,7 +906,6 @@
     const computed = computeQtyFromPctFor(sym, pct);
     const hint = document.getElementById('simQtyHint');
     
-    // Update Total input based on computed qty (in selected currency)
     const _sym = document.getElementById('simAsset').value;
     const isBRLSym2 = isBRLAsset(_sym);
     const price = parseMoney(document.getElementById('simPrice').value, isBRLSym2 ? 'BRL' : 'USD') || simPrices[_sym] || prices[_sym] || 0;
@@ -996,10 +938,8 @@
     const _max = document.getElementById('maxQtyBtn');
     if(_max) _max.addEventListener('click', ()=>{ _qtyPctSlider.value = 100; refreshPctComputed(); const sym=document.getElementById('simAsset').value; const computed=computeQtyFromPctFor(sym, 100); document.getElementById('simQty').value = computed; updateTotalFromQty(); });
   }
-  // update computed when asset or cash source changes
   document.getElementById('simAsset').addEventListener('change', ()=>{ refreshPctComputed(); const s = document.getElementById('simAsset').value; const rawP = simPrices[s] || prices[s] || 0; const displayP = isBRLBond(s) ? rawP / (brlUsdRate||1) : rawP; const spEl = document.getElementById('simPrice'); if(spEl) spEl.value = displayP ? displayP.toFixed(2) : ''; updateTotalFromQty(); });
 
-  // Scenario list/CRUD UI handlers (modal-driven)
   window.scenariosList = [];
   async function fetchScenarios() {
     try {
@@ -1008,7 +948,6 @@
       const list = await resp.json();
       window.scenariosList = list;
 
-      // populate overwrite select in Save modal
       const ow = document.getElementById('saveModalOverwrite');
       if (ow) {
         ow.innerHTML = '<option value="">(New scenario)</option>';
@@ -1017,7 +956,6 @@
         });
       }
 
-      // populate open modal table if it's open
       const tbody = document.getElementById('scenariosTableBody');
       if (tbody) {
         tbody.innerHTML = '';
@@ -1037,7 +975,6 @@
     }
   }
 
-  // Show save modal
   document.getElementById('openSaveModalBtn').addEventListener('click', ()=>{
     document.getElementById('saveModalName').value = '';
     document.getElementById('saveModalOverwrite').value = '';
@@ -1068,14 +1005,12 @@
     }
   });
 
-  // Open modal
   document.getElementById('openScenariosBtn').addEventListener('click', async ()=>{
     await fetchScenarios();
     document.getElementById('openModal').style.display = '';
   });
   document.getElementById('closeOpenModalBtn').addEventListener('click', ()=>{ document.getElementById('openModal').style.display = 'none'; });
 
-  // handle actions within open modal (load/delete)
   document.getElementById('scenariosTableBody').addEventListener('click', async (e)=>{
     const btn = e.target.closest('button'); if(!btn) return;
     const action = btn.getAttribute('data-action'); const id = btn.getAttribute('data-id');
@@ -1102,15 +1037,12 @@
   });
 
 
-  // initial render
   await loadRealState();
   renderAssetsControls();
   updateAll();
   if(typeof refreshPctComputed === 'function') refreshPctComputed();
-  // load saved scenarios to the dropdown
   await fetchScenarios();
 
-  // init allocation currency toggle
   window.simAllocCurrency = localStorage.getItem('simAllocCurrency') || 'USD';
   const btcBtn = document.getElementById('allocUsdBtn'); const brlBtn = document.getElementById('allocBrlBtn');
   function setAllocCurrency(c){ window.simAllocCurrency = c; localStorage.setItem('simAllocCurrency', c); if(btcBtn) btcBtn.classList.toggle('active', c === 'USD'); if(brlBtn) brlBtn.classList.toggle('active', c === 'BRL'); updateAll(); }
@@ -1118,6 +1050,5 @@
   if(brlBtn) brlBtn.addEventListener('click', ()=> setAllocCurrency('BRL'));
   setAllocCurrency(window.simAllocCurrency);
 
-  // set the plan-trade price field to the scenario price for the selected asset
   (function syncSimPriceToSelected(){ const s = document.getElementById('simAsset').value; const sp = simPrices[s] || prices[s] || ''; const spEl = document.getElementById('simPrice'); if(spEl) spEl.value = sp ? formatMoney(sp,'USD') : ''; updateTotalFromQty(); })();
 })();

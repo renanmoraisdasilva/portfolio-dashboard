@@ -17,7 +17,6 @@ const mockedDb = db as unknown as {
   all: jest.Mock;
 };
 
-// Helper: build a minimal Yahoo Finance history response
 function makeYahooHistoryResponse() {
   return {
     chart: {
@@ -37,10 +36,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   originalConsoleWarn = console.warn;
   console.warn = jest.fn();
-  // Default fetch stub for all tests: no external requests by default.
   global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 } as any);
-  // Reset module-level `running` flag between tests via force=true refresh
-  // Default db stubs: empty prices table, no alerts
   mockedDb.all.mockResolvedValue([]);
   mockedDb.run.mockResolvedValue(undefined);
   mockedDb.get.mockResolvedValue(undefined);
@@ -50,11 +46,10 @@ afterEach(() => {
   console.warn = originalConsoleWarn;
 });
 
-// ─── fetchAndCacheAssetHistory ────────────────────────────────────────────────
 
 describe('fetchAndCacheAssetHistory – regular stock symbol', () => {
   test('calls Yahoo Finance and returns price data', async () => {
-    mockedDb.get.mockResolvedValue(undefined); // no cache
+    mockedDb.get.mockResolvedValue(undefined);
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => makeYahooHistoryResponse(),

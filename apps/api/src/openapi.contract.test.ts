@@ -1,13 +1,3 @@
-/**
- * Contract test — every route Express actually mounts under /api must be
- * documented in apps/api/openapi.yaml, and every documented operation must
- * still be mounted.
- *
- * The spec is read by Swagger UI and is the source the Vue client will be
- * typed from (Phase 2), so a router that grows a method without a spec entry —
- * or a spec entry whose route was deleted — fails the suite instead of
- * drifting silently.
- */
 import express, { Express } from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -22,7 +12,6 @@ interface Layer {
 
 interface MountedRoute {
   method: string;
-  /** Normalized path: /api/trades/{id} */
   path: string;
 }
 
@@ -92,7 +81,6 @@ function mountedApiRoutes(app: Express): MountedRoute[] {
 }
 
 interface OperationMap {
-  /** normalized "/api/trades/{id}" -> Set of methods */
   paths: Map<string, Set<string>>;
 }
 

@@ -1,10 +1,3 @@
-/**
- * Unit tests for historyManager.recomputeHistoryAt — the event-sourced recomputation path.
- *
- * Tests the I/O orchestration logic: correct DB queries, price/cash selection,
- * fallback behavior, and error conditions.  portfolioCalculator itself is NOT
- * mocked so math correctness carries through.
- */
 
 jest.mock('../db', () => ({
   run: jest.fn(),
@@ -28,18 +21,15 @@ beforeEach(() => {
   mockedDb.all.mockResolvedValue([]);
 });
 
-// Helper: build a minimal price tick row
 const tick = (symbol: string, price: number) => ({ symbol, price });
 
-// ─── error path ──────────────────────────────────────────────────────────────
 
 describe('recomputeHistoryAt – error paths', () => {
   test('throws when price_ticks has no data at or before ts', async () => {
     const ts = Date.now();
-    // trades → empty
     mockedDb.all.mockImplementation((sql: string) => {
       if (sql.includes('FROM trades'))          return Promise.resolve([]);
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve([]); // ← no ticks
+      if (sql.includes('FROM price_ticks'))     return Promise.resolve([]);
       if (sql.includes('FROM interest')) return Promise.resolve([]);
       return Promise.resolve([]);
     });
@@ -49,7 +39,6 @@ describe('recomputeHistoryAt – error paths', () => {
   });
 });
 
-// ─── cash resolution ─────────────────────────────────────────────────────────
 
 describe('recomputeHistoryAt – cash resolution', () => {
   test('sums cash up to ts for BRL and USD', async () => {
@@ -68,7 +57,6 @@ describe('recomputeHistoryAt – cash resolution', () => {
     });
 
     const result = await recomputeHistoryAt(ts);
-    // cash: 500 BRL * 0.2 + 100 USD = 200 USD total
     expect(result.v).toBeCloseTo(200);
   });
 
@@ -88,12 +76,10 @@ describe('recomputeHistoryAt – cash resolution', () => {
     });
 
     const result = await recomputeHistoryAt(ts);
-    // no cash, no assets → v = 0
     expect(result.v).toBeCloseTo(0);
   });
 });
 
-// ─── correct result shape ─────────────────────────────────────────────────────
 
 describe('recomputeHistoryAt – result shape', () => {
   test('returns t (ISO string), ts, v, i, p, brlusd_rate', async () => {
@@ -140,18 +126,16 @@ describe('recomputeHistoryAt – result shape', () => {
     mockedDb.all.mockImplementation((sql: string) => {
       if (sql.includes('FROM trades'))          return Promise.resolve([]);
       if (sql.includes('FROM price_ticks'))     return Promise.resolve([tick('BRLUSD', brlusd)]);
-      if (sql.includes('FROM interest')) return Promise.resolve([{ amount: 1000 }, { amount: 500 }]); // 1500 BRL
+      if (sql.includes('FROM interest')) return Promise.resolve([{ amount: 1000 }, { amount: 500 }]);
       return Promise.resolve([]);
     });
     mockedDb.get.mockResolvedValue(undefined);
 
     const withInterest = await recomputeHistoryAt(ts);
-    // No positions, no cash — investedNet = max(0, 0 - (1500 * 0.2)) = 0
     expect(withInterest.i).toBe(0);
   });
 });
 
-// ─── trades are filtered by cutoff timestamp ──────────────────────────────────
 
 describe('recomputeHistoryAt – trade cutoff', () => {
   test('passes ISO cutoff to trades query', async () => {

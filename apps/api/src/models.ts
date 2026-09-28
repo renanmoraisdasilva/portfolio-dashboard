@@ -4,7 +4,7 @@ export interface Trade {
   side: 'buy' | 'sell';
   qty: number;
   price?: number | null;
-  time: string; // ISO
+  time: string;
   profit?: number | null;
 }
 
@@ -28,7 +28,7 @@ export interface CashPositions {
 }
 
 export interface InterestMonth {
-  month: string; // YYYY-MM
+  month: string;
   amount: number;
 }
 

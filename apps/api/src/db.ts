@@ -11,20 +11,15 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'drizzle', 'migrations');
 
-// Raw better-sqlite3 connection — synchronous API.
 export const sqlite = new Database(DB_PATH);
 
-// Drizzle ORM instance (used by migrate() and available for future typed queries).
 export const drizzleDb = drizzle(sqlite, { schema });
 
-// Keep `db` export for the few callers that reference it by name.
 export const db = sqlite;
 
-// ---------------------------------------------------------------------------
 // Promisified helpers — backward-compatible with all existing route/service code.
 // better-sqlite3 is synchronous; wrapping in .then() converts thrown errors to
 // rejected Promises, matching the contract the rest of the codebase expects.
-// ---------------------------------------------------------------------------
 export function run(sql: string, params: any[] = []): Promise<void> {
   return Promise.resolve().then(() => { sqlite.prepare(sql).run(...params); });
 }
@@ -37,12 +32,10 @@ export function all<T = any>(sql: string, params: any[] = []): Promise<T[]> {
   return Promise.resolve().then(() => sqlite.prepare(sql).all(...params) as T[]);
 }
 
-// ---------------------------------------------------------------------------
 // Ensure tables that were added via Drizzle migrations exist in pre-Drizzle
 // databases. Called only when a legacy database is detected (has `trades` but
 // no `__drizzle_migrations`). Safe to run repeatedly — all statements are
 // idempotent (CREATE IF NOT EXISTS / ALTER only when source table exists).
-// ---------------------------------------------------------------------------
 function ensureLegacyTablesExist() {
   const tableExists = (name: string) =>
     !!sqlite.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(name);
@@ -84,31 +77,25 @@ function ensureLegacyTablesExist() {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Seed __drizzle_migrations for databases that existed before Drizzle adoption.
 //
 // Drizzle's migrate() skips any migration whose journal `when` timestamp is
 // ≤ the max `created_at` stored in __drizzle_migrations.  For a database
 // bootstrapped by the old CREATE TABLE IF NOT EXISTS code path, we insert one
 // row for the latest migration so Drizzle won't try to re-run already-applied SQL.
-// ---------------------------------------------------------------------------
 function seedDrizzleMigrationsIfNeeded() {
   const hasMigrationsTable = sqlite
     .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`)
     .get();
-  if (hasMigrationsTable) return; // Already managed by Drizzle.
+  if (hasMigrationsTable) return;
 
-  // Fresh database — let Drizzle create everything from scratch.
   const hasTradesTable = sqlite
     .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='trades'`)
     .get();
   if (!hasTradesTable) return;
 
-  // Existing pre-Drizzle database: ensure any tables introduced by migrations
-  // actually exist before we tell Drizzle they are already applied.
   ensureLegacyTablesExist();
 
-  // Mark all current migrations as already applied.
   const journalPath = path.join(MIGRATIONS_DIR, 'meta', '_journal.json');
   if (!fs.existsSync(journalPath)) return;
 
@@ -117,7 +104,6 @@ function seedDrizzleMigrationsIfNeeded() {
   );
   if (journal.entries.length === 0) return;
 
-  // Create the tracking table using the same schema Drizzle uses internally.
   sqlite.prepare(`
     CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
       id         SERIAL  PRIMARY KEY,
@@ -126,10 +112,6 @@ function seedDrizzleMigrationsIfNeeded() {
     )
   `).run();
 
-  // Insert one row for the most recent migration.  Drizzle compares
-  // migration.folderMillis (= journal entry `when`) against the max
-  // created_at here, so one entry for the latest migration is enough to
-  // mark all earlier ones as applied as well.
   const lastEntry = journal.entries.reduce(
     (max, e) => (e.when > max.when ? e : max),
     journal.entries[0],
@@ -146,17 +128,11 @@ function seedDrizzleMigrationsIfNeeded() {
   console.log(`[db] Seeded __drizzle_migrations: existing DB recorded at '${lastEntry.tag}'`);
 }
 
-// ---------------------------------------------------------------------------
-// init — called once at server startup
-// ---------------------------------------------------------------------------
 export async function init() {
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
 
   if (fs.existsSync(MIGRATIONS_DIR)) {
-    // Seed __drizzle_migrations for databases that predate Drizzle adoption,
-    // then let Drizzle run any unapplied migrations. Fresh databases skip the
-    // seed path and must be created entirely by the migration files.
     seedDrizzleMigrationsIfNeeded();
     migrate(drizzleDb, { migrationsFolder: MIGRATIONS_DIR });
     console.log('[db] Drizzle migrations up to date');

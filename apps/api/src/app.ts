@@ -45,15 +45,12 @@ export function createApp(): Express {
 }
 
 export function mountWebRoutes(app: Express): void {
-  // Serve static frontend assets and pages under /pages.
   app.use(express.static(repoRoot));
 
-  // Keep the dashboard at / while pages live under /pages.
   app.get('/', (_req, res) => {
     res.sendFile(path.join(repoRoot, 'pages', 'index.html'));
   });
 
-  // Backward-compatible paths for old direct links/bookmarks.
   app.get('/index.html', (_req, res) => res.redirect('/'));
   app.get('/simulation.html', (_req, res) => res.redirect('/pages/simulation.html'));
   app.get('/analytics.html', (_req, res) => res.redirect('/pages/analytics.html'));

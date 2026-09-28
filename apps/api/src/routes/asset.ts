@@ -4,7 +4,6 @@ import { fetchAndCacheAssetHistory } from '../services/priceFetcher';
 
 export const assetRouter = Router();
 
-// GET /api/asset/:symbol/history?days=60
 assetRouter.get('/:symbol/history', async (req: Request, res: Response) => {
   const symbol = req.params.symbol;
   const days = parseInt((req.query.days as string) || '60');
@@ -17,7 +16,6 @@ assetRouter.get('/:symbol/history', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/asset/:symbol/ohlc?days=60
 // Computes OHLC candlestick data from price_ticks for a given symbol and day range.
 // Bucket granularity adapts to the range: ≤7d → 4h candles, ≤365d → daily, else → weekly.
 assetRouter.get('/:symbol/ohlc', async (req: Request, res: Response) => {
@@ -29,9 +27,9 @@ assetRouter.get('/:symbol/ohlc', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid days parameter' });
   }
 
-  const bucketMs = days <= 7   ? 4  * 60 * 60 * 1000      // 4-hour candles
-                 : days <= 365  ? 24 * 60 * 60 * 1000      // daily candles
-                 :                7  * 24 * 60 * 60 * 1000; // weekly candles
+  const bucketMs = days <= 7   ? 4  * 60 * 60 * 1000
+                 : days <= 365  ? 24 * 60 * 60 * 1000
+                 :                7  * 24 * 60 * 60 * 1000;
 
   const since = Date.now() - days * 24 * 60 * 60 * 1000;
 

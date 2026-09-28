@@ -6,7 +6,6 @@ import { sendHomeAssistantNotification } from '../services/homeAssistantService'
 
 export const alertsRouter = Router();
 
-// GET /api/alerts - Get all alerts
 alertsRouter.get('/', async (req: Request, res: Response) => {
   try {
     const alerts = await all<Alert>('SELECT * FROM alerts ORDER BY created_at DESC');
@@ -17,7 +16,6 @@ alertsRouter.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/alerts/triggered - Get all currently triggered alerts (not dismissed)
 alertsRouter.get('/triggered', async (req: Request, res: Response) => {
   try {
     const triggered = await all<Alert>(
@@ -30,7 +28,6 @@ alertsRouter.get('/triggered', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/alerts - Create new alert
 alertsRouter.post('/', async (req: Request, res: Response) => {
   try {
     const { symbol, alert_type, threshold, condition, reference_price } = req.body;
@@ -67,13 +64,11 @@ alertsRouter.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/alerts/:id - Update alert
 alertsRouter.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { symbol, alert_type, threshold, condition, reference_price, is_active } = req.body;
 
-    // Build update query dynamically based on provided fields
     const updates: { field: string; value: any }[] = [];
 
     if (symbol !== undefined) updates.push({ field: 'symbol', value: symbol.toUpperCase() });
@@ -105,7 +100,6 @@ alertsRouter.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/alerts/:id - Delete alert
 alertsRouter.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -117,7 +111,6 @@ alertsRouter.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/alerts/dismiss/:alertId - Dismiss a triggered alert
 alertsRouter.post('/dismiss/:alertId', async (req: Request, res: Response) => {
   try {
     const { alertId } = req.params;
@@ -141,7 +134,6 @@ alertsRouter.post('/dismiss/:alertId', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/alerts/test-notify - send a test Home Assistant notification
 alertsRouter.post('/test-notify', async (req: Request, res: Response) => {
   try {
     const { title, message } = req.body || {};

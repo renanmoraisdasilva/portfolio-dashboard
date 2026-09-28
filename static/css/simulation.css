@@ -1,10 +1,6 @@
-/* ============================================================
-   simulation.css — Simulation page styles
-   ============================================================ */
 
 /* Page shell, primary navigation and page header live in layout.css. */
 
-/* Metric cards */
 .metrics-grid { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr)); gap: 16px; margin-bottom: var(--card-gap); }
 .metric-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 18px; position: relative; }
 .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); }
@@ -17,9 +13,6 @@
 .metric-change.neutral { color: var(--text-muted); }
 
 .layout { display:grid; grid-template-columns: 2fr 1fr; gap:16px; }
-/* Grid/flex children must be allowed to shrink below their content's
-   min-content width, otherwise a single long value pushes the whole
-   shell past the viewport on narrow screens. */
 .layout > *, .form-grid > *, .asset-row > *, .asset-rows > *, .metrics-grid > * { min-width: 0; }
 .card { background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:16px }
 .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px }
@@ -43,7 +36,6 @@ select.chip { appearance: none; -webkit-appearance: none; -moz-appearance: none;
 .stepper button { background:transparent;border:1px solid var(--border);color:var(--text-primary);padding:6px 8px;border-radius:6px;cursor:pointer }
 .table-container { overflow-x:auto; }
 
-/* Styled dark slider */
 .sim-slider { -webkit-appearance:none; appearance:none; width:100%; flex:1; height:12px; border-radius:999px; background:var(--bg-tertiary); outline:none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02); }
 .sim-slider:focus { box-shadow: 0 0 0 4px rgba(0,217,255,0.06); }
 .sim-slider::-webkit-slider-runnable-track { height:12px; border-radius:999px; background:transparent }
@@ -51,7 +43,6 @@ select.chip { appearance: none; -webkit-appearance: none; -moz-appearance: none;
 .sim-slider::-moz-range-track { height:12px; border-radius:999px; background:transparent }
 .sim-slider::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background: linear-gradient(135deg,var(--accent-primary),var(--accent-secondary)); box-shadow: 0 4px 14px rgba(0,0,0,0.6); border: 2px solid #0a0e1a; cursor:pointer }
 
-/* Allocation layout */
 .alloc-wrap { display:flex; gap:16px; align-items:center }
 .alloc-chart { flex:1 }
 .alloc-summary { width:260px; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-start; padding:8px }
@@ -72,7 +63,6 @@ select.chip { appearance: none; -webkit-appearance: none; -moz-appearance: none;
   .alloc-summary { width:100%; align-items:flex-start; margin-top:8px }
 }
 
-/* Tables */
 table { width:100%; border-collapse:collapse; margin-top:8px }
 thead th { color:var(--text-secondary); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.6px }
 th, td { padding:10px; text-align:left; border-bottom:1px solid var(--border); font-size:0.95rem }
@@ -81,7 +71,6 @@ td .currency { font-weight:600 }
 .positive { color: var(--accent-success); font-weight:700 }
 .negative { color: var(--accent-danger); font-weight:700 }
 
-/* Modal (simulation variant) */
 .modal {
   position: fixed;
   inset: 0;
@@ -106,13 +95,11 @@ td .currency { font-weight:600 }
 .modal th, .modal td { padding:8px; border-bottom:1px solid var(--border) }
 .modal .small { font-size:0.85rem; color:var(--text-muted) }
 
-/* Responsive */
 @media (max-width: 1200px) {
   .metrics-grid { grid-template-columns: repeat(4, minmax(160px, 1fr)); }
 }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr }
-  /* Use plain fractions — no minmax minimum that can overflow phones */
   .metrics-grid { grid-template-columns: repeat(3, 1fr); }
   .form-grid { grid-template-columns: repeat(2, 1fr); }
   .asset-row { grid-template-columns: 28px 64px 96px 1fr 110px; gap:6px; }
@@ -121,10 +108,8 @@ td .currency { font-weight:600 }
   .sim-slider { height:10px }
 }
 @media (max-width: 600px) {
-  /* 2-col grid keeps metric cards readable without making them too wide */
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .form-grid { grid-template-columns: 1fr; }
-  /* Ensure all direct children of .shell fill the same width */
   .shell > * { width: 100%; box-sizing: border-box; }
   .asset-row { grid-template-columns: 28px 48px 80px 1fr 90px; gap:6px }
   .asset-price { width:80px; padding:6px }
@@ -132,7 +117,6 @@ td .currency { font-weight:600 }
   .metric-value { font-size: 1.5rem; }
 }
 
-/* Compact mode for very small phones */
 @media (max-width: 430px) {
   .card { padding: 10px; border-radius:10px; }
   .card-header { margin-bottom:8px; }
@@ -149,7 +133,6 @@ td .currency { font-weight:600 }
   .form-grid { grid-template-columns: 1fr; gap:8px }
 }
 
-/* Compact-mode override */
 .compact-sim .card { padding: 6px !important; }
 .compact-sim .card-header { margin-bottom:6px }
 .compact-sim .card .small { font-size:0.66rem }

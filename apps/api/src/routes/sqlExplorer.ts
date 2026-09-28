@@ -11,12 +11,10 @@ const DB_MAP: Record<string, Database.Database> = {
   portfolio: sqlite,
 };
 
-/** Returns true when the statement is read-only (SELECT / EXPLAIN / PRAGMA / WITH). */
 export function isSelectQuery(sql: string): boolean {
   return /^\s*(SELECT|EXPLAIN|PRAGMA|WITH)\b/i.test(sql.trim());
 }
 
-/** Returns the resolved database or undefined for an unknown name. */
 export function resolveDb(
   name: string,
   map: Record<string, Database.Database> = DB_MAP,
@@ -24,12 +22,10 @@ export function resolveDb(
   return map[name];
 }
 
-/** Validate that a db name is one of the known values. */
 export function isValidDbName(name: string): name is DbName {
   return (VALID_DBS as readonly string[]).includes(name);
 }
 
-// GET /api/sql/tables?db=portfolio — list tables in a given database
 sqlExplorerRouter.get('/tables', (req: Request, res: Response) => {
   const dbName = (req.query.db as string) || 'portfolio';
   const db = resolveDb(dbName);
@@ -47,7 +43,6 @@ sqlExplorerRouter.get('/tables', (req: Request, res: Response) => {
   }
 });
 
-// GET /api/sql/schema?db=portfolio&table=trades — get column info for a table
 sqlExplorerRouter.get('/schema', (req: Request, res: Response) => {
   const dbName = (req.query.db as string) || 'portfolio';
   const table = req.query.table as string;
@@ -68,7 +63,6 @@ sqlExplorerRouter.get('/schema', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/sql/query — execute an arbitrary SQL query
 sqlExplorerRouter.post('/query', (req: Request, res: Response) => {
   const { sql, db: dbName = 'portfolio' } = req.body as { sql?: string; db?: string };
 

@@ -50,28 +50,25 @@ async function clearHistory() {
 }
 
 let prices = {};
-let priceMeta = {}; // keyed by symbol; holds bond meta (priceBRL, taxaCompra, taxaVenda, etc.)
+let priceMeta = {};
 let history = [];
 let trades = [];
-let allocationShowCash = localStorage.getItem('allocationShowCash') !== 'false'; // default true
+let allocationShowCash = localStorage.getItem('allocationShowCash') !== 'false';
 
 function setAllocationMode(mode) {
   allocationShowCash = mode === 'withCash';
   localStorage.setItem('allocationShowCash', allocationShowCash ? 'true' : 'false');
-  // toggle active classes
   const withBtn = document.getElementById('allocWithCashBtn');
   const invBtn = document.getElementById('allocInvestmentsBtn');
   if (withBtn && invBtn) {
     withBtn.classList.toggle('active', allocationShowCash);
     invBtn.classList.toggle('active', !allocationShowCash);
   }
-  // recompute current positions and refresh the allocation chart
   try {
     const lots = buildLotsFromTrades();
     const positions = computePositionsFromLots(lots);
     refreshCharts(positions, lots);
   } catch (err) {
-    // fallback: do a full refresh if helpers aren't available yet
     refresh();
   }
 }
@@ -99,7 +96,6 @@ async function loadSymbols() {
       detailed: {}
     };
   }
-  // Populate trade asset select
   const symbolSel = document.getElementById('symbol');
   if (symbolSel && symbolSel.options.length === 0) {
     for (const s of knownSymbols.all) {
@@ -109,7 +105,6 @@ async function loadSymbols() {
       symbolSel.appendChild(opt);
     }
   }
-  // Populate alert asset select (keep blank first option)
   const alertSel = document.getElementById('alertSymbol');
   if (alertSel) {
     const existing = new Set([...alertSel.options].map(o => o.value));
@@ -127,7 +122,7 @@ let interestReais = 0;
 let interestDollars = 0;
 let interestReaisMonths = [];
 let interestDollarsMonths = [];
-let interestMonthsCollapsed = true; // default collapsed on page load
+let interestMonthsCollapsed = true;
 let interestUSDMonthsCollapsed = true;
 let cdiRate = 0;
 let brlUsdRate = 0;
@@ -145,12 +140,10 @@ async function loadStateFromServer() {
     interestDollars = Number(s.interestDollars) || 0;
     interestReaisMonths = s.interestReaisMonths || [];
     interestDollarsMonths = s.interestDollarsMonths || [];
-    // keep UI preference local (if user has previously set it)
     const storedCollapsed = localStorage.getItem('interestMonthsCollapsed');
     if (storedCollapsed !== null) interestMonthsCollapsed = storedCollapsed === 'true';
     const storedUSDCollapsed = localStorage.getItem('interestUSDMonthsCollapsed');
     if (storedUSDCollapsed !== null) interestUSDMonthsCollapsed = storedUSDCollapsed === 'true';
-    // write a local backup
     save();
   } catch (err) {
     console.warn('Could not load state from server', err);
@@ -167,7 +160,6 @@ async function loadStateFromServer() {
     if (storedCollapsedFallback !== null) interestMonthsCollapsed = storedCollapsedFallback === 'true';
   }
 
-  // Ensure cash inputs show localized formatted values on load
   const cr = document.getElementById('cashReais');
   const cd = document.getElementById('cashDollars');
   if (cr) cr.value = formatMoney(cashReais, 'BRL');
@@ -187,9 +179,9 @@ let valueChart = null;
 let valueSeries = null;
 let projSeries = null;
 let valueResizeObserver = null;
-let activeMetric = 'value'; // 'value' | 'pnl'
-let historyOHLC = [];      // value OHLC
-let pnlOHLC = [];          // P/L OHLC
+let activeMetric = 'value';
+let historyOHLC = [];
+let pnlOHLC = [];
 
 async function loadHistoryOHLC(range, metric = 'value') {
   try {
@@ -262,7 +254,6 @@ function createValueChart() {
 
 createValueChart();
 
-// Doughnut labeling plugin: draw name + pct inside sufficiently large slices with a dark rounded background; list small slices in the center
 const pieLabelPlugin = {
   id: 'pieLabelPlugin',
   afterDraw(chart, args, options) {
@@ -273,12 +264,12 @@ const pieLabelPlugin = {
     const total = dataset.data.reduce((a, b) => a + b, 0);
     ctx.save();
 
-    const threshold = (options && typeof options.threshold === 'number') ? options.threshold : 5; // percent threshold
+    const threshold = (options && typeof options.threshold === 'number') ? options.threshold : 5;
     const textColor = (options && options.textColor) || '#fff';
     const nameFont = (options && options.nameFont) || 'bold 12px system-ui, sans-serif';
     const pctFont = (options && options.pctFont) || '11px system-ui, sans-serif';
-    const padX = 8; // horizontal padding (reduced)
-    const padY = 6; // vertical padding (increased slightly)
+    const padX = 8;
+    const padY = 6;
 
     function roundRect(x, y, w, h, r) {
       ctx.beginPath();
@@ -301,7 +292,6 @@ const pieLabelPlugin = {
       const y = cy + Math.sin(mid) * radius;
 
       if (pct >= threshold) {
-        // draw a rounded dark pill with name and percentage
         ctx.save();
         ctx.fillStyle = 'rgba(10,14,26,0.72)';
         ctx.strokeStyle = 'rgba(255,255,255,0.06)';
@@ -314,7 +304,7 @@ const pieLabelPlugin = {
         const pctText = `${pct.toFixed(1)}%`;
         const pctW = ctx.measureText(pctText).width;
         const w = Math.max(nameW, pctW) + padX * 2;
-        const h = 20 + padY * 2; // adjust height with vertical padding
+        const h = 20 + padY * 2;
         roundRect(x - w / 2, y - h / 2, w, h, 8);
         ctx.fill();
         ctx.fillStyle = textColor;
@@ -330,7 +320,6 @@ const pieLabelPlugin = {
       }
     });
 
-    // Draw small items list in the center of the doughnut
     if (smallItems.length > 0) {
       ctx.save();
       const centerX = chart.width / 2;
@@ -363,7 +352,6 @@ const allocationChart = new Chart(allocationCtx, {
   }
 });
 
-// allocation currency toggle wiring (default USD)
 window.allocCurrency = localStorage.getItem('allocCurrency') || 'USD';
 function setupAllocCurrencyBtns() {
   const usdB = document.getElementById('allocUsdBtn');
@@ -398,7 +386,6 @@ async function updateCashPositions() {
   updateInterestMonthsUI();
   updateInterestUSDMonthsUI();
 
-  // keep inputs formatted after saving
   if (crEl) crEl.value = formatMoney(cashReais, 'BRL');
   if (cdEl) cdEl.value = formatMoney(cashDollars, 'USD');
 
@@ -406,22 +393,18 @@ async function updateCashPositions() {
 }
 
 async function addInterestMonth() {
-  const month = document.getElementById('interestMonth').value; // format YYYY-MM
+  const month = document.getElementById('interestMonth').value;
   const raw = document.getElementById('interestMonthAmount').value;
   const amount = +parseMoney(raw, 'BRL').toFixed(2) || 0;
   if (!month) return alert('Please select a month');
-  // replace or add
   const idx = interestReaisMonths.findIndex(m => m.month === month);
   if (idx >= 0) interestReaisMonths[idx].amount = amount;
   else interestReaisMonths.push({ month, amount });
-  // keep sorted newest-first
   interestReaisMonths.sort((a,b) => b.month.localeCompare(a.month));
-  // limit to 12 months
   if (interestReaisMonths.length > 12) {
     alert('Keeping only latest 12 months; oldest entry removed.');
     interestReaisMonths = interestReaisMonths.slice(0,12);
   }
-  // when adding a month, auto-expand list so user sees the new entry
   interestMonthsCollapsed = false;
   save();
   updateInterestMonthsUI();
@@ -608,7 +591,6 @@ function importData(event) {
   reader.onload = async function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      // If it's a portfolio export, import to portfolio server/state
       if (Array.isArray(data.trades) && Array.isArray(data.history)) {
         try {
           const resp = await fetch('/api/state/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
@@ -655,7 +637,6 @@ function closeSettingsModal() {
 function eraseAll() {
   trades = [];
   history = [];
-  // Clear cash and interest data as well
   cashReais = 0;
   cashDollars = 0;
   interestReais = 0;
@@ -718,9 +699,8 @@ async function addTrade() {
         trades[idx] = data.trade;
         save();
         refresh();
-        _cashEntriesAll = null; // Clear cache to fetch fresh entries
+        _cashEntriesAll = null;
         await loadCashEntries();
-        // Show confirmation with actual server-created cash entry
         if (data.cashEntry) {
           const amount = Math.abs(data.cashEntry.amount);
           const currency = data.cashEntry.currency === 'BRL' ? 'BRL' : 'USD';
@@ -734,13 +714,11 @@ async function addTrade() {
     } catch (err) {
       console.warn('Failed to persist trade to server', err);
       showToast(`Error: ${err.message}`, 'error', 5000);
-      // Keep local record but mark it as failed sync
       save();
       refresh();
     }
   })();
 
-  // clear inputs and update cash form fields
   symbol.value = 'BTC';
   side.value = 'buy';
   qty.value = '';
@@ -754,7 +732,6 @@ async function addTrade() {
 
 // Manual "Add Point" functionality removed — history points are now collected automatically by the server's scheduler.
 
-// --- Trade helpers: quantity/total sliders, cash source and auto-deduct ---
 function formatMoney(val, currency){
   if (typeof val !== 'number') val = Number(val) || 0;
   if (currency === 'BRL') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -773,7 +750,6 @@ function parseMoney(str, currency){
   return parseFloat(normalized) || 0;
 }
 
-// compute qty from pct (for buy -> pct of available cash; for sell -> pct of position)
 function computeQtyFromPct(symbol, pct){
   const side = document.getElementById('side').value;
   const priceInputVal = document.getElementById('price').value;
@@ -786,7 +762,6 @@ function computeQtyFromPct(symbol, pct){
   } else {
     const source = document.getElementById('cashSource').value || 'USD';
     if (isBRLNonBond(symbol)) {
-      // price is in BRL; compute qty directly from BRL available
       const availBRL = source === 'USD' ? (cashDollars || 0) / (brlUsdRate || 1) : (cashReais || 0);
       return +((availBRL * pct / 100) / price).toFixed(4);
     }
@@ -798,8 +773,6 @@ function computeQtyFromPct(symbol, pct){
   }
 }
 
-// Validate and enable/disable Add Trade button
-// live available cash updater used by trade UI
 function updateAvailDisplay(){
   const u = document.getElementById('availUsd');
   const r = document.getElementById('availBrl');
@@ -814,7 +787,6 @@ function updateTotalFromQty(){
   if (!priceVal || priceVal <= 0) return;
   const source = document.getElementById('cashSource').value || 'USD';
   if (isBRLAsset(symVal)) {
-    // priceVal is in BRL for both BRL non-bond and BRL bond (bond price field shows BRL)
     const brl = q * priceVal;
     document.getElementById('tradeTotal').value = source === 'USD' ? formatMoney(brl * brlUsdRate, 'USD') : formatMoney(brl, 'BRL');
   } else {
@@ -832,7 +804,6 @@ function updateQtyFromTotal(){
   if (!priceVal || priceVal <= 0) return;
   let q;
   if (isBRLAsset(symVal)) {
-    // priceVal is in BRL; total is in selected currency
     const totalBRL = source === 'USD' ? total / brlUsdRate : total;
     q = +(totalBRL / priceVal).toFixed(4);
   } else {
@@ -842,7 +813,6 @@ function updateQtyFromTotal(){
   document.getElementById('qty').value = q;
 }
 
-// wire up controls
 (function(){
   const qtyInc = document.getElementById('qtyInc');
   const qtyDec = document.getElementById('qtyDec');
@@ -866,7 +836,6 @@ function updateQtyFromTotal(){
   if(qtyEl) qtyEl.addEventListener('change', ()=>{ updateTotalFromQty(); if(qtyPct){ const pct = computePctFromQty(document.getElementById('symbol').value, parseFloat(qtyEl.value)||0); qtyPct.value = pct; qtyPctLabel.textContent = pct + '%'; setSliderBackground(qtyPct); } });
   if(totalEl) totalEl.addEventListener('change', ()=>{ const source = document.getElementById('cashSource').value; const parsed = parseMoney(totalEl.value, source === 'USD' ? 'USD' : 'BRL'); if(parsed && parsed>0) totalEl.value = source === 'USD' ? formatMoney(parsed,'USD') : formatMoney(parsed,'BRL'); updateQtyFromTotal(); });
 
-  // wire live update of available cash from Cash Positions inputs (no server persist)
   const cashReaisInput = document.getElementById('cashReais');
   const cashDollarsInput = document.getElementById('cashDollars');
   if (cashReaisInput) cashReaisInput.addEventListener('input', (e) => { cashReais = parseFloat(e.target.value) || 0; updateAvailDisplay(); });
@@ -883,7 +852,6 @@ function updateQtyFromTotal(){
     const tot = document.getElementById('tradeTotal');
     if (tot) {
       tot.placeholder = src === 'USD' ? 'enter total in USD' : 'enter total in BRL';
-      // If a value is present, try to convert it between currencies using brlUsdRate (best-effort)
       if (tot.value) {
         try {
           const parsed = parseMoney(tot.value, prev === 'USD' ? 'USD' : 'BRL');
@@ -900,10 +868,8 @@ function updateQtyFromTotal(){
   }
   if(cashUSD) cashUSD.addEventListener('click', ()=> setCashSource('USD'));
   if(cashBRL) cashBRL.addEventListener('click', ()=> setCashSource('BRL'));
-  // initialize placeholder and button state based on hidden input
   setCashSource(document.getElementById('cashSource').value || 'USD');
 
-  // Update price label and auto-fill price when symbol changes to a BRL asset
   const symbolSelectEl = document.getElementById('symbol');
   if (symbolSelectEl) {
     symbolSelectEl.addEventListener('change', () => {
@@ -925,7 +891,6 @@ function updateQtyFromTotal(){
     });
   }
 
-  // Side (Buy / Sell) control
   const sideBuyBtn = document.getElementById('sideBuy');
   const sideSellBtn = document.getElementById('sideSell');
   function setSide(s) {
@@ -933,7 +898,6 @@ function updateQtyFromTotal(){
     document.getElementById('side').value = s;
     if (sideBuyBtn) sideBuyBtn.classList.toggle('active', s === 'buy');
     if (sideSellBtn) sideSellBtn.classList.toggle('active', s === 'sell');
-    // recalc dependent UI
     updateTotalFromQty();
     if (document.getElementById('qtyPct')) {
       const pct = computePctFromQty(document.getElementById('symbol').value, parseFloat(document.getElementById('qty').value)||0);
@@ -944,10 +908,8 @@ function updateQtyFromTotal(){
   }
   if (sideBuyBtn) sideBuyBtn.addEventListener('click', ()=> setSide('buy'));
   if (sideSellBtn) sideSellBtn.addEventListener('click', ()=> setSide('sell'));
-  // initialize side from hidden input
   setSide(document.getElementById('side').value || 'buy');
 
-  // helper: compute pct from qty (for slider sync)
   function computePctFromQty(symbol, qty){
     const side = document.getElementById('side').value;
     const price = parseFloat(document.getElementById('price').value) || prices[symbol] || 0;
@@ -966,7 +928,6 @@ function updateQtyFromTotal(){
     }
   }
 
-  // style slider background (visual)
   function setSliderBackground(sl){ if(!sl) return; const val = sl.value || 0; sl.style.background = `linear-gradient(90deg,#7c3aed ${val}%, rgba(255,255,255,0.06) ${val}% )`; }
   if(qtyPct) setSliderBackground(qtyPct);
 })();
@@ -1045,7 +1006,6 @@ function showCoinGeckoError(msg) {
     if (dash) {
       dash.prepend(cgErr);
     } else {
-      // Fallback: insert at top of body
       document.body.insertBefore(cgErr, document.body.firstChild);
     }
   } else {
@@ -1111,9 +1071,8 @@ function computeInvestedFromLots(lots) {
   for (const s in lots) {
     for (const lot of lots[s]) invested += isBRLNonBond(s) ? lot.qty * lot.price * brlUsdRate : lot.qty * lot.price;
   }
-  // Add cash positions to invested
-  invested += cashReais * brlUsdRate; // BRL value converted to USD
-  invested += cashDollars; // Dollar value (pure dollars)
+  invested += cashReais * brlUsdRate;
+  invested += cashDollars;
   return invested;
 }
 
@@ -1134,15 +1093,12 @@ function refreshUI(total, investedWithCash, positions, lots, hasError = false) {
     return;
   }
 
-  // realized P/L (closed trades + interest)
   const interestFromBRLMonths = Array.isArray(interestReaisMonths) ? interestReaisMonths.reduce((s,m) => s + (Number(m.amount) || 0), 0) : 0;
   const interestFromUSDMonths = Array.isArray(interestDollarsMonths) ? interestDollarsMonths.reduce((s,m) => s + (Number(m.amount) || 0), 0) : 0;
   const realized = trades.filter(t => t.side === 'sell').reduce((sum, t) => {
     const p = t.profit || 0; return sum + (isBRLNonBond(t.symbol) ? p * brlUsdRate : p);
   }, 0) + (interestFromBRLMonths * brlUsdRate) + interestFromUSDMonths;
 
-  // investedWithCash = cost basis of current holdings + cash positions
-  // investedNet = net invested excluding realized P/L (what user put in)
   const investedNet = Math.max(0, investedWithCash - realized);
 
   // unrealized is strictly holdings value minus cost basis (should NOT include realized)
@@ -1156,14 +1112,12 @@ function refreshUI(total, investedWithCash, positions, lots, hasError = false) {
   const firstTrade = trades.find(t => t.side === 'buy');
   const daysSinceFirstTrade = firstTrade ? Math.max(1, (Date.now() - new Date(firstTrade.time).getTime()) / (1000 * 60 * 60 * 24)) : 1;
   const annualInflation = 0.03;
-  // Use multiplicative inflation adjustment for a better estimate of real return
   const years = daysSinceFirstTrade / 365;
-  const inflationFactor = Math.pow(1 + annualInflation, years); // > 1
+  const inflationFactor = Math.pow(1 + annualInflation, years);
   const nominalFactor = investedWithCash > 0 ? (1 + allProfit / investedWithCash) : 1;
   const realReturn = investedWithCash * (nominalFactor / inflationFactor - 1);
   const realReturnPct = investedWithCash > 0 ? (realReturn / investedWithCash) * 100 : 0;
 
-  // Display: Total Invested should be net of realized P/L
   document.getElementById('totalInvested').innerHTML = `$${(investedNet).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br><span style="font-size: 0.6rem; color: #64748b; margin-top: -0.3rem; display: block;">R$ ${(investedNet / brlUsdRate).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
   document.getElementById('totalValue').innerHTML = `$${(total).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br><span style="font-size: 0.6rem; color: #64748b; margin-top: -0.3rem; display: block;">R$ ${(total / brlUsdRate).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
 
@@ -1193,7 +1147,6 @@ function refreshUI(total, investedWithCash, positions, lots, hasError = false) {
   investedExElem.innerHTML = `$${(tickerValue).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br><span style="font-size: 0.6rem; color: #64748b; margin-top: -0.3rem; display: block;">R$ ${(tickerValue / brlUsdRate).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
   investedExElem.className = 'metric-value';
   const investedPctElem = document.getElementById('investedPct');
-  // Percentage invested = (ticker value) / (total current portfolio value)
   const investedPct = total > 0 ? (tickerValue / total) * 100 : 0;
   investedPctElem.textContent = `${investedPct.toFixed(2)}% invested`;
   investedPctElem.className = 'metric-change neutral';
@@ -1209,19 +1162,16 @@ function refreshUI(total, investedWithCash, positions, lots, hasError = false) {
 
 
 
-  // Update quick available cash display in Add New Trade card
   const availUsdEl = document.getElementById('availUsd');
   const availBrlEl = document.getElementById('availBrl');
   if (availUsdEl) availUsdEl.textContent = formatMoney(cashDollars || 0, 'USD');
   if (availBrlEl) availBrlEl.textContent = formatMoney(cashReais || 0, 'BRL');
 
-  // Update Cash Positions balance display
   const cashBrlBalEl = document.getElementById('cashBrlBalance');
   const cashUsdBalEl = document.getElementById('cashUsdBalance');
   if (cashBrlBalEl) cashBrlBalEl.textContent = formatMoney(cashReais || 0, 'BRL');
   if (cashUsdBalEl) cashUsdBalEl.textContent = formatMoney(cashDollars || 0, 'USD');
 
-  // Keep available cash display in sync
   if (typeof updateAvailDisplay === 'function') updateAvailDisplay();
 
   const positionsTbody = document.getElementById("positionsTable");
@@ -1286,7 +1236,6 @@ function refreshUI(total, investedWithCash, positions, lots, hasError = false) {
       `;
     }
     
-    // Add cash positions
     if (cashReais > 0 || (interestReaisMonths && interestReaisMonths.length>0)) {
       const usdValue = cashReais * brlUsdRate;
       const interestFromMonthsBRL = Array.isArray(interestReaisMonths) ? interestReaisMonths.reduce((s,m) => s + (Number(m.amount) || 0), 0) : 0;
@@ -1336,7 +1285,6 @@ function refreshUI(total, investedWithCash, positions, lots, hasError = false) {
       const brlB = isBRLBond(t.symbol);
       let priceFmt, totalFmt, profitCell;
       if (brlNB) {
-        // BRL non-bond: trade.price and profit are in BRL
         const rawPrice = t.price || prices[t.symbol] || 0;
         const totalBRL = t.qty * rawPrice;
         priceFmt = t.price !== null ? formatMoney(rawPrice, 'BRL') : '-';
@@ -1346,7 +1294,6 @@ function refreshUI(total, investedWithCash, positions, lots, hasError = false) {
           profitCell = `<span class="${t.profit >= 0 ? 'positive' : 'negative'}">${t.profit >= 0 ? '+' : ''}${formatMoney(t.profit, 'BRL')}</span>`;
         }
       } else if (brlB) {
-        // BRL bond: trade.price stored in USD, display in BRL
         const rate = brlUsdRate || 1;
         const rawPriceUSD = t.price || prices[t.symbol] || 0;
         const rawPriceBRL = rawPriceUSD / rate;
@@ -1469,7 +1416,6 @@ function refreshCharts(positions, lots) {
     return isBRLNonBond(s) ? positions[s] * p * brlUsdRate : positions[s] * p;
   });
   const cashValue = (cashReais * brlUsdRate) + cashDollars;
-  // choose labels/values based on allocationShowCash
   const labels = [...symbols];
   const values = [...allocationValues];
   if (allocationShowCash) {
@@ -1543,7 +1489,6 @@ function toggleSeries(series) {
 }
 
 function _syncProjectionAfterSeriesChange() {
-  // Re-run chart refresh so projection visibility is re-evaluated
   const lots = buildLotsFromTrades();
   const positions = computePositionsFromLots(lots);
   refreshCharts(positions, lots);
@@ -1560,14 +1505,8 @@ function toggleProjection() {
   refreshCharts(positions, lots);
 }
 
-// Project 6 months (182.5 days) ahead
 const PROJ_DAYS = 182.5;
 
-/**
- * Linear regression over sourceHistory → project forward by projDays.
- * Returns array of { ts, v } future data points.
- * Uses the same visible data (chartHistory) so the trend matches what's on screen.
- */
 function computeProjection(sourceHistory, projDays) {
   const n = sourceHistory.length;
   if (n < 2) return [];
@@ -1582,11 +1521,9 @@ function computeProjection(sourceHistory, projDays) {
   }
   const denom = n * sumXX - sumX * sumX;
   if (Math.abs(denom) < 1e-9) return [];
-  const slope = (n * sumXY - sumX * sumY) / denom; // $ per hour
+  const slope = (n * sumXY - sumX * sumY) / denom;
   const intercept = (sumY - slope * sumX) / n;
   const lastTs = sourceHistory[n - 1].ts || Date.now();
-  // Match the point density of the historical data so the projection looks consistent
-  // but cap at 200 points max to avoid overwhelming the chart
   const histDurationDays = ((sourceHistory[n - 1].ts || 0) - (sourceHistory[0].ts || 0)) / (1000 * 60 * 60 * 24) || 1;
   const pointsPerDay = n / histDurationDays;
   const numPoints = Math.min(200, Math.max(10, Math.round(pointsPerDay * projDays)));
@@ -1603,26 +1540,21 @@ function computeProjection(sourceHistory, projDays) {
 async function refresh() {
   await loadSymbols();
   await fetchPrices();
-  // Prevent further updates if any asset price is 0 or error is present
   let zeroPriceAssets = Object.keys(prices).filter(k => prices[k] == null || prices[k] === 0);
   const cgErr = document.getElementById('coingeckoError');
   if (zeroPriceAssets.length > 0 || cgErr) {
-    // Don't record a data point or update UI with bad data, but hide figures
     refreshUI(0, 0, {}, {}, true);
     return;
   }
-  // If no errors, remove any previous error message
   if (cgErr) cgErr.remove();
   const lots = buildLotsFromTrades();
   const positions = computePositionsFromLots(lots);
-  const investedWithCash = computeInvestedFromLots(lots); // cost basis + cash
-  // realized P/L (closed trades + interest)
+  const investedWithCash = computeInvestedFromLots(lots);
   const interestFromBRLMonths = Array.isArray(interestReaisMonths) ? interestReaisMonths.reduce((s,m) => s + (Number(m.amount) || 0), 0) : 0;
   const interestFromUSDMonths = Array.isArray(interestDollarsMonths) ? interestDollarsMonths.reduce((s,m) => s + (Number(m.amount) || 0), 0) : 0;
   const realized = trades.filter(t => t.side === 'sell').reduce((sum, t) => {
     const p = t.profit || 0; return sum + (isBRLNonBond(t.symbol) ? p * brlUsdRate : p);
   }, 0) + (interestFromBRLMonths * brlUsdRate) + interestFromUSDMonths;
-  // Net invested excluding realized P/L
   const investedNet = Math.max(0, investedWithCash - realized);
 
   let total = 0;
@@ -1630,9 +1562,8 @@ async function refresh() {
     const p = prices[s] || 0;
     total += isBRLNonBond(s) ? positions[s] * p * brlUsdRate : positions[s] * p;
   }
-  // Add cash positions to total
-  total += cashReais * brlUsdRate; // Reais value converted to USD
-  total += cashDollars; // Dollar value (pure dollars)
+  total += cashReais * brlUsdRate;
+  total += cashDollars;
 
   // Fetch latest history from server (server is responsible for inserting points every 30 minutes)
   try {
@@ -1645,7 +1576,6 @@ async function refresh() {
     console.warn('Failed to fetch server history', err);
   }
 
-  // Load OHLC data for the portfolio value candlestick chart
   try {
     const [ohlc, ohlcPnl] = await Promise.all([
       loadHistoryOHLC('all', 'value'),
@@ -1662,13 +1592,11 @@ async function refresh() {
   refreshUI(total, investedWithCash, positions, lots);
   refreshCharts(positions, lots);
   
-  // Update cash position inputs (localized format)
   const crInput = document.getElementById('cashReais');
   const cdInput = document.getElementById('cashDollars');
   if (crInput) crInput.value = (cashReais !== undefined && cashReais !== null) ? formatMoney(cashReais, 'BRL') : '';
   if (cdInput) cdInput.value = (cashDollars !== undefined && cashDollars !== null) ? formatMoney(cashDollars, 'USD') : '';
 
-  // Wire change handlers to parse localized input and keep UI consistent
   if (crInput && !crInput._localeBound) {
     crInput._localeBound = true;
     crInput.addEventListener('change', (e) => {
@@ -1676,7 +1604,6 @@ async function refresh() {
       e.target.value = formatMoney(cashReais, 'BRL');
       save();
       refreshCharts(computePositionsFromLots(buildLotsFromTrades()), buildLotsFromTrades());
-      // keep other displays in sync
       const availBrlEl = document.getElementById('availBrl'); if (availBrlEl) availBrlEl.textContent = formatMoney(cashReais, 'BRL');
     });
   }
@@ -1691,7 +1618,6 @@ async function refresh() {
     });
   }
 
-  // interest inputs: format and bind localized parsing
   const interestDEl = document.getElementById('interestDollars');
   if (interestDEl && !interestDEl._localeBound) {
     interestDEl._localeBound = true;
@@ -1699,7 +1625,6 @@ async function refresh() {
       interestDollars = +parseMoney(e.target.value, 'USD').toFixed(2);
       e.target.value = formatMoney(interestDollars, 'USD');
       save();
-      // refresh charts/summary that depend on interest values
       refreshCharts(computePositionsFromLots(buildLotsFromTrades()), buildLotsFromTrades());
       const availUsdEl = document.getElementById('availUsd'); if (availUsdEl) availUsdEl.textContent = formatMoney(cashDollars, 'USD');
     });
@@ -1713,7 +1638,6 @@ async function refresh() {
       e.target.value = v ? formatMoney(v, 'BRL') : '';
     });
   }
-  // Render monthly interest lists
   updateInterestMonthsUI();
   updateInterestUSDMonthsUI();
 }
@@ -1721,14 +1645,11 @@ async function refresh() {
 (async () => {
   await loadStateFromServer();
   await refresh();
-  // initialize allocation toggle visual state
   setAllocationMode(allocationShowCash ? 'withCash' : 'investments');
 
-  // Auto-refresh prices every 60 seconds
   setInterval(async () => { await refresh(); }, 60000);
 })();
 
-// Tab switching logic
 function showTab(tab) {
   document.getElementById('dashboardSection').style.display = tab === 'dashboard' ? '' : 'none';
   document.getElementById('assetChartsSection').style.display = tab === 'assetCharts' ? '' : 'none';
@@ -1737,11 +1658,9 @@ function showTab(tab) {
 }
 showTab('dashboard');
 
-// Asset price chart logic
 const assetCharts = {};
 let selectedDays = 60;
 async function fetchAssetHistory(symbol) {
-  // Returns { labels: [...], prices: [...] }
   try {
     const resp = await fetch(`/api/asset/${symbol}/history?days=${selectedDays}`);
     if (resp.ok) {
@@ -1753,8 +1672,6 @@ async function fetchAssetHistory(symbol) {
     console.warn('Asset history fetch failed, falling back to client method', err);
   }
 
-  // fallback to client-side fetchers (unchanged existing behavior)
-  // (preserve original behavior for robustness)
   let result = { labels: [], prices: [] };
   if (["BTC","ETH","SOL"].includes(symbol)) {
     const ids = {BTC:'bitcoin',ETH:'ethereum',SOL:'solana'};
@@ -1775,7 +1692,6 @@ async function fetchAssetHistory(symbol) {
 }
 
 // Fetch OHLC candles for an asset from price_ticks via the backend.
-// Returns [] if the endpoint fails or returns no data (caller falls back to history API).
 async function fetchAssetOHLC(symbol) {
   try {
     const resp = await fetch(`/api/asset/${symbol}/ohlc?days=${selectedDays}`);
@@ -1805,11 +1721,9 @@ function setChartDays(days) {
 }
 
 async function renderAssetCharts() {
-  // Ensure we have up-to-date prices to show next to each asset
   await loadSymbols();
   await fetchPrices();
 
-  // Build asset list from server config: non-currency symbols + 'BRL' for the BRLUSD rate chart
   const nonCurrency = knownSymbols.all.filter(s => {
     const cfg = knownSymbols.detailed[s];
     return cfg && cfg.type !== 'currency';
@@ -1817,7 +1731,6 @@ async function renderAssetCharts() {
   const hasBrlusd = (knownSymbols.currencies || []).includes('BRLUSD');
   const assets = [...nonCurrency, ...(hasBrlusd ? ['BRL'] : [])];
 
-  // Destroy existing charts and rebuild containers as divs for LightweightCharts
   const assetGrid = document.querySelector('#assetChartsSection .asset-grid');
   if (assetGrid) {
     for (const sym of Object.keys(assetCharts)) {
@@ -1878,7 +1791,6 @@ async function renderAssetCharts() {
       wickDownColor: '#ef4444',
     });
 
-    // Fetch OHLC from price_ticks; fall back to flat candles from daily history cache
     let candles = [];
     try {
       candles = await fetchAssetOHLC(fetchSym);
@@ -1887,7 +1799,6 @@ async function renderAssetCharts() {
     if (!candles || candles.length < 2) {
       const { labels, prices: assetPrices } = await fetchAssetHistory(fetchSym);
       // Reconstruct approximate timestamps evenly spaced up to now (labels are locale strings,
-      // not reliably parseable; spacing by selectedDays is a safe approximation).
       const nowMs = Date.now();
       const stepMs = selectedDays * 24 * 60 * 60 * 1000 / Math.max(assetPrices.length, 1);
       candles = assetPrices
@@ -1908,14 +1819,12 @@ async function renderAssetCharts() {
       lwChart.timeScale().fitContent();
     }
 
-    // Keep chart width in sync with container
     new ResizeObserver(() => {
       if (assetCharts[sym] && chartEl.clientWidth > 0) {
         assetCharts[sym].applyOptions({ width: chartEl.clientWidth });
       }
     }).observe(chartEl);
 
-    // Header: price badge + period % change
     const bTag = chartEl.parentElement.previousElementSibling;
     const isBond = knownSymbols.detailed && knownSymbols.detailed[sym] && knownSymbols.detailed[sym].type === 'bond';
     const currentPrice = (sym === 'BRL') ? (brlUsdRate ? (1 / brlUsdRate) : null) : (prices[sym] ?? null);
@@ -1954,7 +1863,6 @@ async function renderAssetCharts() {
 
 document.getElementById('tabAssetCharts').addEventListener('click', renderAssetCharts);
 
-// ===== ALERTS FEATURE =====
 async function loadAlerts() {
   try {
     const response = await fetch('/api/alerts');
@@ -2048,7 +1956,6 @@ async function createAlert() {
       throw new Error(error.error || 'Failed to create alert');
     }
 
-    // Clear form
     document.getElementById('alertSymbol').value = '';
     document.getElementById('alertThreshold').value = '';
     document.getElementById('alertReferencePrice').value = '';
@@ -2056,9 +1963,7 @@ async function createAlert() {
     document.getElementById('alertCondition').value = 'below';
     updateAlertTypeDisplay();
 
-    // Reload alerts
     await loadAlerts();
-    // Refresh triggered alerts too
     await loadTriggeredAlerts();
   } catch (err) {
     console.error('Error creating alert', err);
@@ -2147,7 +2052,6 @@ async function clearAllDismissedAlerts() {
     const response = await fetch('/api/alerts/triggered');
     const triggered = await response.json();
     
-    // Dismiss all triggered alerts
     await Promise.all(triggered.map(alert => 
       fetch(`/api/alerts/dismiss/${alert.id}`, { method: 'POST' })
     ));
@@ -2159,20 +2063,15 @@ async function clearAllDismissedAlerts() {
   }
 }
 
-// Load alerts on initial load
 window.addEventListener('load', async () => {
   await loadAlerts();
   await loadTriggeredAlerts();
   await loadCashEntries();
-  // Refresh triggered alerts every 2 minutes
   setInterval(loadTriggeredAlerts, 2 * 60 * 1000);
 });
 
 
 
-// ---------------------------------------------------------------------------
-// Cash Positions card
-// ---------------------------------------------------------------------------
 
 let cashEntriesCurrentPage = 1;
 const CASH_ENTRIES_PAGE_SIZE = 5;
@@ -2324,7 +2223,6 @@ async function runMigration(endpoint, logId, btn) {
   }
 }
 
-// Refresh triggered alerts when refresh() is called (every price update)
 const originalRefresh = window.refresh;
 window.refresh = async function() {
   const result = await originalRefresh.call(this);

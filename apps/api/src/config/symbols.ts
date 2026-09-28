@@ -1,13 +1,11 @@
-// Centralized symbol configuration - shared reference for backend and frontend
-// Add new symbols here and they'll be available everywhere
 
 export interface SymbolConfig {
-  id: string;                    // Internal symbol ID (e.g., 'BTC')
-  name: string;                  // Display name (e.g., 'Bitcoin')
-  coingeckoId?: string;          // CoinGecko price ID (crypto only, e.g., 'bitcoin')
-  yahooTicker?: string;          // Yahoo Finance ticker for current price & history
-  historicalFallbacks?: string[]; // Alternative tickers to try for historical data
-  type: 'crypto' | 'stock' | 'currency'; // Asset type
+  id: string;
+  name: string;
+  coingeckoId?: string;
+  yahooTicker?: string;
+  historicalFallbacks?: string[];
+  type: 'crypto' | 'stock' | 'currency';
   denominatedInBRL?: boolean;    // true when price/value is natively in BRL (BOVA11, IVVB11)
 }
 
@@ -89,10 +87,8 @@ export const SYMBOLS: Record<string, SymbolConfig> = {
   },
 };
 
-// Get all symbol IDs (for iterating over symbols)
 export const SYMBOL_IDS = Object.keys(SYMBOLS);
 
-// Get symbols by type
 export const getCryptoSymbols = () => Object.values(SYMBOLS).filter(s => s.type === 'crypto').map(s => s.id);
 export const getStockSymbols = () => Object.values(SYMBOLS).filter(s => s.type === 'stock').map(s => s.id);
 export const getCurrencySymbols = () => Object.values(SYMBOLS).filter(s => s.type === 'currency').map(s => s.id);

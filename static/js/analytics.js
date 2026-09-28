@@ -1,11 +1,4 @@
-/* analytics.js — Analytics Lab page
- *
- * Data sources:
- *   GET /api/analytics          → latest snapshots for all periods
- *   GET /api/history?range=...  → portfolio value time-series
- */
 
-/* ── Period → history range mapping ── */
 const PERIOD_RANGE = {
   '1W':  'week',
   '1M':  'month',
@@ -29,18 +22,16 @@ const CASH_CHART_MODE = {
   CASH_CURRENCIES: 'cash-currencies',
 };
 
-/* ── State ── */
 let activePeriod = '3M';
 let portfolioChart = null;
 let costMarketChart = null;
 let cashAssetsChart = null;
-let snapshotsCache = {};   // period → AnalyticsSnapshot row
+let snapshotsCache = {};
 let cashContextCache = null;
 let cashEntriesCache = null;
 let cashAssetsViewMode = CASH_CHART_MODE.ASSETS_CASH;
 let cashAssetsLastInputs = { historyPoints: [], cashEntries: [], cashCtx: null };
 
-/* ── Helpers ── */
 function fmtPct(v) {
   if (v == null) return '—';
   const sign = v >= 0 ? '+' : '';
@@ -475,7 +466,6 @@ function renderRiskProfile(snap, costVsMarket, cashCtx, historyPoints) {
   `;
 }
 
-/* ── Loading / empty states ── */
 function setStatus(online) {
   const dot  = document.getElementById('statusDot');
   const text = document.getElementById('statusText');
@@ -502,9 +492,7 @@ function showEmptyChart(chartId, message) {
   ctx.fillText(message, canvas.width / 2, canvas.height / 2);
 }
 
-/* ── Render summary cards ── */
 
-/* ─ Tooltip content builders ─ */
 function buildReturnTooltip(snap) {
   const ret = snap.return_pct;
   const inputs = snap.return_inputs || null;
@@ -583,7 +571,6 @@ function buildSharpeTooltip(snap) {
   `;
 }
 
-/* ─ Overall analysis builder ─ */
 function buildAnalysis(snap) {
   const ret = snap.return_pct;
   const dd  = snap.max_drawdown_pct;
@@ -591,7 +578,6 @@ function buildAnalysis(snap) {
 
   const signals = [];
 
-  // Return signal
   if (ret == null) {
     signals.push({ type: 'neutral', text: 'Return unavailable — not enough history for this period.' });
   } else if (ret >= 20) {
@@ -608,7 +594,6 @@ function buildAnalysis(snap) {
     signals.push({ type: 'danger', text: `Severe return of ${ret.toFixed(1)}% — review position sizing and risk.` });
   }
 
-  // Drawdown signal
   if (dd == null) {
     signals.push({ type: 'good', text: 'No drawdown in this period — the portfolio never fell from a prior peak.' });
   } else if (dd < 5) {
@@ -621,7 +606,6 @@ function buildAnalysis(snap) {
     signals.push({ type: 'danger', text: `Severe drawdown of ${dd.toFixed(1)}% — this is a large peak-to-trough decline. High concentration or leverage risk.` });
   }
 
-  // Sharpe signal
   if (sr == null) {
     signals.push({ type: 'neutral', text: 'Sharpe ratio requires ≥30 data points — extend the period or wait for more snapshots.' });
   } else if (sr >= 1) {
@@ -636,7 +620,6 @@ function buildAnalysis(snap) {
     signals.push({ type: 'danger', text: `Sharpe of ${sr.toFixed(2)} — deeply negative. Significant return drag relative to the risk being taken.` });
   }
 
-  // Crossed signals: low DD but negative TWR / Sharpe → slow bleed
   if (ret != null && ret < -10 && dd != null && dd < 10 && sr != null && sr < 0) {
     signals.push({ type: 'warning', text: 'Note: small max drawdown alongside negative return suggests a slow, steady decline rather than a single crash event.' });
   }
@@ -696,7 +679,6 @@ function renderCards(snap) {
   const shSub   = document.getElementById('metricSharpeSub');
   const marker  = document.getElementById('drawdownMarker');
 
-  // Populate tooltips
   const ttReturn   = document.getElementById('tooltipReturn');
   const ttDrawdown = document.getElementById('tooltipDrawdown');
   const ttSharpe   = document.getElementById('tooltipSharpe');
@@ -704,10 +686,8 @@ function renderCards(snap) {
   if (ttDrawdown) ttDrawdown.innerHTML = buildDrawdownTooltip(snap);
   if (ttSharpe)   ttSharpe.innerHTML   = buildSharpeTooltip(snap);
 
-  // Overall analysis card
   renderOverallAnalysis(snap);
 
-  // Return %
   if (snap.return_pct == null) {
     retEl.textContent = '—';
     retEl.className = 'metric-value';
@@ -721,7 +701,6 @@ function renderCards(snap) {
     retSub.className = 'metric-sub ' + (snap.return_pct >= 0 ? 'positive' : 'negative');
   }
 
-  // Max Drawdown
   if (snap.max_drawdown_pct == null) {
     ddEl.textContent = '—';
     ddDates.textContent = 'No drawdown in period';
@@ -736,7 +715,6 @@ function renderCards(snap) {
   }
   if (marker) marker.textContent = snap.max_drawdown_pct != null ? `Max DD −${snap.max_drawdown_pct.toFixed(1)}%` : '';
 
-  // Sharpe
   if (snap.sharpe_ratio == null) {
     shEl.innerHTML = '<span class="null-badge">N/A</span>';
     shSub.textContent = '< 30 data points — not enough history';
@@ -751,7 +729,6 @@ function renderCards(snap) {
   }
 }
 
-/* ── Portfolio line chart ── */
 function renderPortfolioChart(historyPoints) {
   const canvas = document.getElementById('portfolioChart');
   if (!canvas) return;
@@ -812,7 +789,6 @@ function renderPortfolioChart(historyPoints) {
   });
 }
 
-/* ── Cost vs Market bar chart ── */
 function renderCostMarketChart(costVsMarket) {
   const canvas = document.getElementById('costMarketChart');
   if (!canvas) return;
@@ -875,7 +851,6 @@ function renderCostMarketChart(costVsMarket) {
   });
 }
 
-/* ── Allocation table ── */
 function renderAllocTable(costVsMarket) {
   const tbody = document.getElementById('allocTableBody');
   if (!tbody) return;
@@ -923,7 +898,6 @@ function renderAllocTable(costVsMarket) {
   }).join('');
 }
 
-/* ── API calls ── */
 async function loadAnalytics() {
   try {
     const res = await fetch('/api/analytics');
@@ -931,13 +905,11 @@ async function loadAnalytics() {
     const data = await res.json();
     if (!data || !Array.isArray(data.snapshots)) return null;
 
-    // Index by period for fast lookup
     snapshotsCache = {};
     for (const snap of data.snapshots) {
       snapshotsCache[snap.period] = snap;
     }
 
-    // Update "last computed" timestamp using the current period's snapshot
     const active = snapshotsCache[activePeriod];
     const lastEl = document.getElementById('lastComputedTime');
     if (lastEl && active && active.computed_at) {
@@ -966,7 +938,6 @@ async function loadHistory(period) {
   }
 }
 
-/* ── Period selection ── */
 async function selectPeriod(period, btn) {
   activePeriod = period;
   document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
@@ -974,7 +945,6 @@ async function selectPeriod(period, btn) {
 
   const snap = snapshotsCache[period];
   if (!snap) {
-    // No snapshot yet — show empty state
     showSkeletons();
     renderPortfolioChart([]);
     renderCostMarketChart({});
@@ -1002,7 +972,6 @@ async function selectPeriod(period, btn) {
 }
 
 
-/* ── Init ── */
 document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('#cashAssetsCurrencyToggle .currency-toggle-btn').forEach((btn) => {
     btn.addEventListener('click', () => {

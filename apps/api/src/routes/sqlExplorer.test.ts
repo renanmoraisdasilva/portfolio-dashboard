@@ -1,9 +1,6 @@
 import Database from 'better-sqlite3';
 import { isSelectQuery, isValidDbName, resolveDb, VALID_DBS } from './sqlExplorer';
 
-// ---------------------------------------------------------------------------
-// isSelectQuery
-// ---------------------------------------------------------------------------
 describe('isSelectQuery', () => {
   test.each([
     ['SELECT * FROM trades', true],
@@ -35,9 +32,6 @@ describe('isSelectQuery', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// isValidDbName
-// ---------------------------------------------------------------------------
 describe('isValidDbName', () => {
   test.each(VALID_DBS)('accepts valid db name: %s', name => {
     expect(isValidDbName(name)).toBe(true);
@@ -49,9 +43,6 @@ describe('isValidDbName', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// resolveDb — uses an in-memory fake map so no real DB files are touched
-// ---------------------------------------------------------------------------
 describe('resolveDb', () => {
   let fakeDb: Database.Database;
   let fakeMap: Record<string, Database.Database>;
@@ -82,9 +73,6 @@ describe('resolveDb', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Integration: isSelectQuery + real in-memory SQLite
-// ---------------------------------------------------------------------------
 describe('query execution against in-memory SQLite', () => {
   let db: Database.Database;
 
@@ -150,9 +138,6 @@ describe('query execution against in-memory SQLite', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// VALID_DBS constant sanity checks
-// ---------------------------------------------------------------------------
 describe('VALID_DBS', () => {
   test('contains exactly the one expected db name', () => {
     expect([...VALID_DBS].sort()).toEqual(['portfolio']);

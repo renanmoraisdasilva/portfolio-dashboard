@@ -1,7 +1,3 @@
-/**
- * Home Assistant notification service
- * Sends portfolio alerts to Home Assistant webhook for mobile notifications
- */
 
 const HOME_ASSISTANT_WEBHOOK_URL = process.env.HOME_ASSISTANT_WEBHOOK_URL;
 

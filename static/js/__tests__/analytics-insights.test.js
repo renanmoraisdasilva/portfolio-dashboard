@@ -23,11 +23,9 @@ describe('buildCashAssetSeries', () => {
     const out = buildCashAssetSeries(history, cashEntries, 0.2);
     expect(out).toHaveLength(2);
 
-    // ts=1: cash=100 USD
     expect(out[0].cashUSD).toBeCloseTo(100);
     expect(out[0].assetsUSD).toBeCloseTo(900);
 
-    // ts=2: cash=100 + 200*0.25 = 150
     expect(out[1].cashUSD).toBeCloseTo(150);
     expect(out[1].assetsUSD).toBeCloseTo(1050);
   });
@@ -46,11 +44,9 @@ describe('buildCashAssetSeries', () => {
     const out = buildCashAssetSeries(history, cashEntries, 0.2);
     expect(out).toHaveLength(2);
 
-    // ts=1: 800
     expect(out[0].cashUSD).toBeCloseTo(800);
     expect(out[0].assetsUSD).toBeCloseTo(200);
 
-    // ts=2: 800 - 600 + 200 = 400
     expect(out[1].cashUSD).toBeCloseTo(400);
     expect(out[1].assetsUSD).toBeCloseTo(700);
   });

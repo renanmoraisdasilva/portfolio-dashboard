@@ -5,9 +5,7 @@
   <title>Local Portfolio Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- LightweightCharts -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="icon" href="/icon.png" sizes="16x16">
   <link rel="stylesheet" href="/static/css/base.css">
@@ -48,7 +46,6 @@
 
 <div id="dashboardSection">
 
-  <!-- Triggered Alerts Banner -->
   <div id="triggeredAlertsBanner" style="display: none; margin-bottom: 16px; padding: 14px 16px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.1)); border: 1px solid #ef4444; border-radius: 10px; animation: slideDown 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
       <div style="flex: 1;">
@@ -170,7 +167,6 @@
           <div class="col-asset">
             <label class="small">Asset</label>
             <select id="symbol" style="width:100%">
-              <!-- populated dynamically from /api/config/symbols -->
             </select>
           </div>
 
@@ -251,7 +247,6 @@
       <div class="card-title"><span class="card-icon">💵</span>Cash Positions</div>
     </div>
 
-    <!-- Current totals (auto-computed from entries) -->
     <div style="display:flex;gap:24px;margin-bottom:20px;">
       <div>
         <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">BRL Balance</div>
@@ -263,9 +258,7 @@
       </div>
     </div>
 
-    <!-- Add entry form -->
     <div class="cash-entry-form">
-      <!-- Row 1: Currency + Amount -->
       <div class="cash-entry-row">
         <div class="cash-entry-currency">
           <label class="small">Currency</label>
@@ -280,7 +273,6 @@
           <input type="text" id="entryAmount" class="sim-input" placeholder="+1000 or -500" style="width:100%;margin-top:6px;" />
         </div>
       </div>
-      <!-- Row 2: Date + Button -->
       <div class="cash-entry-row">
         <div class="cash-entry-date">
           <label class="small">Date</label>
@@ -292,7 +284,6 @@
       </div>
     </div>
 
-    <!-- Entries table -->
     <div class="table-container" style="margin-bottom:12px;">
       <table>
         <thead>
@@ -310,7 +301,6 @@
     </div>
     <div id="cashEntriesPager" style="display:none;"></div>
 
-    <!-- BRL monthly interest (unchanged) -->
     <div class="cash-columns">
       <div class="cash-column" id="brlColumn">
         <h4>BRL Monthly Interest <small class="subnote">— 100% CDI earnings</small></h4>
@@ -417,7 +407,6 @@
       <div class="card-title"><span class="card-icon">🚨</span>Price Alerts Configuration</div>
     </div>
     <div class="alerts-inner-pad" style="padding: 16px;">
-      <!-- Add New Alert Form -->
       <div class="alerts-form-pad" style="margin-bottom: 20px; padding: 16px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border);">
         <h3 style="margin-bottom: 14px; font-size: 1.05rem;">Create New Alert</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
@@ -425,7 +414,6 @@
             <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px;">Asset</label>
             <select id="alertSymbol" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); font-size: 0.95rem;" onchange="updateAlertTypeDisplay()">
               <option value="">Select asset...</option>
-              <!-- remaining options populated dynamically from /api/config/symbols -->
             </select>
           </div>
           <div>
@@ -455,7 +443,6 @@
         <button id="addAlertBtn" class="btn btn-primary" style="width: 100%; padding: 10px; font-weight: 600; cursor: pointer;" onclick="createAlert()">Create Alert</button>
       </div>
 
-      <!-- Active Alerts List -->
       <div style="margin-bottom: 16px;">
         <h3 style="margin-bottom: 14px; font-size: 1.05rem;">Active Alerts</h3>
         <div id="alertsList" style="display: grid; gap: 12px;">
@@ -483,12 +470,11 @@
       </div>
     </div>
     <div class="asset-grid">
-      <!-- canvas elements injected dynamically by renderAssetCharts() -->
     </div> 
   </div>
 </div>
 
-</div><!-- /.shell -->
+</div>
 
 <div id="settingsModal" class="modal" style="display:none">
   <div class="modal-content" style="text-align:left;width:min(480px,calc(100vw - 32px));max-height:85vh;overflow-y:auto;">

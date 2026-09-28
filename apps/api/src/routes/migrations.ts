@@ -6,11 +6,8 @@ import { randomUUID } from 'node:crypto';
 
 export const migrationsRouter = Router();
 
-// ---------------------------------------------------------------------------
-// POST /api/migrations/backfill-prices
 // Fetches ~2yr daily closes from Yahoo Finance into price_ticks.
 // Warning: makes external HTTP calls with 800ms sleep per symbol (~30s total).
-// ---------------------------------------------------------------------------
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -93,14 +90,9 @@ migrationsRouter.post('/backfill-prices', async (_req: Request, res: Response) =
   }
 });
 
-// ---------------------------------------------------------------------------
-// POST /api/migrations/backfill-cash
-// Derives ~30 historical cash estimates from portfolio_snapshots by subtracting
-// the reconstructed investment market value (FIFO lots × price_ticks prices)
 // from each snapshot's total value.  Clears ALL existing cash entries first,
 // then inserts signed BRL deltas so that SUM(cash WHERE ts<=T) reproduces the
 // estimated balance at any past timestamp.
-// ---------------------------------------------------------------------------
 
 migrationsRouter.post('/backfill-cash', async (_req: Request, res: Response) => {
   try {
@@ -114,7 +106,6 @@ migrationsRouter.post('/backfill-cash', async (_req: Request, res: Response) => 
     const allTrades: any[] = await all('SELECT * FROM trades ORDER BY time ASC');
     const sampled = sampleEvenly(snapshots, 30);
 
-    // Build a price lookup per sampled ts using price_ticks
     const priceCache = new Map<number, Record<string, number>>();
     for (const snap of sampled) {
       const tickRows: any[] = await all(
@@ -148,7 +139,6 @@ migrationsRouter.post('/backfill-cash', async (_req: Request, res: Response) => 
 
     const deltas = estimatesToDeltas(estimates);
 
-    // Clear ALL existing cash entries, then insert the backfilled deltas
     await run('DELETE FROM cash');
     for (const d of deltas) {
       await run(

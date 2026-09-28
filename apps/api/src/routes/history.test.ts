@@ -4,11 +4,8 @@ const DAY_MS  = 24 * 60 * 60 * 1000;
 const HOUR_MS =       60 * 60 * 1000;
 const MIN_MS  =            60 * 1000;
 
-// ---------------------------------------------------------------------------
-// sinceForRange
-// ---------------------------------------------------------------------------
 describe('sinceForRange', () => {
-  const now = 1_700_000_000_000; // fixed reference point
+  const now = 1_700_000_000_000;
 
   test.each([
     ['day',      now - DAY_MS],
@@ -27,9 +24,6 @@ describe('sinceForRange', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// BUCKET_MS values
-// ---------------------------------------------------------------------------
 describe('BUCKET_MS', () => {
   test('day bucket is 30 minutes', () => {
     expect(BUCKET_MS.day).toBe(30 * MIN_MS);
@@ -48,9 +42,6 @@ describe('BUCKET_MS', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// bucketRows
-// ---------------------------------------------------------------------------
 describe('bucketRows', () => {
   test('returns empty array for empty input', () => {
     expect(bucketRows([], DAY_MS)).toEqual([]);
@@ -62,9 +53,9 @@ describe('bucketRows', () => {
   });
 
   test('keeps the LAST row when two rows fall in the same bucket', () => {
-    const base = Math.floor(1_700_000_000_000 / DAY_MS) * DAY_MS; // start of a UTC day
+    const base = Math.floor(1_700_000_000_000 / DAY_MS) * DAY_MS;
     const first  = { id: '1', ts: base,              v: 10 };
-    const second = { id: '2', ts: base + HOUR_MS,    v: 20 }; // same day, later
+    const second = { id: '2', ts: base + HOUR_MS,    v: 20 };
     const result = bucketRows([first, second], DAY_MS);
     expect(result).toHaveLength(1);
     expect(result[0]).toBe(second);
@@ -83,24 +74,21 @@ describe('bucketRows', () => {
   test('month scenario: many intra-day 30-min snapshots collapse to 1 point per day', () => {
     const base = Math.floor(1_700_000_000_000 / DAY_MS) * DAY_MS;
 
-    // Day 1: 3 evenly-spaced points
     const d1 = [0, HOUR_MS * 8, HOUR_MS * 16].map((offset, i) => ({
       id: `d1-${i}`,
       ts: base + offset,
       v: i,
     }));
-    // Day 2: 3 evenly-spaced points
     const d2 = [0, HOUR_MS * 8, HOUR_MS * 16].map((offset, i) => ({
       id: `d2-${i}`,
       ts: base + DAY_MS + offset,
       v: i + 10,
     }));
 
-    const rows = [...d1, ...d2]; // ASC order
+    const rows = [...d1, ...d2];
     const result = bucketRows(rows, DAY_MS);
 
     expect(result).toHaveLength(2);
-    // last entry of each day should be kept
     expect(result[0].id).toBe('d1-2');
     expect(result[1].id).toBe('d2-2');
   });

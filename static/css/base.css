@@ -1,14 +1,8 @@
-/* ============================================================
-   base.css — Shared reset, CSS variables and font import
-   Used by ALL pages (dashboard, analytics, simulation, explorer)
-   ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-/* --- CSS Reset --- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* --- CSS Custom Properties (superset palette) --- */
 :root {
   --bg-primary: #0a0e1a;
   --bg-secondary: #141b2d;
@@ -26,7 +20,6 @@
   --card-gap: 16px;
 }
 
-/* --- Shared mobile overrides --- */
 @media (max-width: 600px) {
   .page-header, .app-nav, .view-tabs {
     position: static !important;

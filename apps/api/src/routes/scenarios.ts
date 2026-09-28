@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 
 export const scenariosRouter = Router();
 
-// List scenarios (id, name, created_at, updated_at)
 scenariosRouter.get('/', async (req, res) => {
   try {
     const rows = await all('SELECT id, name, created_at, updated_at FROM scenarios ORDER BY COALESCE(updated_at, created_at) DESC');
@@ -15,7 +14,6 @@ scenariosRouter.get('/', async (req, res) => {
   }
 });
 
-// Get specific scenario data
 scenariosRouter.get('/:id', async (req, res) => {
   try {
     const row = await get('SELECT id, name, data, created_at, updated_at FROM scenarios WHERE id = ?', [req.params.id]);
@@ -27,7 +25,6 @@ scenariosRouter.get('/:id', async (req, res) => {
   }
 });
 
-// Create scenario (body: { name, data })
 scenariosRouter.post('/', async (req, res) => {
   try {
     const { name, data } = req.body;
@@ -42,7 +39,6 @@ scenariosRouter.post('/', async (req, res) => {
   }
 });
 
-// Update scenario (body: { name, data })
 scenariosRouter.put('/:id', async (req, res) => {
   try {
     const { name, data } = req.body;
@@ -56,7 +52,6 @@ scenariosRouter.put('/:id', async (req, res) => {
   }
 });
 
-// Delete scenario
 scenariosRouter.delete('/:id', async (req, res) => {
   try {
     await run('DELETE FROM scenarios WHERE id = ?', [req.params.id]);

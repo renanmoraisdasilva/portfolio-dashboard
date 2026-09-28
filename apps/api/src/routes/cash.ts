@@ -12,7 +12,6 @@ const CASH_SUM_SQL = `
   FROM cash
 `;
 
-// GET /api/cash
 cashRouter.get('/', async (req: Request, res: Response) => {
   try {
     const pos = await get(CASH_SUM_SQL);
@@ -48,7 +47,6 @@ cashRouter.put('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/cash/entries
 cashRouter.get('/entries', async (_req: Request, res: Response) => {
   try {
     const rows = await all('SELECT * FROM cash ORDER BY ts DESC');
@@ -58,7 +56,6 @@ cashRouter.get('/entries', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/cash/entries
 cashRouter.post('/entries', async (req: Request, res: Response) => {
   try {
     const { currency, amount, description, ts } = req.body;
@@ -86,7 +83,6 @@ cashRouter.post('/entries', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/cash/entries/:id
 cashRouter.delete('/entries/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

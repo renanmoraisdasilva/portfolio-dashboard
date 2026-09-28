@@ -3,7 +3,6 @@ import { run, all } from '../db';
 
 export const interestRouter = Router();
 
-// GET /api/interest/months  — optional ?currency=BRL|USD filter
 interestRouter.get('/months', async (req: Request, res: Response) => {
   try {
     const { currency } = req.query;
@@ -17,7 +16,6 @@ interestRouter.get('/months', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/interest/months
 interestRouter.post('/months', async (req: Request, res: Response) => {
   try {
     const { month, amount, currency = 'BRL' } = req.body;
@@ -34,7 +32,6 @@ interestRouter.post('/months', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/interest/months/:month  — optional ?currency=BRL|USD (default BRL)
 interestRouter.delete('/months/:month', async (req: Request, res: Response) => {
   try {
     const month = req.params.month;

@@ -13,7 +13,7 @@ import { brlToUSD, createSymbolClassifier, SymbolMap } from './money';
 
 export interface LotEntry {
   qty: number;
-  price: number; // trade purchase price in the asset's native currency
+  price: number;
 }
 
 export interface PortfolioInput {
@@ -23,9 +23,9 @@ export interface PortfolioInput {
     cashReais: number;
     cashDollars: number;
   };
-  realizedFromSells: number;       // sum of trade.profit for all sell trades (USD)
-  interestBRLMonthsTotal: number;  // sum of interest.amount WHERE currency='BRL'
-  interestUSDMonthsTotal: number;  // sum of interest.amount WHERE currency='USD'
+  realizedFromSells: number;
+  interestBRLMonthsTotal: number;
+  interestUSDMonthsTotal: number;
 }
 
 export interface PortfolioResult {
@@ -36,14 +36,11 @@ export interface PortfolioResult {
 }
 
 export interface PortfolioCalculator {
-  /** True for BRL-denominated non-bond assets (e.g. BOVA11, IVVB11). Their prices must be multiplied by BRLUSD to reach USD. */
   isBRLNonBond(symbol: string): boolean;
-  /** Replays all trades in FIFO order and returns open lot positions per symbol. */
   replayFIFOLots(
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
     fallbackPrices?: Record<string, number>
   ): Record<string, LotEntry[]>;
-  /** Total portfolio value, net invested cost basis, and unrealized P/L. All monetary values are returned in USD. */
   computePortfolioValue(input: PortfolioInput): PortfolioResult;
 }
 
@@ -81,7 +78,6 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
     const { cashReais, cashDollars } = cash;
     const brlUsdRate = prices['BRLUSD'] ?? 1;
 
-    // Cost basis of all open lots (in USD)
     let invested = 0;
     for (const symbol of Object.keys(lots)) {
       const needsBRLConversion = isBRLNonBond(symbol);
@@ -93,11 +89,9 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
     invested += brlToUSD(cashReais, brlUsdRate);
     invested += cashDollars;
 
-    // Realized gains reduce the net invested basis
     const realized = realizedFromSells + brlToUSD(interestBRLMonthsTotal, brlUsdRate) + interestUSDMonthsTotal;
     const investedNet = Math.max(0, invested - realized);
 
-    // Market value of all open positions + cash
     let total = 0;
     for (const symbol of Object.keys(lots)) {
       const positionQty = lots[symbol].reduce((sum, l) => sum + l.qty, 0);

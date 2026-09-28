@@ -5,7 +5,6 @@ const { formatMoney, parseMoney } = require('@portfolio-dashboard/shared');
 describe('formatMoney', () => {
   test('formats BRL with pt-BR locale', () => {
     const result = formatMoney(1234.56, 'BRL');
-    // Intl.NumberFormat pt-BR produces "R$\u00a01.234,56" (non-breaking space)
     expect(result).toMatch(/R\$/);
     expect(result).toMatch(/1[.,]234/);
   });
@@ -40,7 +39,6 @@ describe('formatMoney', () => {
 
 describe('parseMoney', () => {
   test('parses BRL formatted string', () => {
-    // "R$\u00a01.234,56" → 1234.56
     expect(parseMoney('R$\u00a01.234,56', 'BRL')).toBeCloseTo(1234.56, 2);
   });
 

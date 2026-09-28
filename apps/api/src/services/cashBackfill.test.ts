@@ -1,18 +1,6 @@
-/**
- * Unit tests for cashBackfill.ts — pure functions, no DB, no mocks.
- *
- * Covers:
- *   sampleEvenly        — edge cases and even distribution
- *   computeCashEstimates — USD asset cash derivation, BRL-denominated assets,
- *                          snapshot skipped when no prices, brlusd fallbacks,
- *                          trades filtered to timestamp cutoff
- *   estimatesToDeltas   — first-entry as full deposit, incremental deltas,
- *                          tiny delta omission threshold
- */
 
 import { sampleEvenly, computeCashEstimates, estimatesToDeltas, PriceMap } from './cashBackfill';
 
-// ─── sampleEvenly ─────────────────────────────────────────────────────────────
 
 describe('sampleEvenly', () => {
   test('returns input as-is when length <= n', () => {
@@ -42,17 +30,13 @@ describe('sampleEvenly', () => {
   });
 });
 
-// ─── computeCashEstimates ─────────────────────────────────────────────────────
 
-// Base timestamp used across tests
-const T0 = 1_700_000_000_000; // ~Nov 2023
+const T0 = 1_700_000_000_000;
 const t = (offsetMs: number) => T0 + offsetMs;
 const iso = (offsetMs: number) => new Date(t(offsetMs)).toISOString();
 
 describe('computeCashEstimates – basic USD portfolio', () => {
   test('cash = snapshot.v minus investment value', () => {
-    // 1 BTC bought at 40 000, currently priced at 45 000
-    // snapshot total = 50 000 → cash = 5 000 USD → cashBRL = 5000/0.2 = 25 000
     const snapshots = [{ ts: t(3600_000), v: 50_000, brlusd_rate: 0.2 }];
     const trades = [{ symbol: 'BTC', side: 'buy', qty: 1, price: 40_000, time: iso(0) }];
     const prices = { BTC: 45_000, BRLUSD: 0.2 };
@@ -75,14 +59,13 @@ describe('computeCashEstimates – basic USD portfolio', () => {
   });
 
   test('cash can be negative (price rose above snapshot value)', () => {
-    // Investment worth 60 000, snapshot says 55 000 — stale snapshot
     const snapshots = [{ ts: t(3600_000), v: 55_000, brlusd_rate: 0.2 }];
     const trades = [{ symbol: 'BTC', side: 'buy', qty: 1, price: 40_000, time: iso(0) }];
     const prices = { BTC: 60_000, BRLUSD: 0.2 };
 
     const estimates = computeCashEstimates(snapshots, trades, () => prices);
 
-    expect(estimates[0].cashBRL).toBeCloseTo(-25_000, 2); // -5000 / 0.2
+    expect(estimates[0].cashBRL).toBeCloseTo(-25_000, 2);
   });
 
   test('multiple snapshots produce independent estimates', () => {
@@ -91,7 +74,6 @@ describe('computeCashEstimates – basic USD portfolio', () => {
       { ts: t(7200_000), v: 60_000, brlusd_rate: 0.2 },
     ];
     const trades = [{ symbol: 'BTC', side: 'buy', qty: 1, price: 40_000, time: iso(0) }];
-    // Different prices at different timestamps
     const priceMap: Record<number, Record<string, number>> = {
       [t(3600_000)]: { BTC: 45_000, BRLUSD: 0.2 },
       [t(7200_000)]: { BTC: 50_000, BRLUSD: 0.2 },
@@ -100,40 +82,33 @@ describe('computeCashEstimates – basic USD portfolio', () => {
     const estimates = computeCashEstimates(snapshots, trades, (ts) => priceMap[ts] ?? {});
 
     expect(estimates).toHaveLength(2);
-    // T0+1h: cash = 50000 - 45000 = 5000 USD → 25000 BRL
     expect(estimates[0].cashBRL).toBeCloseTo(25_000, 2);
-    // T0+2h: cash = 60000 - 50000 = 10000 USD → 50000 BRL
     expect(estimates[1].cashBRL).toBeCloseTo(50_000, 2);
   });
 });
 
 describe('computeCashEstimates – trade filtering', () => {
   test('trades after snapshot timestamp are excluded', () => {
-    // Buy BTC *after* snapshot — snapshot should show pure cash
     const snapshots = [{ ts: t(1000), v: 50_000, brlusd_rate: 0.2 }];
     const trades = [{ symbol: 'BTC', side: 'buy', qty: 1, price: 40_000, time: iso(2000) }];
     const prices = { BTC: 45_000, BRLUSD: 0.2 };
 
     const estimates = computeCashEstimates(snapshots, trades, () => prices);
 
-    // No investment at ts, so cash = 50000 USD → 250000 BRL
     expect(estimates[0].cashBRL).toBeCloseTo(250_000, 2);
   });
 
   test('trades exactly at snapshot cutoff are included', () => {
     const snapshots = [{ ts: t(1000), v: 50_000, brlusd_rate: 0.2 }];
-    // time === cutoff ISO string — should be included
     const trades = [{ symbol: 'BTC', side: 'buy', qty: 1, price: 40_000, time: new Date(t(1000)).toISOString() }];
     const prices = { BTC: 45_000, BRLUSD: 0.2 };
 
     const estimates = computeCashEstimates(snapshots, trades, () => prices);
 
-    // Investment = 45000, cash = 5000 USD → 25000 BRL
     expect(estimates[0].cashBRL).toBeCloseTo(25_000, 2);
   });
 
   test('FIFO sell reduces open lots before price calculation', () => {
-    // Buy 2 BTC, sell 1 BTC → 1 BTC open
     const snapshots = [{ ts: t(3000), v: 50_000, brlusd_rate: 0.2 }];
     const trades = [
       { symbol: 'BTC', side: 'buy',  qty: 2, price: 40_000, time: iso(0) },
@@ -143,15 +118,12 @@ describe('computeCashEstimates – trade filtering', () => {
 
     const estimates = computeCashEstimates(snapshots, trades, () => prices);
 
-    // 1 BTC @ 45000 = investment 45000, cash = 50000 - 45000 = 5000 USD → 25000 BRL
     expect(estimates[0].cashBRL).toBeCloseTo(25_000, 2);
   });
 });
 
 describe('computeCashEstimates – BRL-denominated assets (isBRLNonBond)', () => {
   test('IVVB11 price is converted USD via brlusd before subtraction', () => {
-    // 100 IVVB11 @ BRL price 400, brlusd=0.2 → priceUSD = 400*0.2 = 80 → investment = 8000 USD
-    // snapshot.v = 10000, cash = 2000 USD → cashBRL = 2000/0.2 = 10000
     const snapshots = [{ ts: t(3600_000), v: 10_000, brlusd_rate: 0.2 }];
     const trades = [{ symbol: 'IVVB11', side: 'buy', qty: 100, price: 350, time: iso(0) }];
     const prices = { IVVB11: 400, BRLUSD: 0.2 };
@@ -170,7 +142,6 @@ describe('computeCashEstimates – price lookup edge cases', () => {
       { ts: t(2000), v: 60_000, brlusd_rate: 0.2 },
     ];
     const trades: any[] = [];
-    // Only first ts has prices
     const estimates = computeCashEstimates(
       snapshots,
       trades,
@@ -182,42 +153,36 @@ describe('computeCashEstimates – price lookup edge cases', () => {
   });
 
   test('uses brlusd_rate from snapshot when BRLUSD not in prices', () => {
-    // snapshot.brlusd_rate = 0.18, prices has no BRLUSD key
     const snapshots = [{ ts: t(1000), v: 50_000, brlusd_rate: 0.18 }];
     const trades: any[] = [];
-    const prices = { BTC: 45_000 }; // no BRLUSD
+    const prices = { BTC: 45_000 };
 
     const estimates = computeCashEstimates(snapshots, trades, () => prices);
 
-    // cash = 50000 USD → cashBRL = 50000 / 0.18
     expect(estimates[0].cashBRL).toBeCloseTo(50_000 / 0.18, 1);
   });
 
   test('falls back to brlusd=1 when neither snapshot rate nor BRLUSD price exists', () => {
     const snapshots = [{ ts: t(1000), v: 10_000, brlusd_rate: null }];
     const trades: any[] = [];
-    const prices = { BTC: 45_000 }; // no BRLUSD
+    const prices = { BTC: 45_000 };
 
     const estimates = computeCashEstimates(snapshots, trades, () => prices);
 
-    // brlusd defaults to 1 → cashBRL = cashUSD = 10000
     expect(estimates[0].cashBRL).toBeCloseTo(10_000, 2);
   });
 
   test('symbols missing from prices are skipped in investment calc', () => {
-    // Buy ETH but no ETH price available → treated as 0 investment
     const snapshots = [{ ts: t(1000), v: 50_000, brlusd_rate: 0.2 }];
     const trades = [{ symbol: 'ETH', side: 'buy', qty: 5, price: 2000, time: iso(0) }];
-    const prices = { BRLUSD: 0.2 }; // ETH missing
+    const prices = { BRLUSD: 0.2 };
 
     const estimates = computeCashEstimates(snapshots, trades, () => prices);
 
-    // investmentUSD = 0 (ETH skipped), cash = 50000 → cashBRL = 250000
     expect(estimates[0].cashBRL).toBeCloseTo(250_000, 2);
   });
 });
 
-// ─── estimatesToDeltas ────────────────────────────────────────────────────────
 
 describe('estimatesToDeltas', () => {
   test('empty input returns empty array', () => {
@@ -236,8 +201,8 @@ describe('estimatesToDeltas', () => {
       { ts: t(1000), cashBRL: 15_000 },
     ]);
     expect(deltas).toHaveLength(2);
-    expect(deltas[0].amount).toBeCloseTo(10_000, 4);  // initial deposit
-    expect(deltas[1].amount).toBeCloseTo( 5_000, 4);  // +5000 increase
+    expect(deltas[0].amount).toBeCloseTo(10_000, 4);
+    expect(deltas[1].amount).toBeCloseTo( 5_000, 4);
   });
 
   test('SUM of all deltas reconstructs final cashBRL', () => {
@@ -260,7 +225,6 @@ describe('estimatesToDeltas', () => {
     ];
     const deltas = estimatesToDeltas(estimates);
 
-    // Sum up to t(1000) should equal 25000
     const sumAtT1 = deltas.filter(d => d.ts <= t(1000)).reduce((s, d) => s + d.amount, 0);
     expect(sumAtT1).toBeCloseTo(25_000, 4);
   });
@@ -273,7 +237,6 @@ describe('estimatesToDeltas', () => {
     ]);
     expect(deltas).toHaveLength(2);
     expect(deltas[0].amount).toBeCloseTo(10_000, 2);
-    // prev advances to 10000.0005 even when skipped, so jump to 20000 is 9999.9995
     expect(deltas[1].amount).toBeCloseTo(10_000, 1);
   });
 

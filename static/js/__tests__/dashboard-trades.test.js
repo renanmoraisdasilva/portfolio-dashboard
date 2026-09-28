@@ -1,17 +1,8 @@
-/**
- * Dashboard Trade Functionality Tests
- * 
- * Tests for the automatic cash position refresh after trade entry
- * and related form/validation behavior.
- */
 
-// Mock fetch for API calls
 global.fetch = jest.fn();
 
-// Mock toast notifications
 global.showToast = jest.fn();
 
-// Test data
 const mockTradeResponse = {
   trade: {
     id: 'trade-uuid-1',
@@ -51,7 +42,6 @@ const mockCashEntries = [
 describe('Cash Positions Refresh After Trade Entry', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset fetch mock
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => mockCashEntries,
@@ -64,9 +54,8 @@ describe('Cash Positions Refresh After Trade Entry', () => {
   });
 
   test('cache should be cleared after successful trade', () => {
-    // When _cashEntriesAll is set to null, the next loadCashEntries call will fetch fresh data
     let _cashEntriesAll = { entries: [] };
-    _cashEntriesAll = null; // Cache cleared
+    _cashEntriesAll = null;
     
     expect(_cashEntriesAll).toBeNull();
   });
@@ -134,12 +123,6 @@ describe('Form Input Behavior After Trade', () => {
   });
 
   test('form fields should be cleared after successful trade', () => {
-    // After trade success, the form should reset:
-    // symbol.value = 'BTC'
-    // side.value = 'buy'
-    // qty.value = ''
-    // price.value = ''
-    // tradeTotal.value = ''
     
     const formState = {
       symbol: 'BTC',
@@ -176,12 +159,10 @@ describe('Trade Validation and Submission', () => {
   });
 
   test('BUY trade with quantity and total should be submittable without explicit price', () => {
-    // With qty=10 and total=$350000, price can be calculated (350000/10 = 35000)
     const qty = 10;
     const total = 350000;
     const price = undefined;
     
-    // Frontend no longer disables the button, so submission should work
     const canSubmit = qty > 0 && (price !== undefined || total > 0);
     expect(canSubmit).toBe(true);
   });
@@ -190,7 +171,6 @@ describe('Trade Validation and Submission', () => {
     const side = 'sell';
     const price = null;
     
-    // Backend rejects SELL without price
     const shouldRejectOnServer = side === 'sell' && price === null;
     expect(shouldRejectOnServer).toBe(true);
   });
@@ -274,13 +254,11 @@ describe('Cash Entry Caching', () => {
   test('cache variable should prevent redundant API calls when not cleared', () => {
     let _cashEntriesAll = null;
     
-    // First call fetches from API
     if (_cashEntriesAll === null) {
       _cashEntriesAll = mockCashEntries;
     }
     expect(_cashEntriesAll).toEqual(mockCashEntries);
     
-    // Second call uses cache
     expect(_cashEntriesAll).not.toBeNull();
   });
 
@@ -288,7 +266,6 @@ describe('Cash Entry Caching', () => {
     let _cashEntriesAll = mockCashEntries;
     expect(_cashEntriesAll).not.toBeNull();
     
-    // After successful trade, cache is cleared
     _cashEntriesAll = null;
     expect(_cashEntriesAll).toBeNull();
     
@@ -305,18 +282,17 @@ describe('Cash Balance Display', () => {
     const entries = mockCashEntries.filter((e) => e.currency === 'BRL');
     const brlBalance = entries.reduce((sum, e) => sum + e.amount, 0);
     
-    expect(brlBalance).toBe(50000); // Only positive entry
+    expect(brlBalance).toBe(50000);
   });
 
   test('USD balance is calculated from cash entries', () => {
     const entries = mockCashEntries.filter((e) => e.currency === 'USD');
     const usdBalance = entries.reduce((sum, e) => sum + e.amount, 0);
     
-    expect(usdBalance).toBe(-350000); // Deduction from trade
+    expect(usdBalance).toBe(-350000);
   });
 
   test('cash balance elements are updated after loadCashEntries', () => {
-    // Test that the balance display would be updated
     const brlBalance = 50000;
     const usdBalance = -350000;
     

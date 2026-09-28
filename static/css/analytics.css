@@ -1,10 +1,6 @@
-/* ============================================================
-   analytics.css — Analytics Lab page styles (analytics.html)
-   ============================================================ */
 
 /* Page shell, primary navigation and page header live in layout.css. */
 
-/* ── Status bar ── */
 .status-bar {
   display: flex;
   align-items: center;
@@ -28,7 +24,6 @@
 .status-bar .last-computed { color: var(--text-secondary); }
 .status-bar .spacer { flex: 1; }
 
-/* ── Period tabs ── */
 .period-tabs {
   display: flex;
   gap: 6px;
@@ -53,7 +48,6 @@
   box-shadow: 0 0 12px var(--glow);
 }
 
-/* ── Summary metric cards ── */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -117,7 +111,6 @@
   user-select: none;
 }
 
-/* ── Metric card tooltip ── */
 .metric-tooltip {
   position: absolute;
   bottom: calc(100% + 12px);
@@ -140,7 +133,6 @@
   pointer-events: auto;
   transform: translateX(-50%) translateY(0);
 }
-/* downward arrow */
 .metric-tooltip::after {
   content: '';
   position: absolute;
@@ -211,7 +203,6 @@
 .tt-scale-item.good  { background: rgba(34,197,94,0.12);  color: #4ade80; }
 .tt-scale-item.great { background: rgba(34,197,94,0.2);   color: #4ade80; }
 
-/* ── Overall Analysis card ── */
 .analysis-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -420,7 +411,6 @@
   margin-top: 5px;
 }
 
-/* ── Chart cards ── */
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -504,7 +494,6 @@
 .chart-container { position: relative; height: 280px; }
 .chart-container.tall { height: 320px; }
 
-/* ── Drawdown badge on chart ── */
 .drawdown-marker {
   display: inline-flex;
   align-items: center;
@@ -518,7 +507,6 @@
   font-weight: 600;
 }
 
-/* ── Allocation table inside chart card ── */
 .alloc-table {
   width: 100%;
   border-collapse: collapse;
@@ -578,7 +566,6 @@
 }
 .pnl-bar-fill.negative { background: var(--accent-danger); }
 
-/* ── Empty / loading states ── */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-tertiary) 25%, rgba(255,255,255,0.04) 50%, var(--bg-tertiary) 75%);
   background-size: 200% 100%;
@@ -597,7 +584,6 @@
   color: var(--text-muted);
 }
 
-/* ── Responsive ── */
 @media (max-width: 900px) {
   .charts-grid { grid-template-columns: 1fr; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
