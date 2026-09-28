@@ -30,6 +30,8 @@ tags:
     description: Scenario persistence endpoints
   - name: Analytics
     description: Analytics snapshot endpoints
+  - name: Portfolio
+    description: Server-computed portfolio values
   - name: Migrations
     description: Maintenance backfill migrations
   - name: SQL Explorer
@@ -677,6 +679,40 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/AnalyticsSnapshot'
+  /portfolio/valuation:
+    get:
+      tags: [Portfolio]
+      summary: Portfolio totals, invested cost, per-position P/L and allocation split
+      description: >
+        The derived values of the whole portfolio, computed server-side by
+        packages/shared so the dashboard and the history the API has already
+        written cannot disagree. Amounts are plain numbers; each row states the
+        currency it is denominated in.
+      parameters:
+        - name: cash
+          in: query
+          required: false
+          description: Whether the allocation split includes the cash balances
+          schema:
+            type: string
+            enum: [with-cash, investments]
+            default: with-cash
+      responses:
+        '200':
+          description: The current valuation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioValuation'
+        '500':
+          description: The valuation could not be computed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
   /health:
     get:
       tags: [Health]
@@ -1248,6 +1284,127 @@ components:
           type: integer
         to:
           type: integer
+    PortfolioValuation:
+      type: object
+      description: >
+        Totals are in USD. `rows` covers every open position plus the two cash
+        rows; each row says which currency its amounts are in, and `plCurrency`
+        differs from `valueCurrency` for the BRL cash row because interest on a
+        BRL balance is a BRL amount.
+      required:
+        - total
+        - invested
+        - investedNet
+        - realized
+        - unrealized
+        - unrealizedPct
+        - tickerValue
+        - investedPct
+        - breakEven
+        - rows
+        - allocation
+        - plByAsset
+        - brlUsdRate
+        - salesCount
+      properties:
+        lots:
+          type: object
+          description: Open FIFO lots per symbol
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              required: [qty, price]
+              properties:
+                qty:
+                  type: number
+                price:
+                  type: number
+        positions:
+          type: object
+          description: Open quantity per symbol
+          additionalProperties:
+            type: number
+        total:
+          type: number
+          description: Holdings at market value plus both cash balances
+        invested:
+          type: number
+          description: Cost basis of open lots plus both cash balances
+        investedNet:
+          type: number
+        realized:
+          type: number
+          description: Realized P/L from sells plus interest earned
+        unrealized:
+          type: number
+        unrealizedPct:
+          type: number
+        tickerValue:
+          type: number
+          description: Market value of the tickers only — excludes cash and BRLUSD
+        investedPct:
+          type: number
+        breakEven:
+          type: boolean
+        rows:
+          type: array
+          items:
+            type: object
+            required: [symbol, kind, qty, avgCost, currentPrice, value, pl, plPct, valueCurrency, plCurrency]
+            properties:
+              symbol:
+                type: string
+              kind:
+                type: string
+                enum: [position, brl-cash, usd-cash]
+              qty:
+                type: number
+              avgCost:
+                type: number
+              currentPrice:
+                type: number
+              value:
+                type: number
+              pl:
+                type: number
+              plPct:
+                type: number
+              valueCurrency:
+                type: string
+                enum: [BRL, USD]
+              plCurrency:
+                type: string
+                enum: [BRL, USD]
+              quotedInBrl:
+                type: boolean
+        allocation:
+          type: array
+          items:
+            type: object
+            required: [label, value, pct]
+            properties:
+              label:
+                type: string
+              value:
+                type: number
+              pct:
+                type: number
+        plByAsset:
+          type: array
+          items:
+            type: object
+            required: [symbol, pl]
+            properties:
+              symbol:
+                type: string
+              pl:
+                type: number
+        brlUsdRate:
+          type: number
+        salesCount:
+          type: integer
+          description: Trades with side `sell` — the "from N sales" count
     AnalyticsSnapshot:
       type: object
       properties:

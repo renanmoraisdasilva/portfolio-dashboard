@@ -14,14 +14,15 @@ Getting started (dev):
 API notes:
 - The Vue views read granular endpoints: `/api/trades` for the ledger, `/api/cash` for both balances *and* both interest totals, `/api/interest/months?currency=BRL|USD` for the month lists, and `/api/history` or `/api/history/ohlc` for snapshots. There is no aggregated state blob any more — Phase 5 removed `GET /api/state`, which only duplicated these and needed its own cache to hide the cost.
 - `GET /api/analytics` returns analytics snapshots and uses a 30-second process-local LRU cache with single-flight regeneration for concurrent misses.
+- `GET /api/portfolio/valuation?cash=with-cash|investments` returns the portfolio's *derived* values — total, invested cost, realized and unrealized P/L, one row per position and per cash balance, the allocation split, and the sale count — computed by `computeValuation` in `packages/shared`. Every amount is a plain number and each row states the currency it is in, because deciding that (a BRL quote, a bond stored in USD but shown in BRL, a BRL balance earning BRL interest) is domain knowledge. `?cash` picks whether the allocation percentages include the cash balances; the dashboard refetches when the toggle flips. The simulator does not use this endpoint — its prices are hypothetical — and calls the same function instead.
 - `GET /api/health` returns uptime plus the last price/asset-cache timestamps, and answers `503` with `{ ok: false, error }` when the database read fails — so the container healthcheck (`r.ok ? 0 : 1`) actually fails on a broken database.
 - `GET /api/trades` and `POST /api/trades` and `DELETE /api/trades/:id` for trades CRUD.
 - `GET /api/history` (supports `?range=` of `day`, `week`, `month`, `6months`, `year` or `all`), `POST /api/history/point`, `DELETE /api/history/:id`, `DELETE /api/history` to manage history points.
 - `GET /api/prices` returns cached prices; the worker refreshes them on an 8-minute interval (`apps/api/src/jobs/priceRefresh.ts`).
 - `GET /api/asset/{symbol}/history` returns cached/sourced asset history.
 - `GET /api/cash` and `PUT /api/cash` to manage cash positions, plus `GET/POST /api/cash/entries` and `DELETE /api/cash/entries/:id` for individual entries.
-- `GET /api/interest/months`, `POST /api/interest/months`, and `DELETE /api/interest/months/:month` to manage interest entries.
-- `GET /api/state/export` and `POST /api/state/import` to export/import whole state.
+- `GET /api/interest/months`, `POST /api/interest/months`, and `DELETE /api/interest/months/:month` to manage interest entries. The `interest` table has no key of its own, so `POST` deletes `(month, currency)` before inserting — without that, editing an amount appended a second row and counted the month twice.
+- `GET /api/state/export` and `POST /api/state/import` to export/import whole state. The import replaces each section rather than merging: a restored backup must not accumulate interest months or leave stale cash entries behind.
 - `GET /api/alerts`, `POST /api/alerts`, `PUT/DELETE /api/alerts/:id`, plus `GET /api/alerts/triggered` and `POST /api/alerts/dismiss/:alertId`.
 - `GET/POST/PUT/DELETE /api/scenarios` — saved simulation scenarios.
 - `GET /api/config/symbols` — the symbol registry that populates every select and chart.

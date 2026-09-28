@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
 import {
-  createPortfolioCalculator,
+  computeProjection,
   createSymbolClassifier,
   formatMoney,
   parseMoney,
@@ -17,6 +17,7 @@ export type TriggeredAlert = components['schemas']['TriggeredAlert'];
 export type OhlcCandle = components['schemas']['OhlcCandle'];
 export type HistoryPoint = components['schemas']['HistoryPoint'];
 export type SymbolMeta = components['schemas']['SymbolConfig'];
+export type PortfolioValuation = components['schemas']['PortfolioValuation'];
 
 export type Side = 'buy' | 'sell';
 export type CashSource = 'USD' | 'BRL';
@@ -62,8 +63,6 @@ export const ALLOCATION_PALETTE = [
 ];
 
 const CASH_ENTRIES_PAGE_SIZE = 5;
-/** Projection horizon: half a year of daily-ish points. */
-export const PROJ_DAYS = 182.5;
 
 const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const brl = (n: number): string => `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -162,10 +161,12 @@ export const useDashboardStore = defineStore(
     const qtyPct = ref(0);
 
     const classifier = computed(() => createSymbolClassifier(symbolDetails.value));
-    const calculator = computed(() => createPortfolioCalculator(symbolDetails.value));
     const isBRLAsset = (s: string): boolean => classifier.value.isBRLAsset(s);
     const isBRLNonBond = (s: string): boolean => classifier.value.isBRLNonBond(s);
     const isBRLBond = (s: string): boolean => classifier.value.isBRLBond(s);
+
+    /** Open quantity for a symbol, as the server's FIFO walk left it. */
+    const positionQty = (symbol: string): number => valuation.value?.positions?.[symbol] ?? 0;
 
     /** Assets a user can trade: everything except pure currency pairs. */
     const tradeableSymbols = computed(() =>
@@ -193,92 +194,45 @@ export const useDashboardStore = defineStore(
       };
     }
 
-    // --- Lots and positions ---------------------------------------------------
+    // --- Server-computed valuation --------------------------------------------
 
-    /** FIFO replay. Falls back to the market price when a trade carries none. */
-    const lots = computed<Record<string, Array<{ qty: number; price: number }>>>(() =>
-      calculator.value.replayFIFOLots(
-        trades.value.map((t) => ({ symbol: t.symbol, side: t.side, qty: t.qty, price: t.price ?? null })),
-        prices.value,
-      ),
-    );
+    /**
+     * Totals, invested cost, per-position P/L and the allocation split, as
+     * `GET /api/portfolio/valuation` computed them.
+     *
+     * Phase 6 moved this out of the browser. It used to be ~180 lines of
+     * `metrics`, `positionRows`, `cashPositionRows`, `allocation` and
+     * `plByAsset` computeds in this file, a second copy of the rules that
+     * `historyManager` applies when it writes snapshots. The page now renders
+     * these numbers and formats them; it does not derive them. The simulator is
+     * the one place that still values positions itself, because its prices are
+     * hypothetical — and it calls the same shared module.
+     */
+    const valuation = ref<PortfolioValuation | null>(null);
 
-    const positions = computed<Record<string, number>>(() => {
-      const out: Record<string, number> = {};
-      for (const s of Object.keys(lots.value)) {
-        out[s] = lots.value[s].reduce((sum, lot) => sum + lot.qty, 0);
-      }
-      return out;
-    });
-
-    const investedWithCash = computed(() => {
-      let invested = 0;
-      for (const s of Object.keys(lots.value)) {
-        for (const lot of lots.value[s]) {
-          invested += isBRLNonBond(s) ? lot.qty * lot.price * brlUsdRate.value : lot.qty * lot.price;
-        }
-      }
-      invested += cashReais.value * brlUsdRate.value;
-      invested += cashDollars.value;
-      return invested;
-    });
-
-    const totalValue = computed(() => {
-      let total = 0;
-      for (const s of Object.keys(positions.value)) {
-        const p = priceOf(s);
-        total += isBRLNonBond(s) ? positions.value[s] * p * brlUsdRate.value : positions.value[s] * p;
-      }
-      total += cashReais.value * brlUsdRate.value;
-      total += cashDollars.value;
-      return total;
-    });
-
-    // --- Metrics ---------------------------------------------------------------
+    async function loadValuation(): Promise<void> {
+      valuation.value = await request(
+        api.GET('/portfolio/valuation', {
+          params: { query: { cash: allocationShowCash.value ? 'with-cash' : 'investments' } },
+        }),
+        'GET',
+        '/portfolio/valuation',
+      );
+    }
 
     const metrics = computed(() => {
-      const interestFromBRLMonths = interestReaisMonths.value.reduce((s, m) => s + (Number(m.amount) || 0), 0);
-      const interestFromUSDMonths = interestDollarsMonths.value.reduce((s, m) => s + (Number(m.amount) || 0), 0);
-      const salesCount = trades.value.filter((t) => t.side === 'sell').length;
-      const realizedFromTrades = trades.value
-        .filter((t) => t.side === 'sell')
-        .reduce((sum, t) => {
-          const p = t.profit ?? 0;
-          return sum + (isBRLNonBond(t.symbol) ? p * brlUsdRate.value : p);
-        }, 0);
-      const realized = realizedFromTrades + interestFromBRLMonths * brlUsdRate.value + interestFromUSDMonths;
-
-      const invested = investedWithCash.value;
-      const total = totalValue.value;
-      const investedNet = Math.max(0, invested - realized);
-      const unrealized = total - invested;
-      const unrealizedPct = invested > 0 ? (unrealized / invested) * 100 : 0;
-
-      const tickerValue = Object.keys(positions.value)
-        .filter((s) => s !== 'BRLUSD')
-        .reduce((sum, s) => {
-          const p = priceOf(s);
-          return sum + (isBRLNonBond(s) ? (positions.value[s] || 0) * p * brlUsdRate.value : (positions.value[s] || 0) * p);
-        }, 0);
-      const investedPct = total > 0 ? (tickerValue / total) * 100 : 0;
-
+      const v = valuation.value;
       return {
-        total,
-        invested,
-        investedNet,
-        realized,
-        realizedFromTrades,
-        interestFromBRLMonths,
-        interestFromUSDMonths,
-        salesCount,
-        unrealized,
-        unrealizedPct,
-        tickerValue,
-        investedPct,
-        breakEven: Math.abs(unrealized) < 0.01,
-        // Every BRL sub-line divides by the rate; guard it like the legacy did
-        // not, but avoid "Infinity" in the UI.
-        brlRate: brlUsdRate.value,
+        total: v?.total ?? 0,
+        invested: v?.invested ?? 0,
+        investedNet: v?.investedNet ?? 0,
+        realized: v?.realized ?? 0,
+        unrealized: v?.unrealized ?? 0,
+        unrealizedPct: v?.unrealizedPct ?? 0,
+        tickerValue: v?.tickerValue ?? 0,
+        investedPct: v?.investedPct ?? 0,
+        breakEven: v?.breakEven ?? true,
+        salesCount: v?.salesCount ?? 0,
       };
     });
 
@@ -290,106 +244,95 @@ export const useDashboardStore = defineStore(
 
     // --- Position rows ---------------------------------------------------------
 
-    const positionRows = computed(() => {
-      const rate = brlUsdRate.value || 1;
-      return Object.keys(positions.value).map((s) => {
-        const qty = positions.value[s];
-        const cost = (lots.value[s] || []).reduce((sum, lot) => sum + lot.qty * lot.price, 0);
-        const current = priceOf(s);
-
-        if (isBRLNonBond(s)) {
-          const value = qty * current;
-          const pl = value - cost;
+    /**
+     * The positions table, as the valuation's rows formatted for display.
+     *
+     * Every amount arrives from the server already in the right currency — that
+     * choice is domain knowledge, and it is made once, in `computeValuation`.
+     * What is left here is printing: which currency's formatter, a sign, and how
+     * many decimals. The row shapes are unchanged, so the table did not have to
+     * be touched.
+     */
+    const positionRows = computed(() =>
+      (valuation.value?.rows ?? [])
+        .filter((row) => row.kind === 'position')
+        .map((row) => {
+          const brl = row.valueCurrency === 'BRL';
+          const money = (amount: number): string => (brl ? formatMoney(amount, 'BRL') : `$${amount.toFixed(2)}`);
+          const pl = row.plCurrency === 'BRL' ? formatMoney(row.pl, 'BRL') : `$${row.pl.toFixed(2)}`;
           return {
-            symbol: s,
-            qty: qty.toFixed(4),
-            avg: formatMoney(qty > 0 ? cost / qty : 0, 'BRL'),
-            cur: formatMoney(current, 'BRL'),
-            value: formatMoney(value, 'BRL'),
-            pl: `${pl >= 0 ? '+' : ''}${formatMoney(pl, 'BRL')}`,
-            plPct: `${(cost > 0 ? (pl / cost) * 100 : 0) >= 0 ? '+' : ''}${((cost > 0 ? (pl / cost) * 100 : 0)).toFixed(2)}%`,
-            positive: pl >= 0,
+            symbol: row.symbol,
+            qty: row.qty.toFixed(4),
+            avg: money(row.avgCost),
+            cur: money(row.currentPrice),
+            value: money(row.value),
+            pl: `${row.pl >= 0 ? '+' : ''}${pl}`,
+            plPct: `${row.plPct >= 0 ? '+' : ''}${row.plPct.toFixed(2)}%`,
+            positive: row.pl >= 0,
           };
-        }
-        if (isBRLBond(s)) {
-          const meta = priceMeta.value[s];
-          const costBRL = cost / rate;
-          const curBRL = typeof meta?.priceBRL === 'number' ? meta.priceBRL : current / rate;
-          const valueBRL = qty * curBRL;
-          const plBRL = valueBRL - costBRL;
-          const plPct = costBRL > 0 ? (plBRL / costBRL) * 100 : 0;
-          return {
-            symbol: s,
-            qty: qty.toFixed(4),
-            avg: formatMoney(qty > 0 ? costBRL / qty : 0, 'BRL'),
-            cur: formatMoney(curBRL, 'BRL'),
-            value: formatMoney(valueBRL, 'BRL'),
-            pl: `${plBRL >= 0 ? '+' : ''}${formatMoney(plBRL, 'BRL')}`,
-            plPct: `${plPct >= 0 ? '+' : ''}${plPct.toFixed(2)}%`,
-            positive: plBRL >= 0,
-          };
-        }
-        const value = qty * current;
-        const pl = value - cost;
-        const plPct = cost > 0 ? (pl / cost) * 100 : 0;
-        return {
-          symbol: s,
-          qty: qty.toFixed(4),
-          avg: `$${(qty > 0 ? cost / qty : 0).toFixed(2)}`,
-          cur: `$${current.toFixed(2)}`,
-          value: `$${value.toFixed(2)}`,
-          pl: `${pl >= 0 ? '+' : ''}$${pl.toFixed(2)}`,
-          plPct: `${plPct >= 0 ? '+' : ''}${plPct.toFixed(2)}%`,
-          positive: pl >= 0,
-        };
-      });
-    });
+        }),
+    );
 
     /** Cash rows are part of the positions table, exactly as the legacy page had it. */
-    const cashPositionRows = computed(() => {
-      const rate = brlUsdRate.value;
-      const rows: Array<{
-        symbol: string;
-        qty: string;
-        avg: string;
-        cur: string;
-        value: string;
-        pl: string;
-        plPct: string;
-        positive: boolean;
-      }> = [];
+    const cashPositionRows = computed(() =>
+      (valuation.value?.rows ?? [])
+        .filter((row) => row.kind !== 'position')
+        .map((row) => ({
+          symbol: row.symbol,
+          // A balance reads better to the cent than a fractional position does.
+          qty: row.qty.toFixed(2),
+          // USD cash has no purchase price, so both rate columns are a dash.
+          avg: row.kind === 'brl-cash' ? `$${row.avgCost.toFixed(4)}` : '-',
+          cur: row.kind === 'brl-cash' ? `$${row.currentPrice.toFixed(4)}` : '-',
+          value: `$${row.value.toFixed(2)}`,
+          // The BRL balance is valued in USD but earns BRL interest, so the P/L
+          // column is a BRL amount on that row.
+          pl: `${row.pl >= 0 ? '+' : ''}${row.plCurrency === 'BRL' ? `R$${row.pl.toFixed(2)}` : `$${row.pl.toFixed(2)}`}`,
+          plPct: `${row.plPct >= 0 ? '+' : ''}${row.plPct.toFixed(2)}%`,
+          positive: row.pl >= 0,
+        })),
+    );
 
-      const interestBRL = interestReaisMonths.value.reduce((s, m) => s + (Number(m.amount) || 0), 0);
-      if (cashReais.value > 0 || interestBRL > 0) {
-        const plPct = cashReais.value > 0 ? (interestBRL / cashReais.value) * 100 : 0;
-        rows.push({
-          symbol: 'BRL (100% CDI)',
-          qty: cashReais.value.toFixed(2),
-          avg: `$${rate.toFixed(4)}`,
-          cur: `$${rate.toFixed(4)}`,
-          value: `$${(cashReais.value * rate).toFixed(2)}`,
-          pl: `${interestBRL >= 0 ? '+' : ''}R$${interestBRL.toFixed(2)}`,
-          plPct: `${plPct >= 0 ? '+' : ''}${plPct.toFixed(2)}%`,
-          positive: interestBRL >= 0,
-        });
-      }
+    // --- Allocation and P/L ----------------------------------------------------
 
-      const interestUSD = interestDollarsMonths.value.reduce((s, m) => s + (Number(m.amount) || 0), 0);
-      if (cashDollars.value > 0 || interestUSD > 0) {
-        const plPct = cashDollars.value > 0 ? (interestUSD / cashDollars.value) * 100 : 0;
-        rows.push({
-          symbol: 'Dollar',
-          qty: cashDollars.value.toFixed(2),
-          avg: '-',
-          cur: '-',
-          value: `$${cashDollars.value.toFixed(2)}`,
-          pl: `${interestUSD >= 0 ? '+' : ''}$${interestUSD.toFixed(2)}`,
-          plPct: `${plPct >= 0 ? '+' : ''}${plPct.toFixed(2)}%`,
-          positive: interestUSD >= 0,
-        });
-      }
-      return rows;
+    /**
+     * The doughnut's slices, as the server computed them.
+     *
+     * Which slices exist and what share of the portfolio each one is — including
+     * whether the cash balances are part of the split — is the server's answer,
+     * so flipping the "with cash" toggle refetches the valuation instead of
+     * re-deriving the percentages here.
+     */
+    const allocation = computed(() => {
+      const slices = valuation.value?.allocation ?? [];
+      return {
+        labels: slices.map((slice) => slice.label),
+        values: slices.map((slice) => slice.value),
+        pcts: slices.map((slice) => slice.pct),
+        colors: slices.map((_, i) => ALLOCATION_PALETTE[i % ALLOCATION_PALETTE.length]),
+      };
     });
+
+    const plByAsset = computed(() => {
+      const rows = valuation.value?.plByAsset ?? [];
+      return {
+        labels: rows.map((row) => row.symbol),
+        values: rows.map((row) => row.pl),
+        colors: rows.map((row) => (row.pl >= 0 ? '#10b981' : '#ef4444')),
+      };
+    });
+
+    /**
+     * Least-squares trend of the history, extended forward.
+     *
+     * The fit is `computeProjection` from packages/shared — it used to sit here
+     * as forty untested lines, and it is the only place where the browser derived
+     * a value nothing else could check. It stays client-side because the series
+     * it fits is already in hand, and a request per toggle would be slower for
+     * no extra correctness.
+     */
+    const projection = computed(() => (projectionEnabled.value ? computeProjection(history.value) : []));
+
 
     // --- Trade history ---------------------------------------------------------
 
@@ -443,91 +386,6 @@ export const useDashboardStore = defineStore(
       });
     });
 
-    // --- Allocation and P/L ----------------------------------------------------
-
-    const allocation = computed(() => {
-      const symbols = Object.keys(positions.value);
-      const values = symbols.map((s) => {
-        const p = priceOf(s);
-        return isBRLNonBond(s) ? positions.value[s] * p * brlUsdRate.value : positions.value[s] * p;
-      });
-
-      const labels = [...symbols];
-      const slices = [...values];
-      if (allocationShowCash.value) {
-        if (cashReais.value > 0) {
-          labels.push('BRL');
-          slices.push(cashReais.value * brlUsdRate.value);
-        }
-        if (cashDollars.value > 0) {
-          labels.push('Dollar');
-          slices.push(cashDollars.value);
-        }
-      }
-
-      const total = values.reduce((a, b) => a + b, 0) + (allocationShowCash.value ? cashReais.value * brlUsdRate.value + cashDollars.value : 0);
-      return {
-        labels,
-        values: slices,
-        pcts: slices.map((v) => (total > 0 ? (v / total) * 100 : 0)),
-        colors: labels.map((_, i) => ALLOCATION_PALETTE[i % ALLOCATION_PALETTE.length]),
-      };
-    });
-
-    const plByAsset = computed(() => {
-      const symbols = Object.keys(positions.value);
-      const values = symbols.map((s) => {
-        const cost = (lots.value[s] || []).reduce((sum, lot) => sum + lot.qty * lot.price, 0);
-        const value = positions.value[s] * priceOf(s);
-        const pl = value - cost;
-        return isBRLNonBond(s) ? pl * brlUsdRate.value : pl;
-      });
-      return { labels: symbols, values, colors: values.map((v) => (v >= 0 ? '#10b981' : '#ef4444')) };
-    });
-
-    /**
-     * Least-squares trend of the history, extended forward.
-     *
-     * Timestamps are normalised to hours before fitting: raw millisecond values
-     * lose the precision that makes the denominator stable.
-     */
-    const projection = computed(() => {
-      if (!projectionEnabled.value) return [];
-      const source = history.value;
-      const n = source.length;
-      if (n < 2) return [];
-
-      const t0 = source[0].ts ?? 0;
-      const xs = source.map((h) => ((h.ts ?? 0) - t0) / (1000 * 60 * 60));
-      const ys = source.map((h) => h.v ?? 0);
-      let sumX = 0;
-      let sumY = 0;
-      let sumXY = 0;
-      let sumXX = 0;
-      for (let i = 0; i < n; i++) {
-        sumX += xs[i];
-        sumY += ys[i];
-        sumXY += xs[i] * ys[i];
-        sumXX += xs[i] * xs[i];
-      }
-      const denom = n * sumXX - sumX * sumX;
-      if (Math.abs(denom) < 1e-9) return [];
-      const slope = (n * sumXY - sumX * sumY) / denom;
-      const intercept = (sumY - slope * sumX) / n;
-
-      const lastTs = source[n - 1].ts ?? Date.now();
-      const durationDays = ((source[n - 1].ts ?? 0) - (source[0].ts ?? 0)) / (1000 * 60 * 60 * 24) || 1;
-      const pointsPerDay = n / durationDays;
-      const numPoints = Math.min(200, Math.max(10, Math.round(pointsPerDay * PROJ_DAYS)));
-      const step = (PROJ_DAYS * 24 * 60 * 60 * 1000) / numPoints;
-
-      const points: Array<{ ts: number; v: number }> = [];
-      for (let i = 1; i <= numPoints; i++) {
-        const ts = lastTs + i * step;
-        points.push({ ts, v: Math.max(0, slope * ((ts - t0) / (1000 * 60 * 60)) + intercept) });
-      }
-      return points;
-    });
 
     const valueCandles = computed(() => {
       const source = activeMetric.value === 'pnl' ? pnlOHLC.value : historyOHLC.value;
@@ -582,7 +440,7 @@ export const useDashboardStore = defineStore(
       if (!price || price <= 0) return 0;
 
       if (formSide.value === 'sell') {
-        const pos = (lots.value[symbol] || []).reduce((s, l) => s + l.qty, 0);
+        const pos = positionQty(symbol);
         return +((pos * pct) / 100).toFixed(4);
       }
       const source = formCashSource.value;
@@ -601,7 +459,7 @@ export const useDashboardStore = defineStore(
       if (!price || price <= 0) return 0;
 
       if (formSide.value === 'sell') {
-        const pos = (lots.value[symbol] || []).reduce((s, l) => s + l.qty, 0);
+        const pos = positionQty(symbol);
         const pct = pos > 0 ? Math.round((qty / pos) * 100) : 0;
         return Math.min(100, Math.max(0, pct));
       }
@@ -1188,11 +1046,13 @@ export const useDashboardStore = defineStore(
       if (Array.isArray(pnlCandles) && pnlCandles.length > 0) pnlOHLC.value = pnlCandles;
     }
 
-    /** One cycle of the legacy `refresh()`: symbols, prices, history. */
+    /** One cycle of the legacy `refresh()`: symbols, prices, history, valuation. */
     async function refresh(): Promise<void> {
       await loadSymbols();
       await fetchPrices();
       await loadHistorySeries();
+      // Prices are the valuation's main input, so it is recomputed after them.
+      await loadValuation();
     }
 
     async function load(): Promise<void> {
@@ -1219,7 +1079,11 @@ export const useDashboardStore = defineStore(
     }
 
     function setAllocationMode(mode: 'withCash' | 'investments'): void {
+      if (allocationShowCash.value === (mode === 'withCash')) return;
       allocationShowCash.value = mode === 'withCash';
+      // Whether the cash balances are part of the split is the server's call, so
+      // the toggle asks for that variant rather than recomputing the percentages.
+      loadValuation().catch((err) => console.warn('[dashboard] allocation valuation failed:', err));
     }
 
     function setAllocCurrency(next: Currency): void {
@@ -1296,10 +1160,6 @@ export const useDashboardStore = defineStore(
       qtyPct,
       // derived
       tradeableSymbols,
-      lots,
-      positions,
-      investedWithCash,
-      totalValue,
       metrics,
       hasPriceError,
       zeroPriceAssets,

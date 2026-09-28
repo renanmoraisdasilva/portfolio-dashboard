@@ -62,7 +62,10 @@ stateRouter.post('/import', async (req, res) => {
       // Very simple validation and insertion (non-idempotent). For large imports prefer migration script.
       if (payload.trades && Array.isArray(payload.trades)) {
         for (const t of payload.trades) {
-          await run('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time, profit) VALUES (?, ?, ?, ?, ?, ?, ?)', [t.id ?? null, t.symbol, t.side, t.qty, t.price ?? null, t.time, t.profit ?? null]);
+          // No `profit` column: it was dropped in migration 0003, and writing it
+          // made every restore fail with "table trades has no column named
+          // profit". Exported backups may still carry the field; it is ignored.
+          await run('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [t.id ?? null, t.symbol, t.side, t.qty, t.price ?? null, t.time]);
         }
       }
       if (payload.history && Array.isArray(payload.history)) {
@@ -71,13 +74,19 @@ stateRouter.post('/import', async (req, res) => {
         }
       }
       if (payload.interestReaisMonths && Array.isArray(payload.interestReaisMonths)) {
+        // `interest` has no unique key, so OR REPLACE would append a second row
+        // per month and every restore would inflate the interest income. The
+        // months in the backup replace the months in the database, as `cash`
+        // already does below.
+        await run('DELETE FROM interest WHERE currency = ?', ['BRL']);
         for (const m of payload.interestReaisMonths) {
-          await run('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'BRL', m.amount, Date.now()]);
+          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'BRL', m.amount, Date.now()]);
         }
       }
       if (payload.interestDollarsMonths && Array.isArray(payload.interestDollarsMonths)) {
+        await run('DELETE FROM interest WHERE currency = ?', ['USD']);
         for (const m of payload.interestDollarsMonths) {
-          await run('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'USD', m.amount, Date.now()]);
+          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'USD', m.amount, Date.now()]);
         }
       }
       if (payload.alerts && Array.isArray(payload.alerts)) {

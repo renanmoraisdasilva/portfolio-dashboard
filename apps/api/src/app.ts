@@ -17,6 +17,7 @@ import { configRouter } from './routes/config';
 import { scenariosRouter } from './routes/scenarios';
 import { migrationsRouter } from './routes/migrations';
 import analyticsRouter from './routes/analytics';
+import { portfolioRouter } from './routes/portfolio';
 import { sqlExplorerRouter } from './routes/sqlExplorer';
 import { metricsText, observeHttpRequest } from './metrics';
 import { invalidateResponseCaches } from './services/responseCache';
@@ -96,6 +97,7 @@ export function mountWebRoutes(app: Express): void {
   }, sqlExplorerRouter);
   app.use('/api/scenarios', scenariosRouter);
   app.use('/api/analytics', analyticsRouter);
+  app.use('/api/portfolio', portfolioRouter);
 
   const openapiFile = path.resolve(__dirname, '..', 'openapi.yaml');
   try {

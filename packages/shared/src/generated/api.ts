@@ -1262,6 +1262,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portfolio/valuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Portfolio totals, invested cost, per-position P/L and allocation split
+         * @description The derived values of the whole portfolio, computed server-side by packages/shared so the dashboard and the history the API has already written cannot disagree. Amounts are plain numbers; each row states the currency it is denominated in.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Whether the allocation split includes the cash balances */
+                    cash?: "with-cash" | "investments";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The current valuation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PortfolioValuation"];
+                    };
+                };
+                /** @description The valuation could not be computed */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error?: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1849,6 +1902,61 @@ export interface components {
             errors?: number;
             from?: number;
             to?: number;
+        };
+        /** @description Totals are in USD. `rows` covers every open position plus the two cash rows; each row says which currency its amounts are in, and `plCurrency` differs from `valueCurrency` for the BRL cash row because interest on a BRL balance is a BRL amount. */
+        PortfolioValuation: {
+            /** @description Open FIFO lots per symbol */
+            lots?: {
+                [key: string]: {
+                    qty: number;
+                    price: number;
+                }[];
+            };
+            /** @description Open quantity per symbol */
+            positions?: {
+                [key: string]: number;
+            };
+            /** @description Holdings at market value plus both cash balances */
+            total: number;
+            /** @description Cost basis of open lots plus both cash balances */
+            invested: number;
+            investedNet: number;
+            /** @description Realized P/L from sells plus interest earned */
+            realized: number;
+            unrealized: number;
+            unrealizedPct: number;
+            /** @description Market value of the tickers only — excludes cash and BRLUSD */
+            tickerValue: number;
+            investedPct: number;
+            breakEven: boolean;
+            rows: {
+                symbol: string;
+                /** @enum {string} */
+                kind: "position" | "brl-cash" | "usd-cash";
+                qty: number;
+                avgCost: number;
+                currentPrice: number;
+                value: number;
+                pl: number;
+                plPct: number;
+                /** @enum {string} */
+                valueCurrency: "BRL" | "USD";
+                /** @enum {string} */
+                plCurrency: "BRL" | "USD";
+                quotedInBrl?: boolean;
+            }[];
+            allocation: {
+                label: string;
+                value: number;
+                pct: number;
+            }[];
+            plByAsset: {
+                symbol: string;
+                pl: number;
+            }[];
+            brlUsdRate: number;
+            /** @description Trades with side `sell` — the "from N sales" count */
+            salesCount: number;
         };
         AnalyticsSnapshot: {
             id?: string;

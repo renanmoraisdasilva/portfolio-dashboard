@@ -21,10 +21,19 @@ interestRouter.post('/months', async (req: Request, res: Response) => {
     const { month, amount, currency = 'BRL' } = req.body;
     if (!month || typeof amount !== 'number') return res.status(400).json({ error: 'month and amount required' });
     if (!['BRL', 'USD'].includes(currency as string)) return res.status(400).json({ error: 'currency must be BRL or USD' });
-    await run(
-      'INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)',
-      [month, currency, amount, Date.now()],
-    );
+    // `interest` has no primary key and no unique index, so `INSERT OR REPLACE`
+    // appended a second row for a month that already existed: editing an amount
+    // listed the month twice and counted it twice in the totals. Delete first,
+    // inside a transaction, so a month is one row.
+    await run('BEGIN TRANSACTION');
+    try {
+      await run('DELETE FROM interest WHERE month = ? AND currency = ?', [month, currency]);
+      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [month, currency, amount, Date.now()]);
+      await run('COMMIT');
+    } catch (txErr) {
+      await run('ROLLBACK');
+      throw txErr;
+    }
     res.status(201).json({ month, currency, amount });
   } catch (err) {
     console.error('Error adding interest month', err);

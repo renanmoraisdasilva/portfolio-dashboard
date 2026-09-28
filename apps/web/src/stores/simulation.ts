@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
 import {
+  computeValuation,
   createPortfolioCalculator,
   createSymbolClassifier,
   formatMoney,
@@ -134,59 +135,87 @@ export const useSimulationStore = defineStore(
      * A spread (rather than the legacy `sim || market || 0`) lets an override
      * of exactly 0 stay 0 instead of snapping back to the market price.
      */
+    /**
+     * Scenario prices win over market prices when a trade carries no price.
+     * A spread (rather than the legacy `sim || market || 0`) lets an override
+     * of exactly 0 stay 0 instead of snapping back to the market price.
+     */
     const fallbackPrices = computed<Record<string, number>>(() => ({ ...prices.value, ...simPrices.value }));
 
+    /**
+     * The prices a position is valued at: a scenario override, or the market
+     * price for an asset the scenario never set.
+     *
+     * Kept separate from `fallbackPrices` on purpose — a 0 override means
+     * "worthless" when costing a lot, but an *unset* price falls back to the
+     * market when valuing a position. `computeValuation` takes both maps.
+     */
+    const currentPrices = computed<Record<string, number>>(() => {
+      const out: Record<string, number> = { ...prices.value };
+      for (const [symbol, price] of Object.entries(simPrices.value)) {
+        if (price) out[symbol] = price;
+      }
+      return out;
+    });
+
+    /**
+     * The scenario's portfolio, valued by the shared module.
+     *
+     * This is the last place that valued positions itself. The dashboard reads
+     * `GET /api/portfolio/valuation`; the simulator cannot, because its prices
+     * and cash balances are hypothetical and re-derive on every keystroke — a
+     * request per slider frame would make the page worse, not the arithmetic
+     * safer. It calls the same `computeValuation` the endpoint does, so the two
+     * cannot disagree about invested cost, BRL conversion or a position's P/L.
+     *
+     * Realized P/L is the one input that differs: the scenario's trades are not
+     * in the database, so their P/L comes from the FIFO walk rather than from a
+     * `profit` column. There is no interest in a scenario.
+     */
+    const valuation = computed(() => {
+      const replay = calculator.value.replayTradesWithRealized(combinedTrades.value, fallbackPrices.value);
+      return computeValuation({
+        trades: combinedTrades.value,
+        prices: currentPrices.value,
+        lotFallbackPrices: fallbackPrices.value,
+        cash: { cashReais: simCashReais.value || 0, cashDollars: simCashDollars.value || 0 },
+        realizedFromSells: replay.realized,
+        interest: { brlTotal: 0, usdTotal: 0 },
+        brlUsdRate: brlUsdRate.value,
+        symbols: symbols.value,
+        includeCashInAllocation: true,
+      });
+    });
+
+    /** The FIFO walk on its own, for the fields only the walk knows. */
+    const replay = computed(() => calculator.value.replayTradesWithRealized(combinedTrades.value, fallbackPrices.value));
+
     const portfolio = computed(() => {
-      const { lots, positions, realized } = calculator.value.replayTradesWithRealized(
-        combinedTrades.value,
-        fallbackPrices.value,
-      );
-      const rate = brlUsdRate.value || 0;
-
-      let totalValue = 0;
-      for (const s of Object.keys(positions)) {
-        const current = priceOf(s);
-        totalValue += isBRLNonBond(s) ? positions[s] * current * (rate || 1) : positions[s] * current;
-      }
-      totalValue += (simCashReais.value || 0) * (rate || 1);
-      totalValue += simCashDollars.value || 0;
-
-      let invested = 0;
-      for (const s of Object.keys(lots)) {
-        for (const lot of lots[s]) {
-          invested += isBRLNonBond(s) ? lot.qty * lot.price * (rate || 1) : lot.qty * lot.price;
-        }
-      }
-      // Cash counts as invested here, to match the main dashboard.
-      invested += (simCashReais.value || 0) * (rate || 1);
-      invested += simCashDollars.value || 0;
-
-      return { lots, positions, realized, invested, totalValue, unrealized: totalValue - invested };
+      const v = valuation.value;
+      return {
+        lots: v.lots,
+        positions: v.positions,
+        realized: replay.value.realized,
+        invested: v.invested,
+        totalValue: v.total,
+        unrealized: v.unrealized,
+      };
     });
 
     const metrics = computed(() => {
       const st = portfolio.value;
+      const v = valuation.value;
       const rate = brlUsdRate.value || 0;
       const investedNet = Math.max(0, st.invested - st.realized);
-      const unrealPct = st.invested > 0 ? (st.unrealized / st.invested) * 100 : 0;
-
-      // Market value of the non-cash tickers: excludes cash and BRLUSD.
-      const tickerValue = Object.keys(st.positions)
-        .filter((s) => s !== 'BRLUSD')
-        .reduce((sum, s) => {
-          const p = priceOf(s);
-          return sum + (isBRLNonBond(s) ? (st.positions[s] || 0) * p * rate : (st.positions[s] || 0) * p);
-        }, 0);
-      const investedPct = st.totalValue > 0 ? (tickerValue / st.totalValue) * 100 : 0;
 
       return {
         totalValue: st.totalValue,
         totalImpact: st.unrealized + st.realized,
-        breakEven: Math.abs(st.unrealized) < 0.01,
+        breakEven: v.breakEven,
         investedNet,
-        unrealPct,
-        tickerValue,
-        investedPct,
+        unrealPct: v.unrealizedPct,
+        tickerValue: v.tickerValue,
+        investedPct: v.investedPct,
         unrealized: st.unrealized,
         realized: st.realized,
         realizedPctOfInvested: (st.realized / Math.max(1, st.invested)) * 100,
@@ -199,84 +228,34 @@ export const useSimulationStore = defineStore(
     });
 
     /** One row per open position, with its P/L formatted in the asset's currency. */
-    const positionRows = computed(() => {
-      const st = portfolio.value;
-      const rate = brlUsdRate.value || 1;
-      return Object.keys(st.positions).map((s) => {
-        const qty = st.positions[s];
-        const lots = st.lots[s] || [];
-        const cost = lots.reduce((sum, l) => sum + l.qty * l.price, 0);
-        const cur = priceOf(s);
-
-        if (isBRLNonBond(s)) {
-          const value = qty * cur;
-          const pl = value - cost;
+    const positionRows = computed(() =>
+      valuation.value.rows
+        .filter((row) => row.kind === 'position')
+        .map((row) => {
+          const brl = row.valueCurrency === 'BRL';
+          const money = (amount: number): string => (brl ? formatMoney(amount, 'BRL') : usd(amount));
           return {
-            symbol: s,
-            qty: qty.toFixed(4),
-            avg: formatMoney(qty > 0 ? cost / qty : 0, 'BRL'),
-            cur: formatMoney(cur, 'BRL'),
-            value: formatMoney(value, 'BRL'),
-            pl: (pl >= 0 ? '+' : '') + formatMoney(pl, 'BRL'),
-            positive: pl >= 0,
+            symbol: row.symbol,
+            qty: row.qty.toFixed(4),
+            avg: money(row.avgCost),
+            cur: money(row.currentPrice),
+            value: money(row.value),
+            // `$-492.66`, not `-$492.66`: the sign stays inside the currency, as
+            // `signedUsd` and `formatMoney` have always rendered it.
+            pl: row.plCurrency === 'BRL' ? `${row.pl >= 0 ? '+' : ''}${formatMoney(row.pl, 'BRL')}` : signedUsd(row.pl),
+            positive: row.pl >= 0,
           };
-        }
-        if (isBRLBond(s)) {
-          const costBRL = cost / rate;
-          const curBRL = cur / rate;
-          const valueBRL = qty * curBRL;
-          const plBRL = valueBRL - costBRL;
-          return {
-            symbol: s,
-            qty: qty.toFixed(4),
-            avg: formatMoney(qty > 0 ? costBRL / qty : 0, 'BRL'),
-            cur: formatMoney(curBRL, 'BRL'),
-            value: formatMoney(valueBRL, 'BRL'),
-            pl: (plBRL >= 0 ? '+' : '') + formatMoney(plBRL, 'BRL'),
-            positive: plBRL >= 0,
-          };
-        }
-        const value = qty * cur;
-        const pl = value - cost;
-        return {
-          symbol: s,
-          qty: qty.toFixed(4),
-          avg: usd(qty > 0 ? cost / qty : 0),
-          cur: usd(cur),
-          value: usd(value),
-          pl: signedUsd(pl),
-          positive: pl >= 0,
-        };
-      });
-    });
+        }),
+    );
 
     /** Allocation slices in USD plus their share of the total. */
     const allocation = computed(() => {
-      const st = portfolio.value;
-      const rate = brlUsdRate.value || 0;
-      const symbolsWithCash = Object.keys(st.positions);
-      const values = symbolsWithCash.map((s) => {
-        const p = priceOf(s);
-        return isBRLNonBond(s) ? st.positions[s] * p * rate : st.positions[s] * p;
-      });
-
-      const labels = [...symbolsWithCash];
-      const slices = [...values];
-      if (simCashReais.value > 0) {
-        labels.push('BRL');
-        slices.push(simCashReais.value * rate);
-      }
-      if (simCashDollars.value > 0) {
-        labels.push('Dollar');
-        slices.push(simCashDollars.value);
-      }
-
-      const total = slices.reduce((a, b) => a + b, 0);
+      const slices = valuation.value.allocation;
       return {
-        labels,
-        values: slices,
-        pcts: slices.map((v) => (total > 0 ? (v / total) * 100 : 0)),
-        colors: labels.map((_, i) => ALLOC_PALETTE[i % ALLOC_PALETTE.length]),
+        labels: slices.map((slice) => slice.label),
+        values: slices.map((slice) => slice.value),
+        pcts: slices.map((slice) => slice.pct),
+        colors: slices.map((_, i) => ALLOC_PALETTE[i % ALLOC_PALETTE.length]),
       };
     });
 
