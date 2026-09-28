@@ -338,6 +338,21 @@ The typed client caught two more contract gaps here: `/config/symbols` documente
 
 ---
 
+## Open decisions for the owner
+
+Findings the modernization work surfaced that are **not** refactoring's to decide. Each one has a default in place, so the repo is consistent today; these are the questions that change what your numbers *mean*.
+
+| # | Finding | What it costs you now | Options | Default until you decide |
+|---|---------|----------------------|---------|-------------------------|
+| 1 | **`trades.profit` was dropped in migration `0003_cheerful_rocket_raccoon.sql`.** Realized P/L *from sales* is therefore zero everywhere: the dashboard's "Realized P/L" card, `historyManager`'s `portfolio_snapshots`, `analyticsService`, and the trade-history "Profit" column (permanently `-`). What those figures show is interest income only. | A portfolio with sales shows a realized P/L that ignores every sale, and an "Invested" figure that never nets out a gain. | **(a)** Leave it — figures are interest-only by definition. **(b)** Derive realized P/L from the FIFO walk in one shared place and have `historyManager`, `analyticsService` and the dashboard all read that. Consistent, but it changes your P/L and therefore your analytics history. | (a) — `GET /api/portfolio/valuation` passes `realizedFromSells: 0` so the live valuation cannot disagree with the history beside it. |
+| 2 | **`interest` has no primary key and no unique index.** A month is identified by `(month, currency)` only by convention, which is why every "replace" was silently an append (see Phase 6's two bug fixes). | Nothing now that both routes delete before inserting. The invariant still lives in application code, in two places. | **(a)** Add `uniqueIndex('interest', ['month', 'currency'])` in `schema.ts` and generate the migration. Requires de-duplicating existing rows first — `DELETE FROM interest WHERE rowid NOT IN (SELECT MIN(rowid) … GROUP BY month, currency)` — and I will not run a dedupe over your financial data without you asking. **(b)** Leave the two route-level guards. | (a) is the right fix, deliberately deferred to you. |
+| 3 | **The "Total Invested" card shows `tickerValue`**, the market value of the tickers excluding cash and `BRLUSD` — not invested cost. The cost basis *is* in the payload as `invested` (that is what the Realized P/L card divides by). The label and the number come from the vanilla page, unchanged. | The card's label and its value disagree; a reader comparing them to the "Current Value" card will misread what the money is doing. | **(a)** Relabel the card (e.g. "In Tickers" / "Holdings Value"). **(b)** Rebind it to `invested`. **(c)** Leave the legacy wording. | (a) — a label change is cosmetic and obviously safe, but it is a visible copy change on a page you may have screenshotted. |
+| 4 | **The "from N sales" wording on the Realized P/L card** reads `from 0 sales + interest` and will keep reading `0` until #1 is decided. | Cosmetic, but it advertises the gap. | Bundled with #1. | Leave as is. |
+
+Related, and *not* a decision: Phase 6 fixed `POST /api/state/import` (it wrote the dropped `profit` column, so **every restore returned 500**) and made restore idempotent (restoring doubled all 15 interest rows). Both are in `main` and verified by an export/import round trip that leaves every table byte-identical.
+
+---
+
 ## Suggested next PRs
 
 **Step 0 (not a PR):** ~~push the scrubbed history~~ **done** — the purge was `git push --force`d to `main`, both stale `copilot/create-sql-query-tool-page*` branches were deleted, and `git ls-remote origin` shows a single ref (`refs/heads/main`) with no tags. The log was then **squashed**: `main` now runs from a single import commit to the current tip in 13 commits. The purge is live on GitHub. *(This step no longer names a SHA — every pre-squash SHA is reachable only from the local `pre-modernization` tag.)*

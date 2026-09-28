@@ -6,7 +6,7 @@ The dashboard has caching, several internal modules, and **one** SQLite database
 
 ```mermaid
 flowchart LR
-    Browser[Browser UI<br/>HTML + vanilla JS]
+    Browser[Browser UI<br/>Vue 3 SPA - apps/web]
 
     subgraph Application[Portfolio Dashboard]
         direction LR
@@ -14,12 +14,18 @@ flowchart LR
         subgraph Web[Web process - apps/api/src/web.ts]
             direction TB
             App[Express app<br/>createApp + route mounting]
-            PortfolioRoutes[Portfolio routes]
+            PortfolioRoutes[Portfolio routes<br/>trades, cash, interest, portfolio/valuation]
             AnalyticsRoutes[Analytics routes]
             AlertRoutes[Alert routes]
             App --> PortfolioRoutes
             App --> AnalyticsRoutes
             App --> AlertRoutes
+        end
+
+        subgraph Shared[Shared domain - packages/shared]
+            direction TB
+            Valuation[computeValuation<br/>invested cost, BRL conversion, per-position P/L]
+            Calculator[portfolio calculator<br/>FIFO lots, portfolio value]
         end
 
         subgraph Worker[Worker process - apps/api/src/worker.ts]
@@ -46,7 +52,12 @@ flowchart LR
     Browser --> App
 
     PortfolioRoutes --> Portfolio
+    PortfolioRoutes --> Valuation
     AnalyticsRoutes --> Portfolio
+
+    Calculator --> Portfolio
+    Calculator --> HistoryJob
+    Calculator --> AnalyticsJob
 
     PriceJob --> Portfolio
     HistoryJob --> Portfolio
@@ -59,6 +70,8 @@ flowchart LR
 ```
 
 The web process creates the Express app in [apps/api/src/app.ts](../apps/api/src/app.ts), then starts from [apps/api/src/web.ts](../apps/api/src/web.ts). Scheduled work starts independently from [apps/api/src/worker.ts](../apps/api/src/worker.ts) and is organized under `apps/api/src/jobs/`. `apps/api/src/index.ts` remains a compatibility dispatcher for local `APP_ROLE` usage.
+
+**Derived values have one implementation.** `packages/shared` holds the domain logic the API and the browser both call: `computeValuation` (invested cost, the BRL conversion, per-position P/L, the allocation split) and the FIFO lot calculator. `GET /api/portfolio/valuation` runs the valuation over what the database holds, so the dashboard renders numbers the server would have computed rather than a second copy of the same rules — and `historyManager` writes snapshots from the same calculator. The one deliberate exception is the simulator, whose prices are hypothetical and re-derive on every keystroke: it calls `computeValuation` locally rather than paying a request per slider frame.
 
 The two processes share the same database file. This separates HTTP traffic from scheduled work, but it does not yet provide independent storage scaling: SQLite still serializes writes and both processes depend on the same mounted data volume.
 

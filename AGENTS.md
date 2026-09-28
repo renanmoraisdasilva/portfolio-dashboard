@@ -195,16 +195,18 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
   doubled every interest month. Both routes now `DELETE` the row before
   inserting it, inside a transaction. A `uniqueIndex` on `(month, currency)` in
   `schema.ts` would make the invariant hold at the storage layer too, but that
-  migration has to de-duplicate existing rows first — a decision about real
-  financial data, not a refactor's to take.
+  migration has to de-duplicate existing rows first - a decision about real
+  financial data, not a refactor's to take. Listed in
+  ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
 - **`trades.profit` does not exist.** The column was dropped in migration
   `0003_cheerful_rocket_raccoon.sql`, so realized P/L from sales is zero
   everywhere: in the dashboard's "Realized P/L" card, in `historyManager`'s
   snapshots, and in `analyticsService`. What those figures show is interest only.
   The trade-history "Profit" column is permanently `-` for the same reason.
   Restoring the capability means deriving it from the FIFO walk in one place and
-  having `historyManager` and the dashboard read that — see
-  [docs/MODERNIZATION-PLAN.md](docs/MODERNIZATION-PLAN.md).
+  having `historyManager` and the dashboard read that. **This is an open decision
+  for the repo owner, not a bug to fix on the fly** — see
+  ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
 - **Asset chart cache** is a rolling-window snapshot stored in the `asset_chart_cache` table (previously `asset_history`). It is **not immutable** — rows can be overwritten. See [memories/repo/asset-history-caching.md](memories/repo/asset-history-caching.md) for context.
 - **`price_ticks` grows indefinitely** — never query it without a WHERE clause on the indexed `(symbol, ts)` columns. Full table scans will be slow once the table contains months of 8-minute ticks across all symbols.
 - **Backfill migrations are now HTTP routes** (`POST /api/migrations/backfill-cash`, `POST /api/migrations/backfill-prices`) exposed via the Settings UI in `index.html`. The standalone `migrate-backfill-*.ts` scripts no longer exist. The backfill-cash logic lives in `routes/migrations.ts` + `services/cashBackfill.ts`.
