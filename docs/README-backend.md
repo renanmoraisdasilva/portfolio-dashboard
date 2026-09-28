@@ -28,8 +28,13 @@ API notes:
 - `POST /api/migrations/backfill-prices` and `POST /api/migrations/backfill-cash` — maintenance migrations (see `AGENTS.md`).
 - `GET /api/sql/tables`, `GET /api/sql/schema`, `POST /api/sql/query` — the SQL Explorer, **with no authentication**. Gated behind `ENABLE_SQL_EXPLORER=true` since Phase 3: the routes answer `403` unless the flag is set, and it is off by default — including in the Docker image.
 
-Static pages: HTML files are organized under `pages/` and served by the same app via static middleware:
-- `GET /pages/index.html` will serve `pages/index.html`.
+Static content is served by the same app, split by the Phase 4 strangler seam:
+- `GET /` — the Vue app (`apps/web/dist`), with a SPA fallback for client-side routes.
+- `GET /legacy/<page>.html` — the not-yet-migrated vanilla pages from `pages/`.
+- `GET /static/...` and `GET /icon.png` — shared assets; the legacy pages reference them by absolute path.
+- Old links still resolve: `/pages/x.html` and `/x.html` both redirect to `/legacy/x.html`, and `/index.html` redirects to `/`.
+
+Nothing else in the repository is served — the previous `express.static(repoRoot)` also exposed `node_modules/` and `.git/`.
 
 Other endpoints of note:
 - `GET /api/docs` — Swagger UI for the backend OpenAPI documentation.

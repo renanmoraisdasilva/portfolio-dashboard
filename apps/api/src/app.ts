@@ -45,16 +45,27 @@ export function createApp(): Express {
 }
 
 export function mountWebRoutes(app: Express): void {
-  app.use(express.static(repoRoot));
+  // Strangler seam (Phase 4): the Vue app owns `/`, and the untouched vanilla
+  // pages stay reachable under /legacy/ until Phase 5 rewrites them. Static
+  // assets stay at the root because the legacy pages reference them by
+  // absolute path (/static/..., /icon.png). Nothing else in the repository is
+  // served any more — the old `express.static(repoRoot)` also exposed
+  // node_modules and .git.
+  app.use('/static', express.static(path.join(repoRoot, 'static')));
+  app.get('/icon.png', (_req, res) => res.sendFile(path.join(repoRoot, 'icon.png')));
+  app.use('/legacy', express.static(path.join(repoRoot, 'pages')));
 
-  app.get('/', (_req, res) => {
-    res.sendFile(path.join(repoRoot, 'pages', 'index.html'));
-  });
-
+  // Old bookmarks keep resolving: /pages/x.html and /x.html both land on /legacy/x.html.
+  app.get('/pages/:file', (req, res) => res.redirect(`/legacy/${req.params.file}`));
   app.get('/index.html', (_req, res) => res.redirect('/'));
-  app.get('/simulation.html', (_req, res) => res.redirect('/pages/simulation.html'));
-  app.get('/analytics.html', (_req, res) => res.redirect('/pages/analytics.html'));
-  app.get('/sql-explorer.html', (_req, res) => res.redirect('/pages/sql-explorer.html'));
+  app.get('/:page.html', (req, res) => res.redirect(`/legacy/${req.params.page}.html`));
+
+  const webDist = path.join(repoRoot, 'apps', 'web', 'dist');
+  app.use(express.static(webDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(webDist, 'index.html'), (err) => (err ? next() : undefined));
+  });
 
   app.use('/api/state', stateRouter);
   app.use('/api/health', healthRouter);

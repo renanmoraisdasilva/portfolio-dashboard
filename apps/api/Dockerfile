@@ -25,13 +25,14 @@ RUN npm ci
 # Sources and the frontend assets served at runtime. packages/shared comes in
 # too: apps/api imports it, and npm workspaces symlink it into node_modules.
 COPY apps/api/ apps/api/
+COPY apps/web/ apps/web/
 COPY packages/shared/ packages/shared/
 COPY pages/ pages/
 COPY static/ static/
 COPY icon.png icon.png
 
-# Build TypeScript (produces packages/shared/dist and apps/api/dist)
-RUN npm run build --workspace packages/shared && npm run build --workspace apps/api
+# Build (produces packages/shared/dist, apps/api/dist and apps/web/dist)
+RUN npm run build --workspace packages/shared && npm run build --workspace apps/api && npm run build --workspace apps/web
 
 # Prune dev deps so we copy a lean node_modules to the final image.
 # This is deliberately its own stage rather than a step at the end of
@@ -59,6 +60,7 @@ COPY --from=pruned /app/package.json ./package.json
 COPY --from=pruned /app/package-lock.json ./package-lock.json
 COPY --from=pruned /app/packages/shared ./packages/shared
 COPY --from=pruned /app/apps/api ./apps/api
+COPY --from=pruned /app/apps/web ./apps/web
 COPY --from=pruned /app/pages ./pages
 COPY --from=pruned /app/static ./static
 COPY --from=pruned /app/icon.png ./icon.png
@@ -67,7 +69,8 @@ COPY --from=pruned /app/icon.png ./icon.png
 RUN test -f /app/pages/index.html \
 	&& test -f /app/pages/simulation.html \
 	&& test -f /app/pages/sql-explorer.html \
-	&& test -f /app/pages/analytics.html
+	&& test -f /app/pages/analytics.html \
+	&& test -f /app/apps/web/dist/index.html
 
 # Tests belong to the builder stage only: `npm run test:docker` builds that
 # stage and runs the full suite from it, so they cannot be excluded at the

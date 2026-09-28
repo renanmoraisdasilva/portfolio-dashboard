@@ -31,8 +31,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
-
       - name: Build
         run: npm run build
+
+      # After the build, so the seam test can assert against apps/web/dist.
+      - name: Test
+        run: npm test

@@ -99,7 +99,17 @@ apps/web/
   src/App.vue           # root component
 ```
 
-`npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`. The shell, router and migrated pages arrive in the next Phase 4 steps; nothing here is served by the API yet.
+`npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (Phase 4 strangler seam, in `mountWebRoutes`):
+
+| Path | Served by |
+|------|-----------|
+| `/` and any client-side route | `apps/web/dist/index.html` (SPA fallback) |
+| `/legacy/<page>.html` | the untouched vanilla pages in `pages/` |
+| `/static/...`, `/icon.png` | shared assets, referenced by absolute path from the legacy pages |
+| `/pages/x.html`, `/x.html` | 302 → `/legacy/x.html`; `/index.html` → `/` |
+| `/api/*` | the API routers |
+
+`apps/api/src/seam.test.ts` covers that routing. Note the mount order: `pages/` is registered **before** the SPA fallback, otherwise `/legacy/index.html` would be swallowed by the Vue app and the redirects would loop.
 
 ## Key conventions
 
