@@ -1,6 +1,4 @@
-
 import { sampleEvenly, computeCashEstimates, estimatesToDeltas, PriceMap } from './cashBackfill';
-
 
 describe('sampleEvenly', () => {
   test('returns input as-is when length <= n', () => {
@@ -29,7 +27,6 @@ describe('sampleEvenly', () => {
     expect(sampleEvenly([42], 10)).toEqual([42]);
   });
 });
-
 
 const T0 = 1_700_000_000_000;
 const t = (offsetMs: number) => T0 + offsetMs;
@@ -134,7 +131,7 @@ describe('computeCashEstimates – trade filtering', () => {
   test('FIFO sell reduces open lots before price calculation', () => {
     const snapshots = [{ ts: t(3000), v: 50_000, brlusd_rate: 0.2 }];
     const trades = [
-      { symbol: 'BTC', side: 'buy',  qty: 2, price: 40_000, time: iso(0) },
+      { symbol: 'BTC', side: 'buy', qty: 2, price: 40_000, time: iso(0) },
       { symbol: 'BTC', side: 'sell', qty: 1, price: 50_000, time: iso(1000) },
     ];
     const prices = { BTC: 45_000, BRLUSD: 0.2 };
@@ -165,11 +162,7 @@ describe('computeCashEstimates – price lookup edge cases', () => {
       { ts: t(2000), v: 60_000, brlusd_rate: 0.2 },
     ];
     const trades: any[] = [];
-    const estimates = computeCashEstimates(
-      snapshots,
-      trades,
-      (ts): PriceMap => ts === t(1000) ? { BRLUSD: 0.2 } : {},
-    );
+    const estimates = computeCashEstimates(snapshots, trades, (ts): PriceMap => (ts === t(1000) ? { BRLUSD: 0.2 } : {}));
 
     expect(estimates).toHaveLength(1);
     expect(estimates[0].ts).toBe(t(1000));
@@ -206,7 +199,6 @@ describe('computeCashEstimates – price lookup edge cases', () => {
   });
 });
 
-
 describe('estimatesToDeltas', () => {
   test('empty input returns empty array', () => {
     expect(estimatesToDeltas([])).toEqual([]);
@@ -220,17 +212,17 @@ describe('estimatesToDeltas', () => {
 
   test('two estimates produce correct initial + incremental deltas', () => {
     const deltas = estimatesToDeltas([
-      { ts: t(0),    cashBRL: 10_000 },
+      { ts: t(0), cashBRL: 10_000 },
       { ts: t(1000), cashBRL: 15_000 },
     ]);
     expect(deltas).toHaveLength(2);
     expect(deltas[0].amount).toBeCloseTo(10_000, 4);
-    expect(deltas[1].amount).toBeCloseTo( 5_000, 4);
+    expect(deltas[1].amount).toBeCloseTo(5_000, 4);
   });
 
   test('SUM of all deltas reconstructs final cashBRL', () => {
     const estimates = [
-      { ts: t(0),    cashBRL: 10_000 },
+      { ts: t(0), cashBRL: 10_000 },
       { ts: t(1000), cashBRL: 25_000 },
       { ts: t(2000), cashBRL: 20_000 },
       { ts: t(3000), cashBRL: 30_000 },
@@ -242,19 +234,19 @@ describe('estimatesToDeltas', () => {
 
   test('SUM up to ts T reconstructs cashBRL at T', () => {
     const estimates = [
-      { ts: t(0),    cashBRL: 10_000 },
+      { ts: t(0), cashBRL: 10_000 },
       { ts: t(1000), cashBRL: 25_000 },
       { ts: t(2000), cashBRL: 20_000 },
     ];
     const deltas = estimatesToDeltas(estimates);
 
-    const sumAtT1 = deltas.filter(d => d.ts <= t(1000)).reduce((s, d) => s + d.amount, 0);
+    const sumAtT1 = deltas.filter((d) => d.ts <= t(1000)).reduce((s, d) => s + d.amount, 0);
     expect(sumAtT1).toBeCloseTo(25_000, 4);
   });
 
   test('omits entries where |delta| < 0.001', () => {
     const deltas = estimatesToDeltas([
-      { ts: t(0),    cashBRL: 10_000 },
+      { ts: t(0), cashBRL: 10_000 },
       { ts: t(1000), cashBRL: 10_000.0005 }, // tiny change, should be skipped
       { ts: t(2000), cashBRL: 20_000 },
     ]);
@@ -265,7 +257,7 @@ describe('estimatesToDeltas', () => {
 
   test('handles decreasing cash (withdrawal deltas are negative)', () => {
     const deltas = estimatesToDeltas([
-      { ts: t(0),    cashBRL: 30_000 },
+      { ts: t(0), cashBRL: 30_000 },
       { ts: t(1000), cashBRL: 10_000 },
     ]);
     expect(deltas[1].amount).toBeCloseTo(-20_000, 4);
@@ -277,6 +269,6 @@ describe('estimatesToDeltas', () => {
       { ts: t(200), cashBRL: 2000 },
       { ts: t(300), cashBRL: 1500 },
     ]);
-    expect(deltas.map(d => d.ts)).toEqual([t(100), t(200), t(300)]);
+    expect(deltas.map((d) => d.ts)).toEqual([t(100), t(200), t(300)]);
   });
 });

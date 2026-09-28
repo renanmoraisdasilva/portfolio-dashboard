@@ -27,9 +27,7 @@ assetRouter.get('/:symbol/ohlc', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid days parameter' });
   }
 
-  const bucketMs = days <= 7   ? 4  * 60 * 60 * 1000
-                 : days <= 365  ? 24 * 60 * 60 * 1000
-                 :                7  * 24 * 60 * 60 * 1000;
+  const bucketMs = days <= 7 ? 4 * 60 * 60 * 1000 : days <= 365 ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
 
   const since = Date.now() - days * 24 * 60 * 60 * 1000;
 
@@ -47,7 +45,7 @@ assetRouter.get('/:symbol/ohlc', async (req: Request, res: Response) => {
         map.set(bucket, { open: row.price, high: row.price, low: row.price, close: row.price });
       } else {
         if (row.price > candle.high) candle.high = row.price;
-        if (row.price < candle.low)  candle.low  = row.price;
+        if (row.price < candle.low) candle.low = row.price;
         candle.close = row.price;
       }
     }
@@ -60,7 +58,7 @@ assetRouter.get('/:symbol/ohlc', async (req: Request, res: Response) => {
     for (let i = 1; i < candles.length; i++) {
       candles[i].open = candles[i - 1].close;
       if (candles[i].open > candles[i].high) candles[i].high = candles[i].open;
-      if (candles[i].open < candles[i].low)  candles[i].low  = candles[i].open;
+      if (candles[i].open < candles[i].low) candles[i].low = candles[i].open;
     }
 
     res.json(candles);

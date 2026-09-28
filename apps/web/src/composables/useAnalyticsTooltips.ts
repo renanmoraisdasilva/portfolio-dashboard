@@ -46,11 +46,17 @@ function returnTooltip(snap: AnalyticsSnapshot | null): TooltipContent {
   }
   const sign = ret >= 0 ? '+' : '';
   const verdict =
-    ret >= 20 ? 'Strong gain' :
-    ret >= 5 ? 'Modest gain' :
-    ret >= 0 ? 'Flat / slight gain' :
-    ret >= -10 ? 'Slight loss' :
-    ret >= -50 ? 'Significant loss' : 'Severe loss';
+    ret >= 20
+      ? 'Strong gain'
+      : ret >= 5
+        ? 'Modest gain'
+        : ret >= 0
+          ? 'Flat / slight gain'
+          : ret >= -10
+            ? 'Slight loss'
+            : ret >= -50
+              ? 'Significant loss'
+              : 'Severe loss';
   const color = ret >= 0 ? 'var(--accent-success)' : ret >= -20 ? 'var(--accent-warning)' : 'var(--accent-danger)';
   const inputs = snap?.return_inputs ?? null;
   const hints = ['Formula: (P/L_end − P/L_start + Interest_period) ÷ Invested_start.'];
@@ -79,10 +85,15 @@ function drawdownTooltip(snap: AnalyticsSnapshot | null): TooltipContent {
   const start = snap?.max_drawdown_start ?? null;
   const end = snap?.max_drawdown_end ?? null;
   const severity =
-    dd < 5 ? 'Minimal — very stable' :
-    dd < 10 ? 'Low — normal volatility' :
-    dd < 20 ? 'Moderate — typical for equities' :
-    dd < 35 ? 'Significant — worth reviewing risk' : 'Severe — high loss exposure';
+    dd < 5
+      ? 'Minimal — very stable'
+      : dd < 10
+        ? 'Low — normal volatility'
+        : dd < 20
+          ? 'Moderate — typical for equities'
+          : dd < 35
+            ? 'Significant — worth reviewing risk'
+            : 'Severe — high loss exposure';
   const color = dd < 10 ? 'var(--accent-success)' : dd < 20 ? 'var(--accent-warning)' : 'var(--accent-danger)';
   const inputs = snap?.drawdown_inputs ?? null;
   const hints: string[] = [];
@@ -123,11 +134,17 @@ function sharpeTooltip(snap: AnalyticsSnapshot | null): TooltipContent {
     { label: '> 2 Excellent', kind: 'great' as const },
   ];
   const verdict =
-    sr >= 2 ? 'Excellent risk-adjusted return' :
-    sr >= 1 ? 'Good — beats risk-free with low volatility' :
-    sr >= 0.5 ? 'Acceptable — modest risk premium' :
-    sr >= 0 ? 'Below average — barely above risk-free' :
-    sr >= -1 ? 'Poor — underperforming a savings account' : 'Very poor — deeply below risk-free';
+    sr >= 2
+      ? 'Excellent risk-adjusted return'
+      : sr >= 1
+        ? 'Good — beats risk-free with low volatility'
+        : sr >= 0.5
+          ? 'Acceptable — modest risk premium'
+          : sr >= 0
+            ? 'Below average — barely above risk-free'
+            : sr >= -1
+              ? 'Poor — underperforming a savings account'
+              : 'Very poor — deeply below risk-free';
   const color = sr >= 1 ? 'var(--accent-success)' : sr >= 0.5 ? 'var(--accent-warning)' : 'var(--accent-danger)';
   const inputs = snap?.sharpe_inputs ?? null;
   const hints = [

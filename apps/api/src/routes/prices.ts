@@ -11,7 +11,11 @@ pricesRouter.get('/', async (req: Request, res: Response) => {
       obj[r.symbol] = r.price;
       obj[`${r.symbol}_ts`] = r.ts;
       if (r.meta) {
-        try { obj[`${r.symbol}_meta`] = JSON.parse(r.meta); } catch (_) { /* ignore malformed meta */ }
+        try {
+          obj[`${r.symbol}_meta`] = JSON.parse(r.meta);
+        } catch (_) {
+          /* ignore malformed meta */
+        }
       }
     }
     try {

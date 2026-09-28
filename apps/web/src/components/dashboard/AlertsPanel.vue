@@ -72,7 +72,9 @@ async function dismiss(id: string): Promise<void> {
               <strong>{{ row.symbol }}</strong> -
               <span style="color: var(--text-secondary)">{{ row.priceText }}</span>
               <br />
-              <span style="font-size: 0.85rem; color: var(--text-muted)">{{ row.details }} • Triggered: {{ row.triggeredAt }}</span>
+              <span style="font-size: 0.85rem; color: var(--text-muted)"
+                >{{ row.details }} • Triggered: {{ row.triggeredAt }}</span
+              >
             </div>
             <button class="alert-item-close" @click="dismiss(row.id)">Dismiss</button>
           </div>
@@ -82,7 +84,16 @@ async function dismiss(id: string): Promise<void> {
   </div>
 
   <div class="alerts-inner-pad" style="padding: 16px">
-    <div class="alerts-form-pad" style="margin-bottom: 20px; padding: 16px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border)">
+    <div
+      class="alerts-form-pad"
+      style="
+        margin-bottom: 20px;
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      "
+    >
       <h3 style="margin-bottom: 14px; font-size: 1.05rem">Create New Alert</h3>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px">
         <div>
@@ -113,7 +124,9 @@ async function dismiss(id: string): Promise<void> {
         <div v-if="isPercentage">
           <label class="field-label">Reference Price</label>
           <input v-model="referencePrice" type="number" class="field-control" placeholder="e.g., 50000" step="0.01" />
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px">The baseline price to calculate percentage change from</p>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px">
+            The baseline price to calculate percentage change from
+          </p>
         </div>
       </div>
       <button class="btn btn-primary" style="width: 100%; padding: 10px; font-weight: 600" @click="create">Create Alert</button>
@@ -128,12 +141,22 @@ async function dismiss(id: string): Promise<void> {
         <div
           v-for="row in store.alertRows"
           :key="row.id"
-          style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border)"
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+          "
         >
           <div style="flex: 1">
             <strong style="font-size: 1rem; color: var(--text-primary)">{{ row.symbol }}</strong>
             <span style="margin-left: 12px; color: var(--text-secondary); font-size: 0.9rem">{{ row.label }}</span>
-            <span style="margin-left: 12px; color: var(--text-muted); font-size: 0.85rem">Active: {{ row.isActive ? '✓' : '✗' }}</span>
+            <span style="margin-left: 12px; color: var(--text-muted); font-size: 0.85rem"
+              >Active: {{ row.isActive ? '✓' : '✗' }}</span
+            >
           </div>
           <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem" @click="remove(row.id)">Delete</button>
         </div>

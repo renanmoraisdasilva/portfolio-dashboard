@@ -18,7 +18,7 @@ function step(field: 'qty' | 'price', delta: number): void {
   }
   const currency = store.isBRLAsset(store.symbol) ? 'BRL' : 'USD';
   const current = parseMoney(store.priceInput, currency) || 0;
-  const next = +(Math.max(0, current + delta)).toFixed(2);
+  const next = +Math.max(0, current + delta).toFixed(2);
   store.setPriceInput(formatMoney(next, currency));
 }
 
@@ -146,19 +146,35 @@ function setCashSource(source: CashSource): void {
         <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end">
           <label class="small" style="margin-right: 6px; white-space: nowrap">Cash Source</label>
           <div style="display: flex; gap: 8px; align-items: center">
-            <button class="chip" :class="{ active: store.cashSource === 'USD' }" type="button" @click="setCashSource('USD')">USD</button>
-            <button class="chip" :class="{ active: store.cashSource === 'BRL' }" type="button" @click="setCashSource('BRL')">BRL</button>
+            <button class="chip" :class="{ active: store.cashSource === 'USD' }" type="button" @click="setCashSource('USD')">
+              USD
+            </button>
+            <button class="chip" :class="{ active: store.cashSource === 'BRL' }" type="button" @click="setCashSource('BRL')">
+              BRL
+            </button>
           </div>
         </div>
 
         <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end">
           <div style="display: flex; gap: 8px; align-items: center">
             <label class="small" style="width: 70px">BRL</label>
-            <input class="sim-input" type="text" style="width: 140px; text-align: right" :value="cashReaisText" @change="onCashReais" />
+            <input
+              class="sim-input"
+              type="text"
+              style="width: 140px; text-align: right"
+              :value="cashReaisText"
+              @change="onCashReais"
+            />
           </div>
           <div style="display: flex; gap: 8px; align-items: center">
             <label class="small" style="width: 70px">USD</label>
-            <input class="sim-input" type="text" style="width: 140px; text-align: right" :value="cashDollarsText" @change="onCashDollars" />
+            <input
+              class="sim-input"
+              type="text"
+              style="width: 140px; text-align: right"
+              :value="cashDollarsText"
+              @change="onCashDollars"
+            />
           </div>
         </div>
       </div>
@@ -170,7 +186,14 @@ function setCashSource(source: CashSource): void {
     <div class="table-container" style="margin-top: 8px">
       <table>
         <thead>
-          <tr><th>Time</th><th>Asset</th><th>Side</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+          <tr>
+            <th>Time</th>
+            <th>Asset</th>
+            <th>Side</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-if="store.tradeRows.length === 0">

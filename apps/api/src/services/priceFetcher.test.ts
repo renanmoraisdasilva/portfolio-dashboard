@@ -9,7 +9,7 @@ jest.mock('./homeAssistantService', () => ({
 }));
 
 import * as db from '../db';
-import { refreshPrices, fetchAndCacheAssetHistory } from './priceFetcher';
+import { fetchAndCacheAssetHistory } from './priceFetcher';
 
 const mockedDb = db as unknown as {
   run: jest.Mock;
@@ -46,7 +46,6 @@ afterEach(() => {
   console.warn = originalConsoleWarn;
 });
 
-
 describe('fetchAndCacheAssetHistory – regular stock symbol', () => {
   test('calls Yahoo Finance and returns price data', async () => {
     mockedDb.get.mockResolvedValue(undefined);
@@ -62,4 +61,3 @@ describe('fetchAndCacheAssetHistory – regular stock symbol', () => {
     expect((global.fetch as jest.Mock).mock.calls[0][0]).toMatch(/yahoo/i);
   });
 });
-

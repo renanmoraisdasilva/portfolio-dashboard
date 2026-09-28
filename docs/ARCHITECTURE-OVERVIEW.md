@@ -193,8 +193,8 @@ sequenceDiagram
 The web process also caches the assembled JSON responses for expensive read
 endpoints using the open-source `lru-cache` package:
 
-| Endpoint | TTL | Purpose |
-|---|---:|---|
+| Endpoint         |        TTL | Purpose                                                                    |
+| ---------------- | ---------: | -------------------------------------------------------------------------- |
 | `/api/analytics` | 30 seconds | Avoids recalculating analytics inputs and derived fields for every request |
 
 These caches are lazy: an expired entry is regenerated only when the endpoint
@@ -224,14 +224,14 @@ Some tables are derived read models, but they are better described as materializ
 
 There are **service modules**, but not independently deployed services.
 
-| Module | Responsibility |
-|---|---|
-| `priceFetcher` | Fetches prices, updates caches, records price ticks |
-| `historyManager` | Periodically creates portfolio history snapshots |
-| `portfolioCalculator` | Pure portfolio and FIFO calculations |
-| `analyticsService` | Computes return, drawdown, Sharpe ratio, allocation |
-| `homeAssistantService` | Sends alert notifications |
-| Route modules | HTTP API endpoints |
+| Module                 | Responsibility                                      |
+| ---------------------- | --------------------------------------------------- |
+| `priceFetcher`         | Fetches prices, updates caches, records price ticks |
+| `historyManager`       | Periodically creates portfolio history snapshots    |
+| `portfolioCalculator`  | Pure portfolio and FIFO calculations                |
+| `analyticsService`     | Computes return, drawdown, Sharpe ratio, allocation |
+| `homeAssistantService` | Sends alert notifications                           |
+| Route modules          | HTTP API endpoints                                  |
 
 The route and domain modules run in the web process, while scheduled price, history, and analytics work runs in the worker process. They are still part of one deployable application and share the same database file, so a database or mounted-volume failure affects both roles.
 
@@ -265,7 +265,7 @@ That is a solid foundation for discussing event logs, materialized views, cache 
 
 ## Scalability learning path
 
-This project follows the design sequence from *System Design Interview: An Insider's Guide* by Alex Xu. Each step should produce a measurable result before introducing the next component.
+This project follows the design sequence from _System Design Interview: An Insider's Guide_ by Alex Xu. Each step should produce a measurable result before introducing the next component.
 
 ### 1. Clarify requirements
 
@@ -315,12 +315,12 @@ SQLite is appropriate for local development and a single-node deployment. Postgr
 
 ### Current bottlenecks
 
-| Area | Current design | Scalability consequence |
-|---|---|---|
-| Web | Multiple replicas are possible, but no proxy is configured | Routing and health-based failover are still manual |
-| Worker | One process with in-process timers | Jobs are lost or duplicated across restarts |
-| Storage | Shared SQLite files | Writes are serialized and storage is node-bound |
-| Cache | Database and browser caches | No shared cache across web replicas |
+| Area          | Current design                                                      | Scalability consequence                                                |
+| ------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Web           | Multiple replicas are possible, but no proxy is configured          | Routing and health-based failover are still manual                     |
+| Worker        | One process with in-process timers                                  | Jobs are lost or duplicated across restarts                            |
+| Storage       | Shared SQLite files                                                 | Writes are serialized and storage is node-bound                        |
+| Cache         | Database and browser caches                                         | No shared cache across web replicas                                    |
 | Observability | OpenTelemetry metrics exported to SigNoz, logs, and health endpoint | No SLOs or alert rules for latency, queue depth, or cache behavior yet |
 
 The most valuable next experiment is capacity measurement followed by a durable job queue. It makes the later decisions about Redis, PostgreSQL, and replicas evidence-based.

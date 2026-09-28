@@ -31,11 +31,7 @@ async function tableCount(table: string): Promise<number> {
 async function seed(filePath: string): Promise<void> {
   await init();
 
-  const existingRows = await Promise.all([
-    tableCount('trades'),
-    tableCount('cash'),
-    tableCount('interest'),
-  ]);
+  const existingRows = await Promise.all([tableCount('trades'), tableCount('cash'), tableCount('interest')]);
   if (existingRows.some((count) => count > 0)) {
     console.log('[seed] Database already contains data; skipping seed.');
     return;
@@ -50,10 +46,14 @@ async function seed(filePath: string): Promise<void> {
     await run('DELETE FROM analytics_snapshots');
 
     for (const trade of data.trades ?? []) {
-      await run(
-        'INSERT INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)',
-        [trade.id ?? randomUUID(), trade.symbol, trade.side, trade.qty, trade.price ?? null, trade.time],
-      );
+      await run('INSERT INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
+        trade.id ?? randomUUID(),
+        trade.symbol,
+        trade.side,
+        trade.qty,
+        trade.price ?? null,
+        trade.time,
+      ]);
     }
 
     for (const snapshot of data.history ?? []) {
@@ -74,29 +74,39 @@ async function seed(filePath: string): Promise<void> {
     }
 
     for (const interest of data.interestReaisMonths ?? []) {
-      await run(
-        'INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)',
-        [interest.month, 'BRL', interest.amount ?? 0, now],
-      );
+      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+        interest.month,
+        'BRL',
+        interest.amount ?? 0,
+        now,
+      ]);
     }
     for (const interest of data.interestDollarsMonths ?? []) {
-      await run(
-        'INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)',
-        [interest.month, 'USD', interest.amount ?? 0, now],
-      );
+      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+        interest.month,
+        'USD',
+        interest.amount ?? 0,
+        now,
+      ]);
     }
 
     if (data.cashReais) {
-      await run(
-        'INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',
-        [randomUUID(), 'BRL', data.cashReais, 'Local development seed', now],
-      );
+      await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+        randomUUID(),
+        'BRL',
+        data.cashReais,
+        'Local development seed',
+        now,
+      ]);
     }
     if (data.cashDollars) {
-      await run(
-        'INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',
-        [randomUUID(), 'USD', data.cashDollars, 'Local development seed', now],
-      );
+      await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+        randomUUID(),
+        'USD',
+        data.cashDollars,
+        'Local development seed',
+        now,
+      ]);
     }
 
     await run('COMMIT');

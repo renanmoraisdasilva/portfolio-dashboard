@@ -96,30 +96,21 @@ const card = computed(() => {
           </div>
 
           <div class="cash-kpi-item">
-            <div
-              class="cash-kpi-label"
-              :class="card.emergencyOk ? 'cash-kpi-label-good' : 'cash-kpi-label-bad'"
-            >
+            <div class="cash-kpi-label" :class="card.emergencyOk ? 'cash-kpi-label-good' : 'cash-kpi-label-bad'">
               <span class="cash-kpi-icon" aria-hidden="true">🛟</span>Emergency fund
             </div>
             <div class="cash-kpi-value">{{ card.emergencyText }}</div>
           </div>
 
           <div class="cash-kpi-item">
-            <div
-              class="cash-kpi-label"
-              :class="card.interestOk ? 'cash-kpi-label-good' : 'cash-kpi-label-bad'"
-            >
+            <div class="cash-kpi-label" :class="card.interestOk ? 'cash-kpi-label-good' : 'cash-kpi-label-bad'">
               <span class="cash-kpi-icon" aria-hidden="true">🏛️</span>Interest carry
             </div>
             <div class="cash-kpi-value">{{ card.interestText }}</div>
           </div>
 
           <div class="cash-kpi-item">
-            <div
-              class="cash-kpi-label"
-              :class="card.gapOk ? 'cash-kpi-label-good' : 'cash-kpi-label-bad'"
-            >
+            <div class="cash-kpi-label" :class="card.gapOk ? 'cash-kpi-label-good' : 'cash-kpi-label-bad'">
               <span class="cash-kpi-icon" aria-hidden="true">⚖️</span>{{ card.gapLabel }}
             </div>
             <div class="cash-kpi-value" :style="{ color: card.gapColor, fontWeight: 700 }">

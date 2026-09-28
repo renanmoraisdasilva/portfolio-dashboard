@@ -1,23 +1,23 @@
 x-telemetry-environment: &telemetry-environment
-  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://host.docker.internal:4318/v1/traces}"
-  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:-http://host.docker.internal:4318/v1/metrics}"
-  OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: "${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:-http://host.docker.internal:4318/v1/logs}"
-  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=${TELEMETRY_ENVIRONMENT:-Production}"
-  OTEL_SDK_DISABLED: "${OTEL_SDK_DISABLED:-false}"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: '${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://host.docker.internal:4318/v1/traces}'
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: '${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:-http://host.docker.internal:4318/v1/metrics}'
+  OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: '${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:-http://host.docker.internal:4318/v1/logs}'
+  OTEL_RESOURCE_ATTRIBUTES: 'deployment.environment=${TELEMETRY_ENVIRONMENT:-Production}'
+  OTEL_SDK_DISABLED: '${OTEL_SDK_DISABLED:-false}'
 
 x-telemetry-hosts: &telemetry-hosts
-  - "host.docker.internal:host-gateway"
+  - 'host.docker.internal:host-gateway'
 
 services:
   portfolio:
     image: ghcr.io/renanmoraisdasilva/portfolio-dashboard:${PORTFOLIO_IMAGE_TAG:?Set PORTFOLIO_IMAGE_TAG in .env}
     restart: unless-stopped
     ports:
-      - "3002:3000"
+      - '3002:3000'
     environment:
       <<: *telemetry-environment
       PORT: 3000
-      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME_WEB:-portfolio-web}"
+      OTEL_SERVICE_NAME: '${OTEL_SERVICE_NAME_WEB:-portfolio-web}'
     command: node apps/api/dist/web.js
     extra_hosts: *telemetry-hosts
     volumes:
@@ -25,8 +25,8 @@ services:
     healthcheck:
       test:
         [
-          "CMD-SHELL",
-          "node -e \"fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+          'CMD-SHELL',
+          'node -e "fetch(''http://localhost:3000/api/health'').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"',
         ]
       interval: 30s
       timeout: 5s
@@ -39,11 +39,10 @@ services:
     environment:
       <<: *telemetry-environment
       PORT: 3000
-      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME_WORKER:-portfolio-worker}"
+      OTEL_SERVICE_NAME: '${OTEL_SERVICE_NAME_WORKER:-portfolio-worker}'
     command: node apps/api/dist/worker.js
     extra_hosts: *telemetry-hosts
     volumes:
       - /opt/portfolio/data:/app/apps/api/data
 
 volumes: {}
-

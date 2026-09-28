@@ -1,4 +1,4 @@
-import { getCryptoSymbols, getStockSymbols, getCurrencySymbols, SYMBOL_IDS, SYMBOLS } from './symbols';
+import { getCryptoSymbols, getStockSymbols, getCurrencySymbols, SYMBOL_IDS } from './symbols';
 
 describe('symbols config helpers', () => {
   test('group functions return arrays and include expected ids', () => {

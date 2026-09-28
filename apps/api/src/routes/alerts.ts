@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { db, run, all, get } from '../db';
+import { run, all, get } from '../db';
 import { Alert } from '../models';
 import { sendHomeAssistantNotification } from '../services/homeAssistantService';
 
@@ -19,7 +19,7 @@ alertsRouter.get('/', async (req: Request, res: Response) => {
 alertsRouter.get('/triggered', async (req: Request, res: Response) => {
   try {
     const triggered = await all<Alert>(
-      `SELECT * FROM alerts WHERE triggered_at IS NOT NULL AND is_dismissed = 0 ORDER BY triggered_at DESC`
+      `SELECT * FROM alerts WHERE triggered_at IS NOT NULL AND is_dismissed = 0 ORDER BY triggered_at DESC`,
     );
     res.json(triggered);
   } catch (err) {
@@ -31,7 +31,7 @@ alertsRouter.get('/triggered', async (req: Request, res: Response) => {
 alertsRouter.post('/', async (req: Request, res: Response) => {
   try {
     const { symbol, alert_type, threshold, condition, reference_price } = req.body;
-    
+
     if (!symbol || !alert_type || threshold === undefined || !condition) {
       return res.status(400).json({ error: 'Missing required fields: symbol, alert_type, threshold, condition' });
     }
@@ -53,7 +53,7 @@ alertsRouter.post('/', async (req: Request, res: Response) => {
 
     await run(
       'INSERT INTO alerts (id, symbol, alert_type, threshold, condition, reference_price, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, symbol.toUpperCase(), alert_type, threshold, condition, reference_price ?? null, 1, now]
+      [id, symbol.toUpperCase(), alert_type, threshold, condition, reference_price ?? null, 1, now],
     );
 
     const alert = await get<Alert>('SELECT * FROM alerts WHERE id = ?', [id]);
@@ -82,8 +82,8 @@ alertsRouter.put('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    const setClause = updates.map(u => `${u.field} = ?`).join(', ');
-    const values = updates.map(u => u.value);
+    const setClause = updates.map((u) => `${u.field} = ?`).join(', ');
+    const values = updates.map((u) => u.value);
     values.push(id);
 
     await run(`UPDATE alerts SET ${setClause} WHERE id = ?`, values);
@@ -116,10 +116,7 @@ alertsRouter.post('/dismiss/:alertId', async (req: Request, res: Response) => {
     const { alertId } = req.params;
     const now = Date.now();
 
-    await run(
-      'UPDATE alerts SET is_dismissed = 1, dismissed_at = ? WHERE id = ?',
-      [now, alertId]
-    );
+    await run('UPDATE alerts SET is_dismissed = 1, dismissed_at = ? WHERE id = ?', [now, alertId]);
 
     const alert = await get<Alert>('SELECT * FROM alerts WHERE id = ?', [alertId]);
 

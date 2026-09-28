@@ -1,8 +1,6 @@
-
 import { randomUUID } from 'node:crypto';
 import { run, get, all } from '../db';
 import { replayFIFOLots, isBRLNonBond } from './portfolioCalculator';
-
 
 export const PERIODS = ['1W', '1M', '3M', '1Y', 'ALL'] as const;
 export type Period = (typeof PERIODS)[number];
@@ -89,7 +87,6 @@ export interface SharpeStats extends SharpeInputs {
   sharpe: number;
 }
 
-
 const DAY_MS = 86_400_000;
 
 export function medianInterval(sortedTs: number[]): number {
@@ -111,10 +108,7 @@ export function computeReturnPct(points: SnapshotPoint[]): number | null {
   return ((end - start) / start) * 100;
 }
 
-export function computePnLReturnPct(
-  points: SnapshotPnLPoint[],
-  periodInterestUSD = 0,
-): number | null {
+export function computePnLReturnPct(points: SnapshotPnLPoint[], periodInterestUSD = 0): number | null {
   if (points.length < 2) return null;
   const startI = points[0].i;
   const startP = points[0].p;
@@ -124,10 +118,7 @@ export function computePnLReturnPct(
   return ((endP - startP + periodInterestUSD) / startI) * 100;
 }
 
-export function computeTWR(
-  points: SnapshotPoint[],
-  cashFlows: CashFlowEvent[] = [],
-): number | null {
+export function computeTWR(points: SnapshotPoint[], cashFlows: CashFlowEvent[] = []): number | null {
   if (points.length < 2) return null;
   if (points[0].v === 0) return null;
 
@@ -157,10 +148,7 @@ export function computeTWR(
   return (chainedFactor - 1) * 100;
 }
 
-export function buildFlowAdjustedPoints(
-  points: SnapshotPoint[],
-  cashFlows: CashFlowEvent[] = [],
-): SnapshotPoint[] {
+export function buildFlowAdjustedPoints(points: SnapshotPoint[], cashFlows: CashFlowEvent[] = []): SnapshotPoint[] {
   if (points.length === 0) return [];
 
   const sortedFlows = [...cashFlows].sort((a, b) => a.ts - b.ts);
@@ -260,8 +248,8 @@ export function computeMaxDrawdown(points: SnapshotPoint[]): MaxDrawdown | null 
   }
 
   if (maxDD === 0) return null;
-  const startV = points.find(p => p.ts === maxDDStart)?.v;
-  const endV = points.find(p => p.ts === maxDDEnd)?.v;
+  const startV = points.find((p) => p.ts === maxDDStart)?.v;
+  const endV = points.find((p) => p.ts === maxDDEnd)?.v;
   return { pct: maxDD, startTs: maxDDStart, endTs: maxDDEnd, startV, endV };
 }
 
@@ -272,7 +260,7 @@ export function computeSharpeRatio(
 ): number | null {
   if (points.length < 2) return null;
 
-  const median = medianInterval(points.map(p => p.ts));
+  const median = medianInterval(points.map((p) => p.ts));
   if (median <= 0) return null;
   const threshold = 2.5 * median;
 
@@ -306,21 +294,15 @@ export function computeSharpeRatio(
   return ((mean - rfPerPeriod) / std) * Math.sqrt(periodsPerYear);
 }
 
-export function computePnLSharpeRatio(
-  points: SnapshotPnLPoint[],
-  annualRiskFreeRate = 0.045,
-): number | null {
+export function computePnLSharpeRatio(points: SnapshotPnLPoint[], annualRiskFreeRate = 0.045): number | null {
   const stats = computePnLSharpeStats(points, annualRiskFreeRate);
   return stats?.sharpe ?? null;
 }
 
-export function computePnLSharpeStats(
-  points: SnapshotPnLPoint[],
-  annualRiskFreeRate = 0.045,
-): SharpeStats | null {
+export function computePnLSharpeStats(points: SnapshotPnLPoint[], annualRiskFreeRate = 0.045): SharpeStats | null {
   if (points.length < 2) return null;
 
-  const median = medianInterval(points.map(p => p.ts));
+  const median = medianInterval(points.map((p) => p.ts));
   if (median <= 0) return null;
   const threshold = 2.5 * median;
 
@@ -360,14 +342,18 @@ export function computePnLSharpeStats(
 
 export function periodStartMs(period: Period | string, now = Date.now()): number {
   switch (period) {
-    case '1W':  return now - 7   * DAY_MS;
-    case '1M':  return now - 30  * DAY_MS;
-    case '3M':  return now - 90  * DAY_MS;
-    case '1Y':  return now - 365 * DAY_MS;
-    default:    return 0;
+    case '1W':
+      return now - 7 * DAY_MS;
+    case '1M':
+      return now - 30 * DAY_MS;
+    case '3M':
+      return now - 90 * DAY_MS;
+    case '1Y':
+      return now - 365 * DAY_MS;
+    default:
+      return 0;
   }
 }
-
 
 export async function getLatestSnapshots(): Promise<AnalyticsSnapshot[]> {
   const snapshots = await all<AnalyticsSnapshot>('SELECT * FROM analytics_snapshots ORDER BY period');
@@ -376,36 +362,12 @@ export async function getLatestSnapshots(): Promise<AnalyticsSnapshot[]> {
     'SELECT ts, v, i, p, brlusd_rate FROM portfolio_snapshots WHERE v IS NOT NULL ORDER BY ts ASC',
   );
   const priceRows: any[] = await all('SELECT symbol, price FROM price_cache');
-  const cashEntryRows: any[] = await all(
-    `SELECT currency, amount, ts, description
-       FROM cash
-      WHERE LOWER(TRIM(COALESCE(description, ''))) != 'cash backfill estimate'
-      ORDER BY ts ASC`,
-  );
-  const interestRows: any[] = await all(
-    'SELECT month, currency, amount, created_at FROM interest ORDER BY created_at ASC',
-  );
+  const interestRows: any[] = await all('SELECT month, currency, amount, created_at FROM interest ORDER BY created_at ASC');
 
   const now = Date.now();
   const prices: Record<string, number> = {};
   for (const r of priceRows) prices[r.symbol] = r.price;
   const currentBrlUsd = prices['BRLUSD'] ?? 1;
-
-  const allCashFlows: CashFlowEvent[] = [];
-  {
-    let snapIdx = 0;
-    for (const row of cashEntryRows) {
-      const rowTs = row.ts as number;
-      while (snapIdx < allSnapshots.length && (allSnapshots[snapIdx].ts as number) < rowTs) {
-        snapIdx++;
-      }
-      const nextSnap = snapIdx < allSnapshots.length ? allSnapshots[snapIdx] : null;
-      const brlRate: number =
-        nextSnap?.brlusd_rate != null ? (nextSnap.brlusd_rate as number) : currentBrlUsd;
-      const amountUSD = row.currency === 'BRL' ? (row.amount as number) * brlRate : (row.amount as number);
-      allCashFlows.push({ ts: rowTs, amountUSD });
-    }
-  }
 
   function monthToEventTs(month: unknown, fallbackTs: number): number {
     if (typeof month !== 'string') return fallbackTs;
@@ -432,8 +394,7 @@ export async function getLatestSnapshots(): Promise<AnalyticsSnapshot[]> {
         snapIdx++;
       }
       const nextSnap = snapIdx < allSnapshots.length ? allSnapshots[snapIdx] : null;
-      const brlRate: number =
-        nextSnap?.brlusd_rate != null ? (nextSnap.brlusd_rate as number) : currentBrlUsd;
+      const brlRate: number = nextSnap?.brlusd_rate != null ? (nextSnap.brlusd_rate as number) : currentBrlUsd;
       const amountUSD = row.currency === 'BRL' ? amount * brlRate : amount;
       interestEvents.push({ ts: eventTs, amountUSD });
     }
@@ -447,16 +408,12 @@ export async function getLatestSnapshots(): Promise<AnalyticsSnapshot[]> {
     if (!row) continue;
 
     const startTs = periodStartMs(period, now);
-    const points: SnapshotPoint[] = allSnapshots
-      .filter(s => typeof s.ts === 'number' && s.ts >= startTs)
-      .map(s => ({ ts: s.ts as number, v: s.v as number }));
     const pnlPoints: SnapshotPnLPoint[] = allSnapshots
-      .filter(s => typeof s.ts === 'number' && s.ts >= startTs)
-      .map(s => ({ ts: s.ts as number, i: Number(s.i ?? 0), p: Number(s.p ?? 0) }));
+      .filter((s) => typeof s.ts === 'number' && s.ts >= startTs)
+      .map((s) => ({ ts: s.ts as number, i: Number(s.i ?? 0), p: Number(s.p ?? 0) }));
 
-    const cashFlows = allCashFlows.filter(f => f.ts >= startTs);
     const periodInterestUSD = interestEvents
-      .filter(e => e.ts >= startTs && e.ts <= now)
+      .filter((e) => e.ts >= startTs && e.ts <= now)
       .reduce((sum, e) => sum + e.amountUSD, 0);
 
     const dailyPnLInputs = toDailyClosePnLInputs(pnlPoints);
@@ -511,40 +468,13 @@ export async function refreshAllPeriods(): Promise<void> {
   );
   const trades: any[] = await all('SELECT * FROM trades ORDER BY time ASC');
   const priceRows: any[] = await all('SELECT symbol, price FROM price_cache');
-  const interestRows: any[] = await all(
-    'SELECT month, currency, amount, created_at FROM interest ORDER BY created_at ASC',
-  );
-  const cashEntryRows: any[] = await all(
-    `SELECT currency, amount, ts, description
-       FROM cash
-      WHERE LOWER(TRIM(COALESCE(description, ''))) != 'cash backfill estimate'
-      ORDER BY ts ASC`,
-  );
+  const interestRows: any[] = await all('SELECT month, currency, amount, created_at FROM interest ORDER BY created_at ASC');
 
   const prices: Record<string, number> = {};
   for (const r of priceRows) prices[r.symbol] = r.price;
 
   const now = Date.now();
   const currentBrlUsd = prices['BRLUSD'] ?? 1;
-
-  const allCashFlows: CashFlowEvent[] = [];
-  {
-    let snapIdx = 0;
-    for (const row of cashEntryRows) {
-      const rowTs = row.ts as number;
-      while (snapIdx < allSnapshots.length && (allSnapshots[snapIdx].ts as number) < rowTs) {
-        snapIdx++;
-      }
-      const nextSnap = snapIdx < allSnapshots.length ? allSnapshots[snapIdx] : null;
-      const brlRate: number =
-        nextSnap?.brlusd_rate != null ? (nextSnap.brlusd_rate as number) : currentBrlUsd;
-      const amountUSD =
-        row.currency === 'BRL'
-          ? (row.amount as number) * brlRate
-          : (row.amount as number);
-      allCashFlows.push({ ts: rowTs, amountUSD });
-    }
-  }
 
   function monthToEventTs(month: unknown, fallbackTs: number): number {
     if (typeof month !== 'string') return fallbackTs;
@@ -573,8 +503,7 @@ export async function refreshAllPeriods(): Promise<void> {
         snapIdx++;
       }
       const nextSnap = snapIdx < allSnapshots.length ? allSnapshots[snapIdx] : null;
-      const brlRate: number =
-        nextSnap?.brlusd_rate != null ? (nextSnap.brlusd_rate as number) : currentBrlUsd;
+      const brlRate: number = nextSnap?.brlusd_rate != null ? (nextSnap.brlusd_rate as number) : currentBrlUsd;
 
       const amountUSD = row.currency === 'BRL' ? amount * brlRate : amount;
       interestEvents.push({ ts: eventTs, amountUSD });
@@ -608,33 +537,26 @@ export async function refreshAllPeriods(): Promise<void> {
 
   for (const period of PERIODS) {
     const startTs = periodStartMs(period, now);
-    const points: SnapshotPoint[] = allSnapshots
-      .filter(s => typeof s.ts === 'number' && s.ts >= startTs)
-      .map(s => ({ ts: s.ts as number, v: s.v as number }));
     const pnlPoints: SnapshotPnLPoint[] = allSnapshots
-      .filter(s => typeof s.ts === 'number' && s.ts >= startTs)
-      .map(s => ({
+      .filter((s) => typeof s.ts === 'number' && s.ts >= startTs)
+      .map((s) => ({
         ts: s.ts as number,
         i: Number(s.i ?? 0),
         p: Number(s.p ?? 0),
       }));
 
-    const cashFlows = allCashFlows.filter(f => f.ts >= startTs);
     const periodInterestUSD = interestEvents
-      .filter(e => e.ts >= startTs && e.ts <= now)
+      .filter((e) => e.ts >= startTs && e.ts <= now)
       .reduce((sum, e) => sum + e.amountUSD, 0);
     const dailyPnLInputs = toDailyClosePnLInputs(pnlPoints);
     const drawdownSeries = buildPnLReturnIndexPoints(dailyPnLInputs);
 
     const returnPct = computePnLReturnPct(pnlPoints, periodInterestUSD);
-    const drawdown  = computeMaxDrawdown(drawdownSeries);
-    const sharpe    = computePnLSharpeRatio(pnlPoints, 0.045);
+    const drawdown = computeMaxDrawdown(drawdownSeries);
+    const sharpe = computePnLSharpeRatio(pnlPoints, 0.045);
 
     // Reuse existing id for the same period so INSERT OR REPLACE stays idempotent
-    const existing: any = await get(
-      'SELECT id FROM analytics_snapshots WHERE period = ?',
-      [period],
-    );
+    const existing: any = await get('SELECT id FROM analytics_snapshots WHERE period = ?', [period]);
     const id = existing?.id ?? randomUUID();
 
     await run(
@@ -644,7 +566,9 @@ export async function refreshAllPeriods(): Promise<void> {
          sharpe_ratio, allocation_json, cost_vs_market_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        id, now, period,
+        id,
+        now,
+        period,
         returnPct ?? null,
         drawdown?.pct ?? null,
         drawdown?.startTs ?? null,

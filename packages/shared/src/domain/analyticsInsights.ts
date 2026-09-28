@@ -224,7 +224,6 @@ export function stdDev(values: readonly number[] | null | undefined): number {
 export function computeRiskProfile(input: RiskProfileInput): RiskProfile {
   const drawdownPct = toNumber(input.drawdownPct, 0);
   const sharpeRatio = toNumber(input.sharpeRatio, 0);
-  const cashPct = toNumber(input.cashPct, 0);
   const deployableCashPct = toNumber(input.deployableCashPct, 0);
   const emergencyCoverage = toNumber(input.emergencyCoverage, 0);
   const maxAssetAllocPct = toNumber(input.maxAssetAllocPct, 0);
@@ -253,8 +252,7 @@ export function computeRiskProfile(input: RiskProfileInput): RiskProfile {
   }
 
   // Cash buffer provides downside protection and should reduce overall market risk.
-  const cashBufferCredit =
-    emergencyCoverage >= 1 ? Math.min(12, 6 + (emergencyCoverage - 1) * 6) : 0;
+  const cashBufferCredit = emergencyCoverage >= 1 ? Math.min(12, 6 + (emergencyCoverage - 1) * 6) : 0;
   const emergencyShortfallRisk = emergencyCoverage < 1 ? Math.min(15, (1 - emergencyCoverage) * 15) : 0;
 
   const rawScore =

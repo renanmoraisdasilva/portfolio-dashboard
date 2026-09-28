@@ -32,9 +32,7 @@ const snap = computed(() => store.active);
 const returnPct = computed(() => snap.value?.return_pct ?? null);
 const drawdownPct = computed(() => snap.value?.max_drawdown_pct ?? null);
 const sharpe = computed(() => snap.value?.sharpe_ratio ?? null);
-const lastComputed = computed(() =>
-  snap.value?.computed_at ? new Date(snap.value.computed_at).toLocaleString() : '—',
-);
+const lastComputed = computed(() => (snap.value?.computed_at ? new Date(snap.value.computed_at).toLocaleString() : '—'));
 
 const drawdownSub = computed(() => {
   if (drawdownPct.value == null) return 'No drawdown in period';
@@ -45,9 +43,7 @@ const drawdownSub = computed(() => {
   return `${fmtDate(start)} → ${fmtDate(end)} · ${days} day${days !== 1 ? 's' : ''}`;
 });
 
-const drawdownMarker = computed(() =>
-  drawdownPct.value != null ? `Max DD −${drawdownPct.value.toFixed(1)}%` : '',
-);
+const drawdownMarker = computed(() => (drawdownPct.value != null ? `Max DD −${drawdownPct.value.toFixed(1)}%` : ''));
 
 const sharpeColor = computed(() =>
   sharpe.value == null
@@ -67,7 +63,9 @@ const muted = { color: 'var(--text-muted)' } as Record<string, string>;
 
   <div class="status-bar">
     <div class="status-dot" :class="store.online ? 'online' : 'offline'"></div>
-    <span class="last-computed">Last computed: <strong>{{ lastComputed }}</strong></span>
+    <span class="last-computed"
+      >Last computed: <strong>{{ lastComputed }}</strong></span
+    >
     <span class="spacer"></span>
     <span style="color: var(--text-muted); font-size: 0.8rem">Updates every 24 h</span>
   </div>
@@ -149,9 +147,7 @@ const muted = { color: 'var(--text-muted)' } as Record<string, string>;
               BRL vs USD
             </button>
           </div>
-          <span class="cash-assets-meta">{{
-            cashAssets ? cashAssets.meta : 'period history · assets vs cash (USD)'
-          }}</span>
+          <span class="cash-assets-meta">{{ cashAssets ? cashAssets.meta : 'period history · assets vs cash (USD)' }}</span>
         </div>
       </div>
       <ChartCanvas :config="cashAssets?.config ?? null" empty-message="No history data for this period" />
@@ -190,9 +186,7 @@ const muted = { color: 'var(--text-muted)' } as Record<string, string>;
         <div class="chart-card-icon">🥧</div>
         Allocation &amp; P/L at Period End
       </div>
-      <span style="font-size: 0.8rem; color: var(--text-muted)">
-        Replayed from trades · prices at snapshot time
-      </span>
+      <span style="font-size: 0.8rem; color: var(--text-muted)"> Replayed from trades · prices at snapshot time </span>
     </div>
 
     <AllocationTable />

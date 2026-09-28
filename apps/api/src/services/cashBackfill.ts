@@ -1,4 +1,3 @@
-
 import { replayFIFOLots, isBRLNonBond } from './portfolioCalculator';
 
 export interface SnapshotPoint {
@@ -7,7 +6,9 @@ export interface SnapshotPoint {
   brlusd_rate: number | null;
 }
 
-export interface PriceMap { [symbol: string]: number; }
+export interface PriceMap {
+  [symbol: string]: number;
+}
 
 export interface CashEstimate {
   ts: number;
@@ -48,7 +49,7 @@ export function computeCashEstimates(
 
   for (const snap of sampledSnapshots) {
     const cutoff = new Date(snap.ts).toISOString();
-    const tradesAtTs = allTrades.filter(t => t.time <= cutoff);
+    const tradesAtTs = allTrades.filter((t) => t.time <= cutoff);
     const lots = replayFIFOLots(tradesAtTs, {});
 
     const prices = getPricesAt(snap.ts);

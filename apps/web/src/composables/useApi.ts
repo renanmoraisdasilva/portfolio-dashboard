@@ -16,13 +16,7 @@ export class ApiError extends Error {
   /** Parsed error body when the server sent one. */
   readonly details: unknown;
 
-  constructor(
-    method: string,
-    path: string,
-    status: number,
-    details: unknown,
-    options: { cause?: unknown } = {},
-  ) {
+  constructor(method: string, path: string, status: number, details: unknown, options: { cause?: unknown } = {}) {
     const serverMessage =
       details && typeof details === 'object' && 'error' in details
         ? String((details as { error: unknown }).error)
@@ -87,11 +81,7 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
  * inference intact, so `request(api.GET('/trades'), 'GET', '/trades')` is typed
  * all the way to `Trade[]`.
  */
-export async function request<T>(
-  call: Promise<ApiResult<T>>,
-  method: HttpMethod,
-  path: string,
-): Promise<T> {
+export async function request<T>(call: Promise<ApiResult<T>>, method: HttpMethod, path: string): Promise<T> {
   const { data, error, response } = await call;
   if (error !== undefined || !response.ok) {
     throw new ApiError(method, path, response.status, error ?? data, { cause: error });

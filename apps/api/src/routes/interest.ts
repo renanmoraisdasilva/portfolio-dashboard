@@ -28,7 +28,12 @@ interestRouter.post('/months', async (req: Request, res: Response) => {
     await run('BEGIN TRANSACTION');
     try {
       await run('DELETE FROM interest WHERE month = ? AND currency = ?', [month, currency]);
-      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [month, currency, amount, Date.now()]);
+      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+        month,
+        currency,
+        amount,
+        Date.now(),
+      ]);
       await run('COMMIT');
     } catch (txErr) {
       await run('ROLLBACK');

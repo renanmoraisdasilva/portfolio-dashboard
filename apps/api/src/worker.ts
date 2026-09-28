@@ -11,7 +11,7 @@ export async function startWorker(): Promise<void> {
 }
 
 if (require.main === module) {
-  startWorker().catch(err => {
+  startWorker().catch((err) => {
     console.error('Failed to initialize worker', err);
     process.exit(1);
   });

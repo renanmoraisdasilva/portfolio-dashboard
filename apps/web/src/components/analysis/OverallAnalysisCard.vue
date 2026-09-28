@@ -19,10 +19,38 @@ const DOT_COLORS: Record<SignalType, string> = {
 };
 
 const THEMES = {
-  danger: { border: '#ef4444', icon: '🔴', badge: 'Needs attention', badgeBg: 'rgba(239,68,68,0.1)', badgeBorder: 'rgba(239,68,68,0.3)', color: '#ef4444' },
-  warning: { border: '#f59e0b', icon: '🟡', badge: 'Mixed signals', badgeBg: 'rgba(245,158,11,0.1)', badgeBorder: 'rgba(245,158,11,0.3)', color: '#f59e0b' },
-  good: { border: '#22c55e', icon: '🟢', badge: 'On track', badgeBg: 'rgba(34,197,94,0.1)', badgeBorder: 'rgba(34,197,94,0.3)', color: '#22c55e' },
-  neutral: { border: '#64748b', icon: '⚪', badge: 'Insufficient data', badgeBg: 'rgba(100,116,139,0.1)', badgeBorder: 'rgba(100,116,139,0.3)', color: '#64748b' },
+  danger: {
+    border: '#ef4444',
+    icon: '🔴',
+    badge: 'Needs attention',
+    badgeBg: 'rgba(239,68,68,0.1)',
+    badgeBorder: 'rgba(239,68,68,0.3)',
+    color: '#ef4444',
+  },
+  warning: {
+    border: '#f59e0b',
+    icon: '🟡',
+    badge: 'Mixed signals',
+    badgeBg: 'rgba(245,158,11,0.1)',
+    badgeBorder: 'rgba(245,158,11,0.3)',
+    color: '#f59e0b',
+  },
+  good: {
+    border: '#22c55e',
+    icon: '🟢',
+    badge: 'On track',
+    badgeBg: 'rgba(34,197,94,0.1)',
+    badgeBorder: 'rgba(34,197,94,0.3)',
+    color: '#22c55e',
+  },
+  neutral: {
+    border: '#64748b',
+    icon: '⚪',
+    badge: 'Insufficient data',
+    badgeBg: 'rgba(100,116,139,0.1)',
+    badgeBorder: 'rgba(100,116,139,0.3)',
+    color: '#64748b',
+  },
 } as const;
 
 /** The legacy page's verdicts, verbatim: same thresholds, same wording. */
@@ -51,31 +79,58 @@ const signals = computed<Signal[]>(() => {
   if (dd == null) {
     out.push({ type: 'good', text: 'No drawdown in this period — the portfolio never fell from a prior peak.' });
   } else if (dd < 5) {
-    out.push({ type: 'good', text: `Max drawdown of just ${dd.toFixed(1)}% — very stable with minimal peak-to-trough exposure.` });
+    out.push({
+      type: 'good',
+      text: `Max drawdown of just ${dd.toFixed(1)}% — very stable with minimal peak-to-trough exposure.`,
+    });
   } else if (dd < 15) {
     out.push({ type: 'ok', text: `Drawdown of ${dd.toFixed(1)}% — within normal range for a diversified equity portfolio.` });
   } else if (dd < 30) {
-    out.push({ type: 'warning', text: `Notable drawdown of ${dd.toFixed(1)}% — consider whether your risk allocation matches your tolerance.` });
+    out.push({
+      type: 'warning',
+      text: `Notable drawdown of ${dd.toFixed(1)}% — consider whether your risk allocation matches your tolerance.`,
+    });
   } else {
-    out.push({ type: 'danger', text: `Severe drawdown of ${dd.toFixed(1)}% — this is a large peak-to-trough decline. High concentration or leverage risk.` });
+    out.push({
+      type: 'danger',
+      text: `Severe drawdown of ${dd.toFixed(1)}% — this is a large peak-to-trough decline. High concentration or leverage risk.`,
+    });
   }
 
   if (sr == null) {
     out.push({ type: 'neutral', text: 'Sharpe ratio requires ≥30 data points — extend the period or wait for more snapshots.' });
   } else if (sr >= 1) {
-    out.push({ type: 'good', text: `Sharpe of ${sr.toFixed(2)} — solid risk-adjusted return. You're being compensated for the volatility you're taking on.` });
+    out.push({
+      type: 'good',
+      text: `Sharpe of ${sr.toFixed(2)} — solid risk-adjusted return. You're being compensated for the volatility you're taking on.`,
+    });
   } else if (sr >= 0.5) {
-    out.push({ type: 'ok', text: `Sharpe of ${sr.toFixed(2)} — acceptable, though there's room to improve the return-to-risk ratio.` });
+    out.push({
+      type: 'ok',
+      text: `Sharpe of ${sr.toFixed(2)} — acceptable, though there's room to improve the return-to-risk ratio.`,
+    });
   } else if (sr >= 0) {
-    out.push({ type: 'warning', text: `Sharpe of ${sr.toFixed(2)} — barely above the risk-free rate (4.5%/yr). The volatility you're taking isn't paying off much.` });
+    out.push({
+      type: 'warning',
+      text: `Sharpe of ${sr.toFixed(2)} — barely above the risk-free rate (4.5%/yr). The volatility you're taking isn't paying off much.`,
+    });
   } else if (sr >= -1) {
-    out.push({ type: 'danger', text: `Sharpe of ${sr.toFixed(2)} — you're earning less than a Selic/fixed-income account while taking on more risk.` });
+    out.push({
+      type: 'danger',
+      text: `Sharpe of ${sr.toFixed(2)} — you're earning less than a Selic/fixed-income account while taking on more risk.`,
+    });
   } else {
-    out.push({ type: 'danger', text: `Sharpe of ${sr.toFixed(2)} — deeply negative. Significant return drag relative to the risk being taken.` });
+    out.push({
+      type: 'danger',
+      text: `Sharpe of ${sr.toFixed(2)} — deeply negative. Significant return drag relative to the risk being taken.`,
+    });
   }
 
   if (ret != null && ret < -10 && dd != null && dd < 10 && sr != null && sr < 0) {
-    out.push({ type: 'warning', text: 'Note: small max drawdown alongside negative return suggests a slow, steady decline rather than a single crash event.' });
+    out.push({
+      type: 'warning',
+      text: 'Note: small max drawdown alongside negative return suggests a slow, steady decline rather than a single crash event.',
+    });
   }
 
   return out;

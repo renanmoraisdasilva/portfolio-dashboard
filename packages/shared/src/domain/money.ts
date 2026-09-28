@@ -31,7 +31,7 @@ export interface SymbolClassifier {
  * Binds the money rules to a symbol registry. Unknown symbols are never BRL.
  */
 export function createSymbolClassifier(symbols: SymbolMap): SymbolClassifier {
-  const isBRLAsset = (symbol: string): boolean => !!(symbols[symbol]?.denominatedInBRL);
+  const isBRLAsset = (symbol: string): boolean => !!symbols[symbol]?.denominatedInBRL;
   return {
     isBRLAsset,
     isBRLNonBond: (symbol) => isBRLAsset(symbol) && symbols[symbol]?.type !== 'bond',
@@ -51,14 +51,12 @@ export function usdToBRL(amount: number, brlUsdRate: number): number {
  * `maxFractionDigits` defaults to the locale default (2). Chart axes and
  * tooltips pass 0 — they render thousands of values and the cents are noise.
  */
-export function formatMoney(
-  val: number | string | null | undefined,
-  currency: Currency,
-  maxFractionDigits?: number,
-): string {
+export function formatMoney(val: number | string | null | undefined, currency: Currency, maxFractionDigits?: number): string {
   const value = typeof val === 'number' ? val : Number(val) || 0;
   const options: Intl.NumberFormatOptions =
-    maxFractionDigits == null ? { style: 'currency', currency } : { style: 'currency', currency, maximumFractionDigits: maxFractionDigits };
+    maxFractionDigits == null
+      ? { style: 'currency', currency }
+      : { style: 'currency', currency, maximumFractionDigits: maxFractionDigits };
   if (currency === 'BRL') {
     return new Intl.NumberFormat('pt-BR', options).format(value);
   }
@@ -68,7 +66,10 @@ export function formatMoney(
 export function parseMoney(str: number | string | null | undefined, currency: Currency): number {
   if (!str && str !== 0) return 0;
   if (typeof str === 'number') return str;
-  const cleaned = String(str).trim().replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+  const cleaned = String(str)
+    .trim()
+    .replace(/\s/g, '')
+    .replace(/[^0-9,.-]/g, '');
   if (cleaned === '') return 0;
   if (currency === 'BRL') {
     const normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');

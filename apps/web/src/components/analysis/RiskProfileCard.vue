@@ -45,7 +45,7 @@ const view = computed(() => {
 </script>
 
 <template>
-  <div class="chart-card" id="riskProfileCard">
+  <div id="riskProfileCard" class="chart-card">
     <div class="chart-card-header">
       <div class="chart-card-title">
         <div class="chart-card-icon">🧭</div>
@@ -64,34 +64,38 @@ const view = computed(() => {
         <div class="analysis-signal">
           <div class="signal-dot" style="background: #38bdf8"></div>
           <span
-            ><strong>Main risk drivers:</strong> Sharpe {{ view.sharpeText }}
-            ({{ view.profile.components.sharpeRisk.toFixed(1) }} pts), drawdown
-            {{ view.drawdownText }}% ({{ view.profile.components.ddRisk.toFixed(1) }} pts), concentration
-            {{ view.maxAllocPct.toFixed(1) }}%
-            ({{ view.profile.components.concentrationRisk.toFixed(1) }} pts).</span
+            ><strong>Main risk drivers:</strong> Sharpe {{ view.sharpeText }} ({{
+              view.profile.components.sharpeRisk.toFixed(1)
+            }}
+            pts), drawdown {{ view.drawdownText }}% ({{ view.profile.components.ddRisk.toFixed(1) }} pts), concentration
+            {{ view.maxAllocPct.toFixed(1) }}% ({{ view.profile.components.concentrationRisk.toFixed(1) }} pts).</span
           >
         </div>
         <div class="analysis-signal">
           <div class="signal-dot" style="background: #94a3b8"></div>
           <span
-            ><strong>Cash posture:</strong> deployable cash {{ view.deployableCashPct.toFixed(1) }}%
-            (+{{ view.profile.components.deployableCashRisk.toFixed(1) }} pts), emergency coverage
-            {{ view.emergencyCoveragePct.toFixed(1) }}%
-            (−{{ view.profile.components.cashBufferCredit.toFixed(1) }} pts).</span
+            ><strong>Cash posture:</strong> deployable cash {{ view.deployableCashPct.toFixed(1) }}% (+{{
+              view.profile.components.deployableCashRisk.toFixed(1)
+            }}
+            pts), emergency coverage {{ view.emergencyCoveragePct.toFixed(1) }}% (−{{
+              view.profile.components.cashBufferCredit.toFixed(1)
+            }}
+            pts).</span
           >
         </div>
         <div v-if="view.profile.components.emergencyShortfallRisk > 0" class="analysis-signal">
           <div class="signal-dot" style="background: #ef4444"></div>
           <span
-            ><strong>Alert:</strong> emergency shortfall adds
-            +{{ view.profile.components.emergencyShortfallRisk.toFixed(1) }} pts to risk.</span
+            ><strong>Alert:</strong> emergency shortfall adds +{{ view.profile.components.emergencyShortfallRisk.toFixed(1) }} pts
+            to risk.</span
           >
         </div>
         <div class="analysis-signal">
           <div class="signal-dot" style="background: #64748b"></div>
           <span
-            ><strong>Volatility context:</strong> short-term P/L volatility is
-            {{ view.pnlStdPct.toFixed(3) }}% per step (+{{ view.profile.components.volRisk.toFixed(1) }}
+            ><strong>Volatility context:</strong> short-term P/L volatility is {{ view.pnlStdPct.toFixed(3) }}% per step (+{{
+              view.profile.components.volRisk.toFixed(1)
+            }}
             pts).</span
           >
         </div>

@@ -9,9 +9,12 @@ export const migrationsRouter = Router();
 // Fetches ~2yr daily closes from Yahoo Finance into price_ticks.
 // Warning: makes external HTTP calls with 800ms sleep per symbol (~30s total).
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-interface YahooPoint { ts: number; price: number; }
+interface YahooPoint {
+  ts: number;
+  price: number;
+}
 
 async function fetchYahooHistory(ticker: string, fromMs: number, toMs: number): Promise<YahooPoint[]> {
   const period1 = Math.floor(fromMs / 1000);
@@ -19,7 +22,7 @@ async function fetchYahooHistory(ticker: string, fromMs: number, toMs: number): 
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=1d&events=history`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Yahoo HTTP ${res.status} for ${ticker}`);
-  const data = await res.json() as any;
+  const data = (await res.json()) as any;
   const result = data?.chart?.result?.[0];
   if (!result) throw new Error(`No chart result for ${ticker}`);
   const timestamps: number[] = result.timestamp ?? [];
@@ -54,8 +57,13 @@ migrationsRouter.post('/backfill-prices', async (_req: Request, res: Response) =
       for (const ticker of tickers) {
         try {
           points = await fetchYahooHistory(ticker, twoYearsAgo, now);
-          if (points.length > 0) { succeeded = true; break; }
-        } catch (_e) { /* try next ticker */ }
+          if (points.length > 0) {
+            succeeded = true;
+            break;
+          }
+        } catch (_e) {
+          /* try next ticker */
+        }
       }
 
       if (!succeeded || points.length === 0) {
@@ -71,10 +79,13 @@ migrationsRouter.post('/backfill-prices', async (_req: Request, res: Response) =
       for (const pt of points) {
         const price = needsInversion ? 1 / pt.price : pt.price;
         if (!isFinite(price) || price <= 0) continue;
-        await run(
-          'INSERT OR IGNORE INTO price_ticks (id, symbol, price, ts, source) VALUES (?, ?, ?, ?, ?)',
-          [randomUUID(), symbolId, price, pt.ts, 'yahoo_historical'],
-        );
+        await run('INSERT OR IGNORE INTO price_ticks (id, symbol, price, ts, source) VALUES (?, ?, ?, ?, ?)', [
+          randomUUID(),
+          symbolId,
+          price,
+          pt.ts,
+          'yahoo_historical',
+        ]);
       }
 
       const after = await all<{ n: number }>('SELECT COUNT(*) AS n FROM price_ticks WHERE symbol = ?', [symbolId]);
@@ -96,9 +107,7 @@ migrationsRouter.post('/backfill-prices', async (_req: Request, res: Response) =
 
 migrationsRouter.post('/backfill-cash', async (_req: Request, res: Response) => {
   try {
-    const snapshots: any[] = await all(
-      'SELECT ts, v, brlusd_rate FROM portfolio_snapshots WHERE v IS NOT NULL ORDER BY ts ASC',
-    );
+    const snapshots: any[] = await all('SELECT ts, v, brlusd_rate FROM portfolio_snapshots WHERE v IS NOT NULL ORDER BY ts ASC');
     if (snapshots.length === 0) {
       return res.json({ ok: false, error: 'No portfolio snapshots found.' });
     }
@@ -124,11 +133,7 @@ migrationsRouter.post('/backfill-cash', async (_req: Request, res: Response) => 
       priceCache.set(snap.ts, prices);
     }
 
-    const estimates = computeCashEstimates(
-      sampled,
-      allTrades,
-      (ts) => priceCache.get(ts) ?? {},
-    );
+    const estimates = computeCashEstimates(sampled, allTrades, (ts) => priceCache.get(ts) ?? {});
 
     if (estimates.length === 0) {
       return res.json({
@@ -141,10 +146,13 @@ migrationsRouter.post('/backfill-cash', async (_req: Request, res: Response) => 
 
     await run('DELETE FROM cash');
     for (const d of deltas) {
-      await run(
-        'INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',
-        [randomUUID(), 'BRL', d.amount, 'Cash backfill estimate', d.ts],
-      );
+      await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+        randomUUID(),
+        'BRL',
+        d.amount,
+        'Cash backfill estimate',
+        d.ts,
+      ]);
     }
 
     res.json({

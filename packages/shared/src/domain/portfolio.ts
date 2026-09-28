@@ -47,7 +47,7 @@ export interface PortfolioCalculator {
   isBRLNonBond(symbol: string): boolean;
   replayFIFOLots(
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
-    fallbackPrices?: Record<string, number>
+    fallbackPrices?: Record<string, number>,
   ): Record<string, LotEntry[]>;
   /**
    * The same FIFO walk as `replayFIFOLots`, but also books realized P/L as
@@ -56,7 +56,7 @@ export interface PortfolioCalculator {
    */
   replayTradesWithRealized(
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
-    fallbackPrices?: Record<string, number>
+    fallbackPrices?: Record<string, number>,
   ): ReplayResult;
   computePortfolioValue(input: PortfolioInput): PortfolioResult;
 }
@@ -69,13 +69,13 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
 
   function replayFIFOLots(
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
-    fallbackPrices: Record<string, number> = {}
+    fallbackPrices: Record<string, number> = {},
   ): Record<string, LotEntry[]> {
     const lots: Record<string, LotEntry[]> = {};
     for (const t of trades) {
       if (!lots[t.symbol]) lots[t.symbol] = [];
       if (t.side === 'buy') {
-        lots[t.symbol].push({ qty: t.qty, price: t.price ?? (fallbackPrices[t.symbol] ?? 0) });
+        lots[t.symbol].push({ qty: t.qty, price: t.price ?? fallbackPrices[t.symbol] ?? 0 });
       } else if (t.side === 'sell') {
         let qtyToSell = t.qty;
         while (qtyToSell > 0 && lots[t.symbol].length > 0) {
@@ -92,17 +92,17 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
 
   function replayTradesWithRealized(
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
-    fallbackPrices: Record<string, number> = {}
+    fallbackPrices: Record<string, number> = {},
   ): ReplayResult {
     const lots: Record<string, LotEntry[]> = {};
     let realized = 0;
     for (const t of trades) {
       if (!lots[t.symbol]) lots[t.symbol] = [];
       if (t.side === 'buy') {
-        lots[t.symbol].push({ qty: t.qty, price: t.price ?? (fallbackPrices[t.symbol] ?? 0) });
+        lots[t.symbol].push({ qty: t.qty, price: t.price ?? fallbackPrices[t.symbol] ?? 0 });
       } else if (t.side === 'sell') {
         let qtyToSell = t.qty;
-        const price = t.price ?? (fallbackPrices[t.symbol] ?? 0);
+        const price = t.price ?? fallbackPrices[t.symbol] ?? 0;
         while (qtyToSell > 0 && lots[t.symbol].length > 0) {
           const lot = lots[t.symbol][0];
           const used = Math.min(lot.qty, qtyToSell);

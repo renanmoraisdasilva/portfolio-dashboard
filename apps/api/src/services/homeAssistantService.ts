@@ -1,4 +1,3 @@
-
 const HOME_ASSISTANT_WEBHOOK_URL = process.env.HOME_ASSISTANT_WEBHOOK_URL;
 
 interface NotificationPayload {
@@ -6,14 +5,9 @@ interface NotificationPayload {
   message: string;
 }
 
-export async function sendHomeAssistantNotification(
-  title: string,
-  message: string
-): Promise<void> {
+export async function sendHomeAssistantNotification(title: string, message: string): Promise<void> {
   if (!HOME_ASSISTANT_WEBHOOK_URL) {
-    console.warn(
-      'HOME_ASSISTANT_WEBHOOK_URL environment variable not set. Notification not sent.'
-    );
+    console.warn('HOME_ASSISTANT_WEBHOOK_URL environment variable not set. Notification not sent.');
     return;
   }
 
@@ -32,9 +26,7 @@ export async function sendHomeAssistantNotification(
     });
 
     if (!response.ok) {
-      console.error(
-        `Home Assistant webhook failed with status ${response.status}: ${response.statusText}`
-      );
+      console.error(`Home Assistant webhook failed with status ${response.status}: ${response.statusText}`);
     } else {
       console.log(`Home Assistant notification sent: ${title}`);
     }

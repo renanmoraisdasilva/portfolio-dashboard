@@ -21,7 +21,9 @@ export const db = sqlite;
 // better-sqlite3 is synchronous; wrapping in .then() converts thrown errors to
 // rejected Promises, matching the contract the rest of the codebase expects.
 export function run(sql: string, params: any[] = []): Promise<void> {
-  return Promise.resolve().then(() => { sqlite.prepare(sql).run(...params); });
+  return Promise.resolve().then(() => {
+    sqlite.prepare(sql).run(...params);
+  });
 }
 
 export function get<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
@@ -47,7 +49,9 @@ function ensureLegacyTablesExist() {
       sqlite.prepare(`ALTER TABLE "cash_entries" RENAME TO "cash"`).run();
       sqlite.prepare(`DROP INDEX IF EXISTS "idx_cash_entries_ts"`).run();
     } else {
-      sqlite.prepare(`
+      sqlite
+        .prepare(
+          `
         CREATE TABLE "cash" (
           "id"          text    PRIMARY KEY NOT NULL,
           "currency"    text    NOT NULL,
@@ -55,7 +59,9 @@ function ensureLegacyTablesExist() {
           "description" text    NOT NULL DEFAULT '',
           "ts"          integer NOT NULL
         )
-      `).run();
+      `,
+        )
+        .run();
     }
     sqlite.prepare(`CREATE INDEX IF NOT EXISTS "idx_cash_ts" ON "cash" ("ts")`).run();
   }
@@ -65,14 +71,18 @@ function ensureLegacyTablesExist() {
     if (tableExists('interest_months')) {
       sqlite.prepare(`ALTER TABLE "interest_months" RENAME TO "interest"`).run();
     } else {
-      sqlite.prepare(`
+      sqlite
+        .prepare(
+          `
         CREATE TABLE "interest" (
           "month"      text NOT NULL,
           "currency"   text NOT NULL DEFAULT 'BRL',
           "amount"     real,
           "created_at" integer
         )
-      `).run();
+      `,
+        )
+        .run();
     }
   }
 }
@@ -89,9 +99,7 @@ function seedDrizzleMigrationsIfNeeded() {
     .get();
   if (hasMigrationsTable) return;
 
-  const hasTradesTable = sqlite
-    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='trades'`)
-    .get();
+  const hasTradesTable = sqlite.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='trades'`).get();
   if (!hasTradesTable) return;
 
   ensureLegacyTablesExist();
@@ -99,31 +107,25 @@ function seedDrizzleMigrationsIfNeeded() {
   const journalPath = path.join(MIGRATIONS_DIR, 'meta', '_journal.json');
   if (!fs.existsSync(journalPath)) return;
 
-  const journal: { entries: { tag: string; when: number }[] } = JSON.parse(
-    fs.readFileSync(journalPath, 'utf8'),
-  );
+  const journal: { entries: { tag: string; when: number }[] } = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
   if (journal.entries.length === 0) return;
 
-  sqlite.prepare(`
+  sqlite
+    .prepare(
+      `
     CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
       id         SERIAL  PRIMARY KEY,
       hash       text    NOT NULL,
       created_at numeric
     )
-  `).run();
+  `,
+    )
+    .run();
 
-  const lastEntry = journal.entries.reduce(
-    (max, e) => (e.when > max.when ? e : max),
-    journal.entries[0],
-  );
-  const sqlContent = fs.readFileSync(
-    path.join(MIGRATIONS_DIR, `${lastEntry.tag}.sql`),
-    'utf8',
-  );
+  const lastEntry = journal.entries.reduce((max, e) => (e.when > max.when ? e : max), journal.entries[0]);
+  const sqlContent = fs.readFileSync(path.join(MIGRATIONS_DIR, `${lastEntry.tag}.sql`), 'utf8');
   const hash = createHash('sha256').update(sqlContent).digest('hex');
-  sqlite
-    .prepare(`INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES (?, ?)`)
-    .run(hash, lastEntry.when);
+  sqlite.prepare(`INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES (?, ?)`).run(hash, lastEntry.when);
 
   console.log(`[db] Seeded __drizzle_migrations: existing DB recorded at '${lastEntry.tag}'`);
 }
@@ -138,4 +140,3 @@ export async function init() {
     console.log('[db] Drizzle migrations up to date');
   }
 }
-

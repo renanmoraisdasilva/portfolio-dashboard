@@ -33,14 +33,13 @@ describe('isSelectQuery', () => {
 });
 
 describe('isValidDbName', () => {
-  test.each(VALID_DBS)('accepts valid db name: %s', name => {
+  test.each(VALID_DBS)('accepts valid db name: %s', (name) => {
     expect(isValidDbName(name)).toBe(true);
   });
 
-  test.each(['PORTFOLIO', 'Finance', 'sqlite', 'unknown', '', '  portfolio'])
-    ('rejects invalid db name: "%s"', name => {
-      expect(isValidDbName(name)).toBe(false);
-    });
+  test.each(['PORTFOLIO', 'Finance', 'sqlite', 'unknown', '', '  portfolio'])('rejects invalid db name: "%s"', (name) => {
+    expect(isValidDbName(name)).toBe(false);
+  });
 });
 
 describe('resolveDb', () => {
@@ -102,7 +101,7 @@ describe('query execution against in-memory SQLite', () => {
     const sql = 'PRAGMA table_info(items)';
     expect(isSelectQuery(sql)).toBe(true);
     const cols = db.prepare(sql).all() as { name: string }[];
-    const names = cols.map(c => c.name);
+    const names = cols.map((c) => c.name);
     expect(names).toContain('id');
     expect(names).toContain('name');
   });

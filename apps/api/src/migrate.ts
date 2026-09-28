@@ -1,4 +1,4 @@
-  import { migrateFromJson } from './services/migration';
+import { migrateFromJson } from './services/migration';
 
 const args = process.argv.slice(2);
 const init = args.includes('--init');

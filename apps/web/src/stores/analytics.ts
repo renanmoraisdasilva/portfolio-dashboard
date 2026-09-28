@@ -81,19 +81,13 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   const range = computed(() => PERIODS.find((p) => p.id === period.value)?.range ?? 'all');
   const costVsMarket = computed(() => parseCostVsMarket(active.value?.cost_vs_market_json));
 
-  const assetsUSD = computed(() =>
-    Object.values(costVsMarket.value).reduce((sum, row) => sum + (Number(row.market) || 0), 0),
-  );
+  const assetsUSD = computed(() => Object.values(costVsMarket.value).reduce((sum, row) => sum + (Number(row.market) || 0), 0));
   const cashUSD = computed(() => Number(cashContext.value?.cashUSD ?? 0));
   const totalUSD = computed(() => assetsUSD.value + cashUSD.value);
   const cashPct = computed(() => (totalUSD.value > 0 ? (cashUSD.value / totalUSD.value) * 100 : 0));
   const deployableCashUSD = computed(() => Math.max(0, cashUSD.value - EMERGENCY_FUND_USD));
-  const deployableCashPct = computed(() =>
-    totalUSD.value > 0 ? (deployableCashUSD.value / totalUSD.value) * 100 : 0,
-  );
-  const emergencyCoverage = computed(() =>
-    EMERGENCY_FUND_USD > 0 ? cashUSD.value / EMERGENCY_FUND_USD : 0,
-  );
+  const deployableCashPct = computed(() => (totalUSD.value > 0 ? (deployableCashUSD.value / totalUSD.value) * 100 : 0));
+  const emergencyCoverage = computed(() => (EMERGENCY_FUND_USD > 0 ? cashUSD.value / EMERGENCY_FUND_USD : 0));
   const maxAssetAllocPct = computed(() => {
     const rows = Object.values(costVsMarket.value).map((row) => Number(row.market) || 0);
     if (!assetsUSD.value) return 0;

@@ -81,8 +81,22 @@ async function removeEntry(id: string): Promise<void> {
       <div class="cash-entry-currency">
         <label class="small">Currency</label>
         <div style="display: flex; gap: 6px; margin-top: 10px">
-          <button class="chip" :class="{ active: store.entryCurrency === 'BRL' }" type="button" @click="store.entryCurrency = 'BRL'">BRL</button>
-          <button class="chip" :class="{ active: store.entryCurrency === 'USD' }" type="button" @click="store.entryCurrency = 'USD'">USD</button>
+          <button
+            class="chip"
+            :class="{ active: store.entryCurrency === 'BRL' }"
+            type="button"
+            @click="store.entryCurrency = 'BRL'"
+          >
+            BRL
+          </button>
+          <button
+            class="chip"
+            :class="{ active: store.entryCurrency === 'USD' }"
+            type="button"
+            @click="store.entryCurrency = 'USD'"
+          >
+            USD
+          </button>
         </div>
       </div>
       <div class="cash-entry-amount">
@@ -96,7 +110,9 @@ async function removeEntry(id: string): Promise<void> {
         <input v-model="entryDate" class="sim-input" type="date" style="width: 100%; margin-top: 6px" />
       </div>
       <div class="cash-entry-submit">
-        <button class="btn btn-primary" style="height: 42px; width: 100%; white-space: nowrap" @click="submitEntry">Add Entry</button>
+        <button class="btn btn-primary" style="height: 42px; width: 100%; white-space: nowrap" @click="submitEntry">
+          Add Entry
+        </button>
       </div>
     </div>
   </div>
@@ -104,7 +120,12 @@ async function removeEntry(id: string): Promise<void> {
   <div class="table-container" style="margin-bottom: 12px">
     <table>
       <thead>
-        <tr><th>Date</th><th>Currency</th><th>Amount</th><th>Action</th></tr>
+        <tr>
+          <th>Date</th>
+          <th>Currency</th>
+          <th>Amount</th>
+          <th>Action</th>
+        </tr>
       </thead>
       <tbody>
         <tr v-if="store.cashEntryRows.length === 0">
@@ -122,11 +143,21 @@ async function removeEntry(id: string): Promise<void> {
     </table>
   </div>
 
-  <div v-if="store.cashEntriesPages > 1" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 24px">
-    <button class="btn btn-sm" :disabled="store.cashEntriesPage === 1" style="padding: 2px 10px; font-size: 0.75rem" @click="store.loadCashEntries(store.cashEntriesPage - 1)">
+  <div
+    v-if="store.cashEntriesPages > 1"
+    style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 24px"
+  >
+    <button
+      class="btn btn-sm"
+      :disabled="store.cashEntriesPage === 1"
+      style="padding: 2px 10px; font-size: 0.75rem"
+      @click="store.loadCashEntries(store.cashEntriesPage - 1)"
+    >
       ‹ Prev
     </button>
-    <span style="font-size: 0.85rem; color: var(--text-muted)">Page {{ store.cashEntriesPage }} of {{ store.cashEntriesPages }}</span>
+    <span style="font-size: 0.85rem; color: var(--text-muted)"
+      >Page {{ store.cashEntriesPage }} of {{ store.cashEntriesPages }}</span
+    >
     <button
       class="btn btn-sm"
       :disabled="store.cashEntriesPage === store.cashEntriesPages"
@@ -166,7 +197,9 @@ async function removeEntry(id: string): Promise<void> {
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
             <div style="font-size: 0.9rem; color: #94a3b8">
-              <span v-if="store.interestReaisMonths.length === 0"><span class="empty-state">No monthly interest recorded.</span></span>
+              <span v-if="store.interestReaisMonths.length === 0"
+                ><span class="empty-state">No monthly interest recorded.</span></span
+              >
               <span v-else>{{ brlSummary }}</span>
             </div>
             <button
@@ -181,14 +214,22 @@ async function removeEntry(id: string): Promise<void> {
           </div>
 
           <div v-if="!store.interestMonthsCollapsed">
-            <div v-for="m in store.interestReaisMonths" :key="m.month" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px">
+            <div
+              v-for="m in store.interestReaisMonths"
+              :key="m.month"
+              style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px"
+            >
               <div style="flex: 1">{{ m.month }}</div>
               <div style="width: 120px; text-align: right">{{ formatMoney(Number(m.amount || 0), 'BRL') }}</div>
               <div>
-                <button class="btn btn-danger" style="padding: 4px 8px" @click="store.deleteInterestMonth('BRL', m.month)">Delete</button>
+                <button class="btn btn-danger" style="padding: 4px 8px" @click="store.deleteInterestMonth('BRL', m.month)">
+                  Delete
+                </button>
               </div>
             </div>
-            <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8">Total (months recorded): R$ {{ brlTotal.toFixed(2) }}</div>
+            <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8">
+              Total (months recorded): R$ {{ brlTotal.toFixed(2) }}
+            </div>
           </div>
         </div>
       </div>
@@ -214,7 +255,9 @@ async function removeEntry(id: string): Promise<void> {
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
             <div style="font-size: 0.9rem; color: #94a3b8">
-              <span v-if="store.interestDollarsMonths.length === 0"><span class="empty-state">No monthly USD interest recorded.</span></span>
+              <span v-if="store.interestDollarsMonths.length === 0"
+                ><span class="empty-state">No monthly USD interest recorded.</span></span
+              >
               <span v-else>{{ usdSummary }}</span>
             </div>
             <button
@@ -229,14 +272,22 @@ async function removeEntry(id: string): Promise<void> {
           </div>
 
           <div v-if="!store.interestUSDMonthsCollapsed">
-            <div v-for="m in store.interestDollarsMonths" :key="m.month" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px">
+            <div
+              v-for="m in store.interestDollarsMonths"
+              :key="m.month"
+              style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px"
+            >
               <div style="flex: 1">{{ m.month }}</div>
               <div style="width: 120px; text-align: right">{{ formatMoney(Number(m.amount || 0), 'USD') }}</div>
               <div>
-                <button class="btn btn-danger" style="padding: 4px 8px" @click="store.deleteInterestMonth('USD', m.month)">Delete</button>
+                <button class="btn btn-danger" style="padding: 4px 8px" @click="store.deleteInterestMonth('USD', m.month)">
+                  Delete
+                </button>
               </div>
             </div>
-            <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8">Total (months recorded): $ {{ usdTotal.toFixed(2) }}</div>
+            <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8">
+              Total (months recorded): $ {{ usdTotal.toFixed(2) }}
+            </div>
           </div>
         </div>
       </div>

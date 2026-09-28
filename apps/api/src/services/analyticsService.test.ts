@@ -1,4 +1,3 @@
-
 import {
   medianInterval,
   computeReturnPct,
@@ -18,10 +17,9 @@ import {
   type CashFlowEvent,
 } from './analyticsService';
 
-const DAY_MS  = 86_400_000;
-const HOUR_MS =  3_600_000;
-const MIN_MS  =     60_000;
-
+const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
+const MIN_MS = 60_000;
 
 describe('medianInterval', () => {
   test('returns 0 for empty array', () => {
@@ -48,7 +46,7 @@ describe('medianInterval', () => {
 
   test('handles uniformly-spaced snapshots (30-min intervals)', () => {
     const base = 1_700_000_000_000;
-    const ts = [0, 1, 2, 3, 4].map(i => base + i * 30 * MIN_MS);
+    const ts = [0, 1, 2, 3, 4].map((i) => base + i * 30 * MIN_MS);
     expect(medianInterval(ts)).toBe(30 * MIN_MS);
   });
 
@@ -58,13 +56,12 @@ describe('medianInterval', () => {
       base,
       base + 30 * MIN_MS,
       base + 60 * MIN_MS,
-      base + 12 * HOUR_MS,  // big gap
+      base + 12 * HOUR_MS, // big gap
       base + 12 * HOUR_MS + 30 * MIN_MS,
     ];
     expect(medianInterval(ts)).toBe(30 * MIN_MS);
   });
 });
-
 
 describe('computeReturnPct', () => {
   test('returns null for empty array', () => {
@@ -76,39 +73,55 @@ describe('computeReturnPct', () => {
   });
 
   test('returns null when start value is 0', () => {
-    expect(computeReturnPct([{ ts: 0, v: 0 }, { ts: 1, v: 100 }])).toBeNull();
+    expect(
+      computeReturnPct([
+        { ts: 0, v: 0 },
+        { ts: 1, v: 100 },
+      ]),
+    ).toBeNull();
   });
 
   test('returns 0 when start equals end', () => {
-    const pts: SnapshotPoint[] = [{ ts: 0, v: 1000 }, { ts: 1, v: 1000 }];
+    const pts: SnapshotPoint[] = [
+      { ts: 0, v: 1000 },
+      { ts: 1, v: 1000 },
+    ];
     expect(computeReturnPct(pts)).toBeCloseTo(0);
   });
 
   test('calculates positive return correctly', () => {
-    const pts: SnapshotPoint[] = [{ ts: 0, v: 10000 }, { ts: 1, v: 11000 }];
+    const pts: SnapshotPoint[] = [
+      { ts: 0, v: 10000 },
+      { ts: 1, v: 11000 },
+    ];
     expect(computeReturnPct(pts)).toBeCloseTo(10);
   });
 
   test('calculates negative return correctly', () => {
-    const pts: SnapshotPoint[] = [{ ts: 0, v: 10000 }, { ts: 1, v: 9000 }];
+    const pts: SnapshotPoint[] = [
+      { ts: 0, v: 10000 },
+      { ts: 1, v: 9000 },
+    ];
     expect(computeReturnPct(pts)).toBeCloseTo(-10);
   });
 
   test('uses only the first and last point, ignoring intermediates', () => {
     const pts: SnapshotPoint[] = [
       { ts: 0, v: 10000 },
-      { ts: 1, v: 5000 },   // intermediate dip
+      { ts: 1, v: 5000 }, // intermediate dip
       { ts: 2, v: 12000 },
     ];
     expect(computeReturnPct(pts)).toBeCloseTo(20);
   });
 
   test('handles large gain (100% return)', () => {
-    const pts: SnapshotPoint[] = [{ ts: 0, v: 5000 }, { ts: 1, v: 10000 }];
+    const pts: SnapshotPoint[] = [
+      { ts: 0, v: 5000 },
+      { ts: 1, v: 10000 },
+    ];
     expect(computeReturnPct(pts)).toBeCloseTo(100);
   });
 });
-
 
 describe('computePnLReturnPct', () => {
   test('returns null for fewer than 2 points', () => {
@@ -117,10 +130,12 @@ describe('computePnLReturnPct', () => {
   });
 
   test('returns null when start invested is non-positive', () => {
-    expect(computePnLReturnPct([
-      { ts: 0, i: 0, p: 100 },
-      { ts: 1, i: 1000, p: 200 },
-    ])).toBeNull();
+    expect(
+      computePnLReturnPct([
+        { ts: 0, i: 0, p: 100 },
+        { ts: 1, i: 1000, p: 200 },
+      ]),
+    ).toBeNull();
   });
 
   test('computes return from P/L delta over start invested', () => {
@@ -156,7 +171,6 @@ describe('computePnLReturnPct', () => {
   });
 });
 
-
 describe('computeMaxDrawdown', () => {
   test('returns null for empty array', () => {
     expect(computeMaxDrawdown([])).toBeNull();
@@ -168,7 +182,9 @@ describe('computeMaxDrawdown', () => {
 
   test('returns null when values are monotonically increasing (no drawdown)', () => {
     const pts: SnapshotPoint[] = [
-      { ts: 0, v: 1000 }, { ts: 1, v: 1100 }, { ts: 2, v: 1200 },
+      { ts: 0, v: 1000 },
+      { ts: 1, v: 1100 },
+      { ts: 2, v: 1200 },
     ];
     expect(computeMaxDrawdown(pts)).toBeNull();
   });
@@ -177,7 +193,7 @@ describe('computeMaxDrawdown', () => {
     const pts: SnapshotPoint[] = [
       { ts: 0, v: 10000 },
       { ts: 1, v: 12000 }, // peak
-      { ts: 2, v: 9000  }, // trough: (12000-9000)/12000 = 25%
+      { ts: 2, v: 9000 }, // trough: (12000-9000)/12000 = 25%
     ];
     const dd = computeMaxDrawdown(pts);
     expect(dd).not.toBeNull();
@@ -189,9 +205,9 @@ describe('computeMaxDrawdown', () => {
   test('finds the MAXIMUM drawdown across multiple drawdown periods', () => {
     const pts: SnapshotPoint[] = [
       { ts: 0, v: 10000 },
-      { ts: 1, v: 8000  }, // dd from 0: 20%
+      { ts: 1, v: 8000 }, // dd from 0: 20%
       { ts: 2, v: 12000 }, // new peak
-      { ts: 3, v: 6000  }, // dd from 2: 50% ← max
+      { ts: 3, v: 6000 }, // dd from 2: 50% ← max
     ];
     const dd = computeMaxDrawdown(pts);
     expect(dd!.pct).toBeCloseTo(50);
@@ -201,9 +217,9 @@ describe('computeMaxDrawdown', () => {
 
   test('peak timestamp updates correctly as new highs are reached', () => {
     const pts: SnapshotPoint[] = [
-      { ts: 0, v: 8000  },
+      { ts: 0, v: 8000 },
       { ts: 1, v: 10000 }, // new peak at ts=1
-      { ts: 2, v: 7000  }, // drawdown from ts=1 peak: (10000-7000)/10000 = 30%
+      { ts: 2, v: 7000 }, // drawdown from ts=1 peak: (10000-7000)/10000 = 30%
     ];
     const dd = computeMaxDrawdown(pts);
     expect(dd!.pct).toBeCloseTo(30);
@@ -214,8 +230,8 @@ describe('computeMaxDrawdown', () => {
   test('monotonically decreasing series: drawdown from first to last', () => {
     const pts: SnapshotPoint[] = [
       { ts: 0, v: 10000 },
-      { ts: 1, v:  8000 },
-      { ts: 2, v:  5000 }, // (10000-5000)/10000 = 50%
+      { ts: 1, v: 8000 },
+      { ts: 2, v: 5000 }, // (10000-5000)/10000 = 50%
     ];
     const dd = computeMaxDrawdown(pts);
     expect(dd!.pct).toBeCloseTo(50);
@@ -224,11 +240,13 @@ describe('computeMaxDrawdown', () => {
   });
 
   test('returns 0-drawdown as null (equal start and end)', () => {
-    const pts: SnapshotPoint[] = [{ ts: 0, v: 1000 }, { ts: 1, v: 1000 }];
+    const pts: SnapshotPoint[] = [
+      { ts: 0, v: 1000 },
+      { ts: 1, v: 1000 },
+    ];
     expect(computeMaxDrawdown(pts)).toBeNull();
   });
 });
-
 
 function makePoints(n: number, intervalMs: number, baseValue = 10000, dailyDrift = 0.001): SnapshotPoint[] {
   const pts: SnapshotPoint[] = [];
@@ -294,22 +312,15 @@ describe('computeSharpeRatio', () => {
 
   test('accepts custom annual risk-free rate', () => {
     const pts = makePoints(60, 30 * MIN_MS, 10000, 0.001);
-    const lowRF  = computeSharpeRatio(pts, 0.01);
-    const highRF = computeSharpeRatio(pts, 0.10);
+    const lowRF = computeSharpeRatio(pts, 0.01);
+    const highRF = computeSharpeRatio(pts, 0.1);
     if (lowRF !== null && highRF !== null) {
       expect(lowRF).toBeGreaterThanOrEqual(highRF);
     }
   });
 });
 
-
-function makePnLPoints(
-  n: number,
-  intervalMs: number,
-  baseInvested = 10_000,
-  startPnl = 0,
-  pnlDrift = 2,
-): SnapshotPnLPoint[] {
+function makePnLPoints(n: number, intervalMs: number, baseInvested = 10_000, startPnl = 0, pnlDrift = 2): SnapshotPnLPoint[] {
   const pts: SnapshotPnLPoint[] = [];
   let p = startPnl;
   for (let i = 0; i < n; i++) {
@@ -361,7 +372,6 @@ describe('computePnLSharpeRatio', () => {
   });
 });
 
-
 describe('computeTWR', () => {
   test('returns null for empty array', () => {
     expect(computeTWR([])).toBeNull();
@@ -372,18 +382,26 @@ describe('computeTWR', () => {
   });
 
   test('returns null when start value is 0', () => {
-    expect(computeTWR([{ ts: 0, v: 0 }, { ts: 1, v: 100 }])).toBeNull();
+    expect(
+      computeTWR([
+        { ts: 0, v: 0 },
+        { ts: 1, v: 100 },
+      ]),
+    ).toBeNull();
   });
 
   test('equals simple return when no cash flows are present', () => {
-    const pts: SnapshotPoint[] = [{ ts: 0, v: 10000 }, { ts: 1, v: 11000 }];
+    const pts: SnapshotPoint[] = [
+      { ts: 0, v: 10000 },
+      { ts: 1, v: 11000 },
+    ];
     expect(computeTWR(pts, [])).toBeCloseTo(10);
   });
 
   test('chains sub-period returns — equals simple return without flows (telescoping)', () => {
     const pts: SnapshotPoint[] = [
       { ts: 0, v: 10000 },
-      { ts: 1, v: 5000 },   // intermediate drop
+      { ts: 1, v: 5000 }, // intermediate drop
       { ts: 2, v: 12000 },
     ];
     expect(computeTWR(pts, [])).toBeCloseTo(computeReturnPct(pts)!);
@@ -412,8 +430,8 @@ describe('computeTWR', () => {
   test('handles a withdrawal (negative cash flow)', () => {
     const pts: SnapshotPoint[] = [
       { ts: 0, v: 10000 },
-      { ts: 1, v:  9000 }, // -$1k withdrawal
-      { ts: 2, v:  9900 }, // 10% gain on $9k
+      { ts: 1, v: 9000 }, // -$1k withdrawal
+      { ts: 2, v: 9900 }, // 10% gain on $9k
     ];
     const flows: CashFlowEvent[] = [{ ts: 1, amountUSD: -1000 }];
     expect(computeTWR(pts, flows)).toBeCloseTo(10);
@@ -442,7 +460,6 @@ describe('computeTWR', () => {
     expect(computeTWR(pts, flows)).toBeCloseTo(0);
   });
 });
-
 
 describe('buildFlowAdjustedPoints', () => {
   test('returns empty array for empty points', () => {
@@ -486,7 +503,6 @@ describe('buildFlowAdjustedPoints', () => {
     ]);
   });
 });
-
 
 describe('toDailyClosePoints', () => {
   test('returns empty array for empty input', () => {
@@ -583,7 +599,6 @@ describe('buildPnLReturnIndexPoints', () => {
   });
 });
 
-
 describe('periodStartMs', () => {
   const now = 1_748_000_000_000;
 
@@ -615,7 +630,7 @@ describe('periodStartMs', () => {
   test('uses current time when now is omitted (result is in the past)', () => {
     const before = Date.now() - 7 * DAY_MS;
     const result = periodStartMs('1W');
-    const after  = Date.now() - 7 * DAY_MS;
+    const after = Date.now() - 7 * DAY_MS;
     expect(result).toBeGreaterThanOrEqual(before);
     expect(result).toBeLessThanOrEqual(after + 50);
   });

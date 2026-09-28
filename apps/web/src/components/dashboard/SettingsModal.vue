@@ -6,7 +6,6 @@ import { useToast } from '../../composables/useToast';
 const store = useDashboardStore();
 const { show } = useToast();
 
-const notifyMessage = ref('');
 const notifyBusy = ref(false);
 
 async function runMaintenance(key: string, path: string): Promise<void> {
@@ -16,8 +15,7 @@ async function runMaintenance(key: string, path: string): Promise<void> {
 async function testNotify(): Promise<void> {
   notifyBusy.value = true;
   const message =
-    window.prompt('Enter test notification message (leave blank for default)') ||
-    'Test notification from portfolio-dashboard';
+    window.prompt('Enter test notification message (leave blank for default)') || 'Test notification from portfolio-dashboard';
   const error = await store.testNotify(message);
   show(error ?? 'Notification sent successfully', error ? 'error' : 'success');
   notifyBusy.value = false;
@@ -39,7 +37,7 @@ async function onImportFile(event: Event): Promise<void> {
 </script>
 
 <template>
-  <div class="modal" v-if="store.settingsOpen">
+  <div v-if="store.settingsOpen" class="modal">
     <div class="modal-content settings-content">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px">
         <h2 style="margin: 0; font-size: 1.05rem">⚙ Settings &amp; Tools</h2>
@@ -112,7 +110,15 @@ async function onImportFile(event: Event): Promise<void> {
             <div class="tool-title">⚠️ Erase All</div>
             <div class="tool-sub">Permanently delete all trades, history and cash</div>
           </div>
-          <button class="btn btn-danger tool-action" @click="store.settingsOpen = false; store.eraseOpen = true">Erase</button>
+          <button
+            class="btn btn-danger tool-action"
+            @click="
+              store.settingsOpen = false;
+              store.eraseOpen = true;
+            "
+          >
+            Erase
+          </button>
         </div>
 
         <div style="border-top: 1px solid var(--border); margin: 6px 0 2px"></div>
@@ -121,7 +127,9 @@ async function onImportFile(event: Event): Promise<void> {
         <div class="tool-row tool-row-top">
           <div style="flex: 1; min-width: 0">
             <div class="tool-title">💵 Backfill Cash History</div>
-            <div class="tool-sub">Derive ~30 cash estimates from portfolio snapshots <span style="opacity: 0.6">(one-time)</span></div>
+            <div class="tool-sub">
+              Derive ~30 cash estimates from portfolio snapshots <span style="opacity: 0.6">(one-time)</span>
+            </div>
             <pre v-if="store.maintenanceLog['backfill-cash']" class="tool-log">{{ store.maintenanceLog['backfill-cash'] }}</pre>
           </div>
           <button
@@ -137,7 +145,9 @@ async function onImportFile(event: Event): Promise<void> {
           <div style="flex: 1; min-width: 0">
             <div class="tool-title">📈 Backfill Price History</div>
             <div class="tool-sub">Fetch 2-yr daily closes from Yahoo Finance <span style="opacity: 0.6">(≈30s)</span></div>
-            <pre v-if="store.maintenanceLog['backfill-prices']" class="tool-log">{{ store.maintenanceLog['backfill-prices'] }}</pre>
+            <pre v-if="store.maintenanceLog['backfill-prices']" class="tool-log">{{
+              store.maintenanceLog['backfill-prices']
+            }}</pre>
           </div>
           <button
             class="btn tool-action"
@@ -151,7 +161,7 @@ async function onImportFile(event: Event): Promise<void> {
     </div>
   </div>
 
-  <div class="modal" v-if="store.eraseOpen">
+  <div v-if="store.eraseOpen" class="modal">
     <div class="modal-content">
       <h2>Erase all data?</h2>
       <p>This will erase all trades and history. This cannot be undone.</p>
@@ -160,7 +170,7 @@ async function onImportFile(event: Event): Promise<void> {
     </div>
   </div>
 
-  <div class="modal" v-if="store.deleteTradeIndex !== null">
+  <div v-if="store.deleteTradeIndex !== null" class="modal">
     <div class="modal-content">
       <h2>Delete trade?</h2>
       <p>This will remove this trade from your history. This cannot be undone.</p>

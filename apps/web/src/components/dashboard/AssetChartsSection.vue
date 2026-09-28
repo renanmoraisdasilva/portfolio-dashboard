@@ -63,9 +63,7 @@ watch(() => store.selectedDays, loadAll);
 <template>
   <div>
     <div class="card-header">
-      <div class="card-title">
-        <span class="card-icon">📊</span>Asset Price Charts (Last {{ rangeTitle }})
-      </div>
+      <div class="card-title"><span class="card-icon">📊</span>Asset Price Charts (Last {{ rangeTitle }})</div>
       <div class="chart-controls">
         <button
           v-for="range in CHART_DAY_RANGES"

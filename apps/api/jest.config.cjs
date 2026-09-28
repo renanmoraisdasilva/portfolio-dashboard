@@ -6,11 +6,7 @@ module.exports = {
   // packages/shared, and babel-plugin-istanbul (the default coverage provider)
   // only instruments files under rootDir.
   rootDir: '../..',
-  roots: [
-    '<rootDir>/apps/api/src',
-    '<rootDir>/static/js',
-    '<rootDir>/packages/shared/src',
-  ],
+  roots: ['<rootDir>/apps/api/src', '<rootDir>/static/js', '<rootDir>/packages/shared/src'],
   testMatch: ['**/*.test.ts', '**/__tests__/**/*.test.js'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   // Tests resolve the package through its source, so the suite never needs a
@@ -21,7 +17,7 @@ module.exports = {
   transformIgnorePatterns: ['/node_modules/(?!uuid/)'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
-    '\\.js$': ['ts-jest', { tsconfig: require('path').resolve(__dirname, 'tsconfig.test-js.json') }]
+    '\\.js$': ['ts-jest', { tsconfig: require('path').resolve(__dirname, 'tsconfig.test-js.json') }],
   },
   collectCoverage: true,
   // Narrow by design: only files that are genuinely test-covered go in here.
@@ -42,6 +38,6 @@ module.exports = {
       functions: 80,
       lines: 80,
       statements: 80,
-    }
-  }
+    },
+  },
 };

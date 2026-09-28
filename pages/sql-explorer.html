@@ -1,286 +1,304 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>SQL Explorer — Portfolio Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="/icon.png" sizes="16x16">
-  <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/components.css">
-  <link rel="stylesheet" href="/static/css/layout.css">
-  <link rel="stylesheet" href="/static/css/explorer.css">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SQL Explorer — Portfolio Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/icon.png" sizes="16x16" />
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <link rel="stylesheet" href="/static/css/components.css" />
+    <link rel="stylesheet" href="/static/css/layout.css" />
+    <link rel="stylesheet" href="/static/css/explorer.css" />
 
-  <!-- CodeMirror 6 via CDN (codemirror.net, MIT license, actively maintained) -->
-  <script type="module">
-    import { EditorView, keymap, highlightActiveLine, lineNumbers, highlightActiveLineGutter, drawSelection } from 'https://esm.sh/@codemirror/view@6';
-    import { EditorState, Compartment } from 'https://esm.sh/@codemirror/state@6';
-    import { defaultKeymap, historyKeymap, history, indentWithTab } from 'https://esm.sh/@codemirror/commands@6';
-    import { sql, SQLite } from 'https://esm.sh/@codemirror/lang-sql@6';
-    import { oneDark } from 'https://esm.sh/@codemirror/theme-one-dark@6';
-    import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from 'https://esm.sh/@codemirror/language@6';
-    import { autocompletion, completionKeymap } from 'https://esm.sh/@codemirror/autocomplete@6';
-    import { lintKeymap } from 'https://esm.sh/@codemirror/lint@6';
+    <!-- CodeMirror 6 via CDN (codemirror.net, MIT license, actively maintained) -->
+    <script type="module">
+      import {
+        EditorView,
+        keymap,
+        highlightActiveLine,
+        lineNumbers,
+        highlightActiveLineGutter,
+        drawSelection,
+      } from 'https://esm.sh/@codemirror/view@6';
+      import { EditorState, Compartment } from 'https://esm.sh/@codemirror/state@6';
+      import { defaultKeymap, historyKeymap, history, indentWithTab } from 'https://esm.sh/@codemirror/commands@6';
+      import { sql, SQLite } from 'https://esm.sh/@codemirror/lang-sql@6';
+      import { oneDark } from 'https://esm.sh/@codemirror/theme-one-dark@6';
+      import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from 'https://esm.sh/@codemirror/language@6';
+      import { autocompletion, completionKeymap } from 'https://esm.sh/@codemirror/autocomplete@6';
+      import { lintKeymap } from 'https://esm.sh/@codemirror/lint@6';
 
-    let editor;
+      let editor;
 
-    function initEditor() {
-      const startDoc = `-- SQL Explorer\n-- Select a database above, then write your query.\n\nSELECT * FROM trades ORDER BY time DESC LIMIT 20;`;
+      function initEditor() {
+        const startDoc = `-- SQL Explorer\n-- Select a database above, then write your query.\n\nSELECT * FROM trades ORDER BY time DESC LIMIT 20;`;
 
-      editor = new EditorView({
-        state: EditorState.create({
-          doc: startDoc,
-          extensions: [
-            lineNumbers(),
-            highlightActiveLineGutter(),
-            history(),
-            drawSelection(),
-            bracketMatching(),
-            highlightActiveLine(),
-            autocompletion(),
-            sql({ dialect: SQLite }),
-            oneDark,
-            keymap.of([
-              ...defaultKeymap,
-              ...historyKeymap,
-              ...completionKeymap,
-              ...lintKeymap,
-              indentWithTab,
-              { key: 'Ctrl-Enter', run: () => { window.runQuery(); return true; } },
-              { key: 'Mod-Enter', run: () => { window.runQuery(); return true; } },
-            ]),
-            EditorView.theme({
-              '&': {
-                fontSize: '0.9rem',
-                fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-                borderRadius: '8px',
-                overflow: 'hidden',
-              },
-              '.cm-scroller': { minHeight: '180px' },
-              '.cm-content': { padding: '12px 0' },
-            }),
-          ],
-        }),
-        parent: document.getElementById('editor-mount'),
-      });
+        editor = new EditorView({
+          state: EditorState.create({
+            doc: startDoc,
+            extensions: [
+              lineNumbers(),
+              highlightActiveLineGutter(),
+              history(),
+              drawSelection(),
+              bracketMatching(),
+              highlightActiveLine(),
+              autocompletion(),
+              sql({ dialect: SQLite }),
+              oneDark,
+              keymap.of([
+                ...defaultKeymap,
+                ...historyKeymap,
+                ...completionKeymap,
+                ...lintKeymap,
+                indentWithTab,
+                {
+                  key: 'Ctrl-Enter',
+                  run: () => {
+                    window.runQuery();
+                    return true;
+                  },
+                },
+                {
+                  key: 'Mod-Enter',
+                  run: () => {
+                    window.runQuery();
+                    return true;
+                  },
+                },
+              ]),
+              EditorView.theme({
+                '&': {
+                  fontSize: '0.9rem',
+                  fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                },
+                '.cm-scroller': { minHeight: '180px' },
+                '.cm-content': { padding: '12px 0' },
+              }),
+            ],
+          }),
+          parent: document.getElementById('editor-mount'),
+        });
 
-      window._cmEditor = editor;
-    }
-
-    window.getEditorValue = () => editor?.state.doc.toString() ?? '';
-
-    document.addEventListener('DOMContentLoaded', initEditor);
-  </script>
-
-</head>
-<body>
-<div class="shell">
-
-<nav class="app-nav" aria-label="Primary">
-  <a class="nav-link" href="/">Dashboard</a>
-  <a class="nav-link" href="/analytics">Analytics</a>
-  <a class="nav-link" href="/simulation">Simulation</a>
-  <a class="nav-link is-active" href="/legacy/sql-explorer.html">SQL Explorer</a>
-</nav>
-
-<header class="page-header">
-  <div class="page-brand">
-    <div class="logo">🗄️</div>
-    <div>
-      <h1 class="page-title">SQL Explorer</h1>
-      <p class="page-subtitle">Ad-hoc queries against portfolio.db</p>
-    </div>
-  </div>
-</header>
-
-  <div class="explorer-layout">
-
-    <div class="schema-panel">
-      <h2>Schema</h2>
-      <div id="schema-content" class="schema-loading">Loading…</div>
-    </div>
-
-    <div>
-
-      <div class="card">
-        <div class="toolbar">
-          <div class="db-select-wrap">
-            <label for="db-picker">Database</label>
-            <select id="db-picker" class="db-picker" onchange="onDbChange()">
-              <option value="portfolio">portfolio.db</option>
-            </select>
-          </div>
-          <button class="run-btn" id="run-btn" onclick="runQuery()">
-            ▶ Run <span class="kbd">Ctrl+↵</span>
-          </button>
-          <button class="clear-btn" onclick="clearEditor()">Clear</button>
-        </div>
-        <div id="editor-mount"></div>
-      </div>
-
-      <div class="card" id="results-card">
-        <div id="results-area">
-          <div class="placeholder-msg">
-            <div class="icon">⚡</div>
-            <p>Run a query to see results</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Query History</div>
-        <ul class="history-list" id="history-list">
-          <li><div class="no-history">No queries yet.</div></li>
-        </ul>
-      </div>
-
-    </div>
-  </div>
-
-</div>
-
-<script>
-// ── State ──────────────────────────────────────────────────────────────────
-const queryHistory = [];
-let schemaCache = {};
-
-// ── Schema loader ─────────────────────────────────────────────────────────
-async function loadSchema(dbName) {
-  const el = document.getElementById('schema-content');
-  el.innerHTML = '<span class="schema-loading">Loading…</span>';
-
-  if (schemaCache[dbName]) {
-    renderSchema(schemaCache[dbName], dbName);
-    return;
-  }
-
-  try {
-    const res = await fetch(`/api/sql/tables?db=${encodeURIComponent(dbName)}`);
-    const data = await res.json();
-    if (!res.ok) { el.innerHTML = `<span style="color:var(--accent-danger);font-size:0.8rem;">${data.error}</span>`; return; }
-    schemaCache[dbName] = data.tables;
-    renderSchema(data.tables, dbName);
-  } catch (e) {
-    el.innerHTML = `<span style="color:var(--accent-danger);font-size:0.8rem;">Failed to load schema</span>`;
-  }
-}
-
-function renderSchema(tables, dbName) {
-  const el = document.getElementById('schema-content');
-  if (!tables.length) { el.innerHTML = '<span class="schema-loading">No tables found</span>'; return; }
-
-  const ul = document.createElement('ul');
-  ul.className = 'table-list';
-
-  tables.forEach(tbl => {
-    const li = document.createElement('li');
-    const btn = document.createElement('button');
-    btn.className = 'tbl-btn';
-    btn.textContent = tbl;
-    btn.title = `Click to expand columns`;
-
-    let expanded = false;
-    let colsLoaded = false;
-    let colUl = null;
-
-    btn.onclick = async () => {
-      if (!expanded) {
-        if (!colsLoaded) {
-          const loadingLi = document.createElement('li');
-          loadingLi.style.color = 'var(--text-muted)';
-          loadingLi.style.fontSize = '0.75rem';
-          loadingLi.style.paddingLeft = '12px';
-          loadingLi.textContent = 'Loading…';
-          colUl = document.createElement('ul');
-          colUl.className = 'col-list';
-          colUl.appendChild(loadingLi);
-          li.appendChild(colUl);
-
-          try {
-            const r = await fetch(`/api/sql/schema?db=${encodeURIComponent(dbName)}&table=${encodeURIComponent(tbl)}`);
-            const d = await r.json();
-            colUl.innerHTML = '';
-            (d.columns || []).forEach(col => {
-              const cli = document.createElement('li');
-              cli.innerHTML = `<span class="col-name">${escHtml(col.name)}</span><span class="col-type">${escHtml(col.type || '')}</span>`;
-              colUl.appendChild(cli);
-            });
-            colsLoaded = true;
-          } catch {
-            colUl.innerHTML = '<li style="color:var(--accent-danger);font-size:0.75rem;">Error</li>';
-          }
-        } else {
-          li.appendChild(colUl);
-        }
-        expanded = true;
-        btn.title = 'Click to collapse';
-      } else {
-        if (colUl) li.removeChild(colUl);
-        expanded = false;
-        btn.title = 'Click to expand columns';
+        window._cmEditor = editor;
       }
-    };
 
-    li.appendChild(btn);
-    ul.appendChild(li);
-  });
+      window.getEditorValue = () => editor?.state.doc.toString() ?? '';
 
-  el.innerHTML = '';
-  el.appendChild(ul);
-}
+      document.addEventListener('DOMContentLoaded', initEditor);
+    </script>
+  </head>
+  <body>
+    <div class="shell">
+      <nav class="app-nav" aria-label="Primary">
+        <a class="nav-link" href="/">Dashboard</a>
+        <a class="nav-link" href="/analytics">Analytics</a>
+        <a class="nav-link" href="/simulation">Simulation</a>
+        <a class="nav-link is-active" href="/legacy/sql-explorer.html">SQL Explorer</a>
+      </nav>
 
-// ── Run query ─────────────────────────────────────────────────────────────
-async function runQuery() {
-  const sql = (window.getEditorValue ? window.getEditorValue() : '').trim();
-  if (!sql) return;
+      <header class="page-header">
+        <div class="page-brand">
+          <div class="logo">🗄️</div>
+          <div>
+            <h1 class="page-title">SQL Explorer</h1>
+            <p class="page-subtitle">Ad-hoc queries against portfolio.db</p>
+          </div>
+        </div>
+      </header>
 
-  const dbName = document.getElementById('db-picker').value;
-  const btn = document.getElementById('run-btn');
-  const area = document.getElementById('results-area');
+      <div class="explorer-layout">
+        <div class="schema-panel">
+          <h2>Schema</h2>
+          <div id="schema-content" class="schema-loading">Loading…</div>
+        </div>
 
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Running…';
-  area.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text-muted);"><span class="spinner"></span></div>';
+        <div>
+          <div class="card">
+            <div class="toolbar">
+              <div class="db-select-wrap">
+                <label for="db-picker">Database</label>
+                <select id="db-picker" class="db-picker" onchange="onDbChange()">
+                  <option value="portfolio">portfolio.db</option>
+                </select>
+              </div>
+              <button class="run-btn" id="run-btn" onclick="runQuery()">▶ Run <span class="kbd">Ctrl+↵</span></button>
+              <button class="clear-btn" onclick="clearEditor()">Clear</button>
+            </div>
+            <div id="editor-mount"></div>
+          </div>
 
-  const startMs = Date.now();
-  try {
-    const res = await fetch('/api/sql/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sql, db: dbName }),
-    });
-    const data = await res.json();
-    const elapsed = Date.now() - startMs;
+          <div class="card" id="results-card">
+            <div id="results-area">
+              <div class="placeholder-msg">
+                <div class="icon">⚡</div>
+                <p>Run a query to see results</p>
+              </div>
+            </div>
+          </div>
 
-    addToHistory(sql, dbName, res.ok);
+          <div class="card">
+            <div class="card-title">Query History</div>
+            <ul class="history-list" id="history-list">
+              <li><div class="no-history">No queries yet.</div></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    if (!res.ok) {
-      area.innerHTML = `
+    <script>
+      // ── State ──────────────────────────────────────────────────────────────────
+      const queryHistory = [];
+      let schemaCache = {};
+
+      // ── Schema loader ─────────────────────────────────────────────────────────
+      async function loadSchema(dbName) {
+        const el = document.getElementById('schema-content');
+        el.innerHTML = '<span class="schema-loading">Loading…</span>';
+
+        if (schemaCache[dbName]) {
+          renderSchema(schemaCache[dbName], dbName);
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/sql/tables?db=${encodeURIComponent(dbName)}`);
+          const data = await res.json();
+          if (!res.ok) {
+            el.innerHTML = `<span style="color:var(--accent-danger);font-size:0.8rem;">${data.error}</span>`;
+            return;
+          }
+          schemaCache[dbName] = data.tables;
+          renderSchema(data.tables, dbName);
+        } catch (e) {
+          el.innerHTML = `<span style="color:var(--accent-danger);font-size:0.8rem;">Failed to load schema</span>`;
+        }
+      }
+
+      function renderSchema(tables, dbName) {
+        const el = document.getElementById('schema-content');
+        if (!tables.length) {
+          el.innerHTML = '<span class="schema-loading">No tables found</span>';
+          return;
+        }
+
+        const ul = document.createElement('ul');
+        ul.className = 'table-list';
+
+        tables.forEach((tbl) => {
+          const li = document.createElement('li');
+          const btn = document.createElement('button');
+          btn.className = 'tbl-btn';
+          btn.textContent = tbl;
+          btn.title = `Click to expand columns`;
+
+          let expanded = false;
+          let colsLoaded = false;
+          let colUl = null;
+
+          btn.onclick = async () => {
+            if (!expanded) {
+              if (!colsLoaded) {
+                const loadingLi = document.createElement('li');
+                loadingLi.style.color = 'var(--text-muted)';
+                loadingLi.style.fontSize = '0.75rem';
+                loadingLi.style.paddingLeft = '12px';
+                loadingLi.textContent = 'Loading…';
+                colUl = document.createElement('ul');
+                colUl.className = 'col-list';
+                colUl.appendChild(loadingLi);
+                li.appendChild(colUl);
+
+                try {
+                  const r = await fetch(`/api/sql/schema?db=${encodeURIComponent(dbName)}&table=${encodeURIComponent(tbl)}`);
+                  const d = await r.json();
+                  colUl.innerHTML = '';
+                  (d.columns || []).forEach((col) => {
+                    const cli = document.createElement('li');
+                    cli.innerHTML = `<span class="col-name">${escHtml(col.name)}</span><span class="col-type">${escHtml(col.type || '')}</span>`;
+                    colUl.appendChild(cli);
+                  });
+                  colsLoaded = true;
+                } catch {
+                  colUl.innerHTML = '<li style="color:var(--accent-danger);font-size:0.75rem;">Error</li>';
+                }
+              } else {
+                li.appendChild(colUl);
+              }
+              expanded = true;
+              btn.title = 'Click to collapse';
+            } else {
+              if (colUl) li.removeChild(colUl);
+              expanded = false;
+              btn.title = 'Click to expand columns';
+            }
+          };
+
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+
+        el.innerHTML = '';
+        el.appendChild(ul);
+      }
+
+      // ── Run query ─────────────────────────────────────────────────────────────
+      async function runQuery() {
+        const sql = (window.getEditorValue ? window.getEditorValue() : '').trim();
+        if (!sql) return;
+
+        const dbName = document.getElementById('db-picker').value;
+        const btn = document.getElementById('run-btn');
+        const area = document.getElementById('results-area');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Running…';
+        area.innerHTML =
+          '<div style="text-align:center;padding:32px 0;color:var(--text-muted);"><span class="spinner"></span></div>';
+
+        const startMs = Date.now();
+        try {
+          const res = await fetch('/api/sql/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sql, db: dbName }),
+          });
+          const data = await res.json();
+          const elapsed = Date.now() - startMs;
+
+          addToHistory(sql, dbName, res.ok);
+
+          if (!res.ok) {
+            area.innerHTML = `
         <div class="results-meta">
           <span class="badge badge-error">Error</span>
         </div>
         <div class="error-box">${escHtml(data.error || 'Unknown error')}</div>`;
-    } else if (data.type === 'write') {
-      area.innerHTML = `
+          } else if (data.type === 'write') {
+            area.innerHTML = `
         <div class="results-meta">
           <span class="badge badge-success">✓ Success</span>
           <span style="font-size:0.78rem;color:var(--text-muted);">${elapsed}ms</span>
         </div>
         <div class="write-result">✓ ${escHtml(data.message)}</div>`;
-    } else {
-      renderTable(data.rows || [], data.columns || [], elapsed);
-    }
-  } catch (e) {
-    area.innerHTML = `<div class="error-box">Network error: ${escHtml(e.message)}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '▶ Run <span class="kbd">Ctrl+↵</span>';
-  }
-}
+          } else {
+            renderTable(data.rows || [], data.columns || [], elapsed);
+          }
+        } catch (e) {
+          area.innerHTML = `<div class="error-box">Network error: ${escHtml(e.message)}</div>`;
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '▶ Run <span class="kbd">Ctrl+↵</span>';
+        }
+      }
 
-function renderTable(rows, columns, elapsed) {
-  const area = document.getElementById('results-area');
+      function renderTable(rows, columns, elapsed) {
+        const area = document.getElementById('results-area');
 
-  const metaHtml = `
+        const metaHtml = `
     <div class="results-meta">
       <span class="badge badge-info">${rows.length} row${rows.length !== 1 ? 's' : ''}</span>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -289,21 +307,26 @@ function renderTable(rows, columns, elapsed) {
       </div>
     </div>`;
 
-  if (!columns.length && !rows.length) {
-    area.innerHTML = metaHtml + '<div class="result-empty">Query returned no results.</div>';
-    return;
-  }
+        if (!columns.length && !rows.length) {
+          area.innerHTML = metaHtml + '<div class="result-empty">Query returned no results.</div>';
+          return;
+        }
 
-  const headerCells = columns.map(c => `<th>${escHtml(c)}</th>`).join('');
-  const bodyRows = rows.map(row =>
-    `<tr>${columns.map(c => {
-      const v = row[c];
-      if (v === null || v === undefined) return `<td class="null-val">NULL</td>`;
-      return `<td title="${escAttr(String(v))}">${escHtml(String(v))}</td>`;
-    }).join('')}</tr>`
-  ).join('');
+        const headerCells = columns.map((c) => `<th>${escHtml(c)}</th>`).join('');
+        const bodyRows = rows
+          .map(
+            (row) =>
+              `<tr>${columns
+                .map((c) => {
+                  const v = row[c];
+                  if (v === null || v === undefined) return `<td class="null-val">NULL</td>`;
+                  return `<td title="${escAttr(String(v))}">${escHtml(String(v))}</td>`;
+                })
+                .join('')}</tr>`,
+          )
+          .join('');
 
-  area.innerHTML = `${metaHtml}
+        area.innerHTML = `${metaHtml}
     <div class="results-table-wrap">
       <table class="results-table">
         <thead><tr>${headerCells}</tr></thead>
@@ -311,86 +334,90 @@ function renderTable(rows, columns, elapsed) {
       </table>
     </div>`;
 
-  // stash for CSV export
-  window._lastResult = { rows, columns };
-}
+        // stash for CSV export
+        window._lastResult = { rows, columns };
+      }
 
-// ── CSV export ─────────────────────────────────────────────────────────────
-function exportCSV() {
-  const { rows, columns } = window._lastResult || {};
-  if (!rows || !columns) return;
-  const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const csv = [columns.map(esc).join(','), ...rows.map(r => columns.map(c => esc(r[c])).join(','))].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `query-result-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
+      // ── CSV export ─────────────────────────────────────────────────────────────
+      function exportCSV() {
+        const { rows, columns } = window._lastResult || {};
+        if (!rows || !columns) return;
+        const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const csv = [columns.map(esc).join(','), ...rows.map((r) => columns.map((c) => esc(r[c])).join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `query-result-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
 
-// ── History ────────────────────────────────────────────────────────────────
-function addToHistory(sql, dbName, ok) {
-  const entry = { sql: sql.length > 120 ? sql.slice(0, 120) + '…' : sql, dbName, time: new Date(), ok };
-  queryHistory.unshift(entry);
-  if (queryHistory.length > 30) queryHistory.pop();
-  renderHistory();
-}
+      // ── History ────────────────────────────────────────────────────────────────
+      function addToHistory(sql, dbName, ok) {
+        const entry = { sql: sql.length > 120 ? sql.slice(0, 120) + '…' : sql, dbName, time: new Date(), ok };
+        queryHistory.unshift(entry);
+        if (queryHistory.length > 30) queryHistory.pop();
+        renderHistory();
+      }
 
-function renderHistory() {
-  const ul = document.getElementById('history-list');
-  if (!queryHistory.length) {
-    ul.innerHTML = '<li><div class="no-history">No queries yet.</div></li>';
-    return;
-  }
-  ul.innerHTML = queryHistory.map((e, i) => `
+      function renderHistory() {
+        const ul = document.getElementById('history-list');
+        if (!queryHistory.length) {
+          ul.innerHTML = '<li><div class="no-history">No queries yet.</div></li>';
+          return;
+        }
+        ul.innerHTML = queryHistory
+          .map(
+            (e, i) => `
     <li>
       <span class="hist-sql" onclick="loadHistoryEntry(${i})" title="${escAttr(e.sql)}">${escHtml(e.sql)}</span>
       <span class="hist-db hist-db-${e.dbName}">${e.dbName}</span>
       <span class="hist-time">${e.time.toLocaleTimeString()}</span>
-    </li>`).join('');
-}
+    </li>`,
+          )
+          .join('');
+      }
 
-function loadHistoryEntry(i) {
-  const entry = queryHistory[i];
-  if (!entry) return;
-  document.getElementById('db-picker').value = entry.dbName;
-  onDbChange(false);
-  if (window._cmEditor) {
-    window._cmEditor.dispatch({
-      changes: { from: 0, to: window._cmEditor.state.doc.length, insert: entry.sql }
-    });
-  }
-}
+      function loadHistoryEntry(i) {
+        const entry = queryHistory[i];
+        if (!entry) return;
+        document.getElementById('db-picker').value = entry.dbName;
+        onDbChange(false);
+        if (window._cmEditor) {
+          window._cmEditor.dispatch({
+            changes: { from: 0, to: window._cmEditor.state.doc.length, insert: entry.sql },
+          });
+        }
+      }
 
-// ── Misc ───────────────────────────────────────────────────────────────────
-function onDbChange(reloadSchema = true) {
-  const dbName = document.getElementById('db-picker').value;
-  if (reloadSchema) loadSchema(dbName);
-  // Reset schema cache for fresh data
-  schemaCache = {};
-  loadSchema(dbName);
-}
+      // ── Misc ───────────────────────────────────────────────────────────────────
+      function onDbChange(reloadSchema = true) {
+        const dbName = document.getElementById('db-picker').value;
+        if (reloadSchema) loadSchema(dbName);
+        // Reset schema cache for fresh data
+        schemaCache = {};
+        loadSchema(dbName);
+      }
 
-function clearEditor() {
-  if (window._cmEditor) {
-    window._cmEditor.dispatch({
-      changes: { from: 0, to: window._cmEditor.state.doc.length, insert: '' }
-    });
-  }
-}
+      function clearEditor() {
+        if (window._cmEditor) {
+          window._cmEditor.dispatch({
+            changes: { from: 0, to: window._cmEditor.state.doc.length, insert: '' },
+          });
+        }
+      }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escAttr(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-}
+      function escHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+      function escAttr(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      }
 
-// ── Init ───────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  loadSchema('portfolio');
-});
-</script>
-</body>
+      // ── Init ───────────────────────────────────────────────────────────────────
+      document.addEventListener('DOMContentLoaded', () => {
+        loadSchema('portfolio');
+      });
+    </script>
+  </body>
 </html>

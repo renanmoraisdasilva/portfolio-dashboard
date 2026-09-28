@@ -1,13 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
-import {
-  computeProjection,
-  createSymbolClassifier,
-  formatMoney,
-  parseMoney,
-  type SymbolMap,
-} from '@portfolio-dashboard/shared';
+import { computeProjection, createSymbolClassifier, formatMoney, parseMoney, type SymbolMap } from '@portfolio-dashboard/shared';
 import { ApiError, request, useApi } from '../composables/useApi';
 
 export type Trade = components['schemas']['Trade'];
@@ -57,9 +51,18 @@ export interface DashboardTrade {
 }
 
 export const ALLOCATION_PALETTE = [
-  '#dc2626', '#15803d', '#0891b2', '#1e40af', '#7c3aed',
-  '#d97706', '#06b6d4', '#22c55e', '#f97316', '#eab308',
-  '#a855f7', '#3b82f6',
+  '#dc2626',
+  '#15803d',
+  '#0891b2',
+  '#1e40af',
+  '#7c3aed',
+  '#d97706',
+  '#06b6d4',
+  '#22c55e',
+  '#f97316',
+  '#eab308',
+  '#a855f7',
+  '#3b82f6',
 ];
 
 const CASH_ENTRIES_PAGE_SIZE = 5;
@@ -333,7 +336,6 @@ export const useDashboardStore = defineStore(
      */
     const projection = computed(() => (projectionEnabled.value ? computeProjection(history.value) : []));
 
-
     // --- Trade history ---------------------------------------------------------
 
     const tradeRows = computed(() => {
@@ -385,7 +387,6 @@ export const useDashboardStore = defineStore(
         };
       });
     });
-
 
     const valueCandles = computed(() => {
       const source = activeMetric.value === 'pnl' ? pnlOHLC.value : historyOHLC.value;
@@ -446,7 +447,7 @@ export const useDashboardStore = defineStore(
       const source = formCashSource.value;
       if (isBRLNonBond(symbol)) {
         const availBRL = source === 'USD' ? cashDollars.value / (brlUsdRate.value || 1) : cashReais.value;
-        return +(((availBRL * pct) / 100) / price).toFixed(4);
+        return +((availBRL * pct) / 100 / price).toFixed(4);
       }
       const availableUsd = source === 'USD' ? cashDollars.value : cashReais.value * brlUsdRate.value;
       return +((availableUsd * (pct / 100)) / price).toFixed(4);
@@ -489,9 +490,7 @@ export const useDashboardStore = defineStore(
     function setTotal(text: string): void {
       const parsed = parseMoney(text, formCashSource.value === 'USD' ? 'USD' : 'BRL');
       totalInput.value =
-        parsed && parsed > 0
-          ? formCashSource.value === 'USD' ? formatMoney(parsed, 'USD') : formatMoney(parsed, 'BRL')
-          : text;
+        parsed && parsed > 0 ? (formCashSource.value === 'USD' ? formatMoney(parsed, 'USD') : formatMoney(parsed, 'BRL')) : text;
       const qty = qtyFromTotal();
       if (qty) qtyInput.value = qty;
     }
@@ -508,7 +507,9 @@ export const useDashboardStore = defineStore(
         ? priceOf(s)
         : typeof priceMeta.value[s]?.priceBRL === 'number'
           ? priceMeta.value[s].priceBRL
-          : brlUsdRate.value > 0 ? priceOf(s) / brlUsdRate.value : 0;
+          : brlUsdRate.value > 0
+            ? priceOf(s) / brlUsdRate.value
+            : 0;
       priceInput.value = brlPrice > 0 ? brlPrice.toFixed(2) : '';
       totalInput.value = totalFromQty();
       qtyPct.value = pctFromQty(parsedQty.value);
@@ -547,7 +548,9 @@ export const useDashboardStore = defineStore(
             ? typed
             : typeof priceMeta.value[s]?.priceBRL === 'number'
               ? priceMeta.value[s].priceBRL
-              : brlUsdRate.value > 0 ? priceOf(s) / brlUsdRate.value : null;
+              : brlUsdRate.value > 0
+                ? priceOf(s) / brlUsdRate.value
+                : null;
         return brlP !== null && brlUsdRate.value > 0 ? brlP / brlUsdRate.value : (prices.value[s] ?? null);
       }
       return typed !== null ? typed : (prices.value[s] ?? null);
@@ -644,7 +647,7 @@ export const useDashboardStore = defineStore(
     // --- Interest --------------------------------------------------------------
 
     async function addInterestMonth(currency: Currency, month: string, raw: string): Promise<string | null> {
-      const amount = +(parseMoney(raw, currency).toFixed(2)) || 0;
+      const amount = +parseMoney(raw, currency).toFixed(2) || 0;
       if (!month) return 'Please select a month';
       const list = currency === 'BRL' ? interestReaisMonths : interestDollarsMonths;
       const idx = list.value.findIndex((m) => m.month === month);
@@ -714,7 +717,11 @@ export const useDashboardStore = defineStore(
       const ts = date ? new Date(`${date}T12:00:00`).getTime() : Date.now();
 
       try {
-        await request(api.POST('/cash/entries', { body: { currency: entryCurrency.value, amount, ts } }), 'POST', '/cash/entries');
+        await request(
+          api.POST('/cash/entries', { body: { currency: entryCurrency.value, amount, ts } }),
+          'POST',
+          '/cash/entries',
+        );
       } catch (err) {
         console.warn('[dashboard] add cash entry failed:', err);
         return 'Failed to add cash entry';
@@ -762,7 +769,7 @@ export const useDashboardStore = defineStore(
             : `${t.percentage_change ? t.percentage_change.toFixed(2) : '0'}%`;
         const details =
           t.previous_price && t.percentage_change
-            ? `from ${prefix}${(t.previous_price).toLocaleString(locale, { minimumFractionDigits: 2 })} to ${prefix}${current.toLocaleString(locale, { minimumFractionDigits: 2 })} (${t.percentage_change.toFixed(2)}% change)`
+            ? `from ${prefix}${t.previous_price.toLocaleString(locale, { minimumFractionDigits: 2 })} to ${prefix}${current.toLocaleString(locale, { minimumFractionDigits: 2 })} (${t.percentage_change.toFixed(2)}% change)`
             : `Currently at ${prefix}${current.toLocaleString(locale, { minimumFractionDigits: 2 })}`;
         return {
           id: t.id ?? '',
@@ -1018,9 +1025,7 @@ export const useDashboardStore = defineStore(
         request(api.GET('/interest/months', { params: { query: { currency: 'USD' } } }), 'GET', '/interest/months'),
       ]);
 
-      trades.value = (tradeRows ?? [])
-        .filter((t) => Boolean(t.symbol) && typeof t.qty === 'number')
-        .map(normalizeTrade);
+      trades.value = (tradeRows ?? []).filter((t) => Boolean(t.symbol) && typeof t.qty === 'number').map(normalizeTrade);
 
       cashReais.value = Number(cash?.cashReais) || 0;
       cashDollars.value = Number(cash?.cashDollars) || 0;
@@ -1041,7 +1046,13 @@ export const useDashboardStore = defineStore(
 
       if (Array.isArray(valueCandles) && valueCandles.length > 0) historyOHLC.value = valueCandles;
       else if (history.value.length > 0) {
-        historyOHLC.value = history.value.map((h) => ({ ts: h.ts ?? 0, open: h.v ?? 0, high: h.v ?? 0, low: h.v ?? 0, close: h.v ?? 0 }));
+        historyOHLC.value = history.value.map((h) => ({
+          ts: h.ts ?? 0,
+          open: h.v ?? 0,
+          high: h.v ?? 0,
+          low: h.v ?? 0,
+          close: h.v ?? 0,
+        }));
       }
       if (Array.isArray(pnlCandles) && pnlCandles.length > 0) pnlOHLC.value = pnlCandles;
     }

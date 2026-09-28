@@ -21,16 +21,25 @@ const CASH_SUM_SQL = `
   FROM cash
 `;
 
-
 stateRouter.get('/export', async (req, res) => {
   try {
     const trades = await all('SELECT * FROM trades ORDER BY time ASC');
     const history = await all('SELECT * FROM portfolio_snapshots ORDER BY ts ASC');
-    const interestBRLMonths = await all('SELECT month, amount, currency FROM interest WHERE currency = ? ORDER BY month DESC', ['BRL']);
-    const interestUSDMonths = await all('SELECT month, amount, currency FROM interest WHERE currency = ? ORDER BY month DESC', ['USD']);
+    const interestBRLMonths = await all('SELECT month, amount, currency FROM interest WHERE currency = ? ORDER BY month DESC', [
+      'BRL',
+    ]);
+    const interestUSDMonths = await all('SELECT month, amount, currency FROM interest WHERE currency = ? ORDER BY month DESC', [
+      'USD',
+    ]);
     const cash = await get(CASH_SUM_SQL);
-    const brlInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['BRL']);
-    const usdInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['USD']);
+    const brlInterest = await get<{ total: number }>(
+      'SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?',
+      ['BRL'],
+    );
+    const usdInterest = await get<{ total: number }>(
+      'SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?',
+      ['USD'],
+    );
     const cashEntries = await all('SELECT * FROM cash ORDER BY ts ASC');
     const alertsData = await all('SELECT * FROM alerts ORDER BY created_at ASC');
     const scenariosData = await all('SELECT * FROM scenarios ORDER BY created_at ASC');
@@ -65,12 +74,22 @@ stateRouter.post('/import', async (req, res) => {
           // No `profit` column: it was dropped in migration 0003, and writing it
           // made every restore fail with "table trades has no column named
           // profit". Exported backups may still carry the field; it is ignored.
-          await run('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [t.id ?? null, t.symbol, t.side, t.qty, t.price ?? null, t.time]);
+          await run('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
+            t.id ?? null,
+            t.symbol,
+            t.side,
+            t.qty,
+            t.price ?? null,
+            t.time,
+          ]);
         }
       }
       if (payload.history && Array.isArray(payload.history)) {
         for (const h of payload.history) {
-          await run('INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [h.id ?? null, h.t ?? null, h.ts ?? null, h.v ?? 0, h.i ?? null, h.p ?? null, h.manual ? 1 : 0, h.note ?? null]);
+          await run(
+            'INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [h.id ?? null, h.t ?? null, h.ts ?? null, h.v ?? 0, h.i ?? null, h.p ?? null, h.manual ? 1 : 0, h.note ?? null],
+          );
         }
       }
       if (payload.interestReaisMonths && Array.isArray(payload.interestReaisMonths)) {
@@ -80,38 +99,69 @@ stateRouter.post('/import', async (req, res) => {
         // already does below.
         await run('DELETE FROM interest WHERE currency = ?', ['BRL']);
         for (const m of payload.interestReaisMonths) {
-          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'BRL', m.amount, Date.now()]);
+          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+            m.month,
+            'BRL',
+            m.amount,
+            Date.now(),
+          ]);
         }
       }
       if (payload.interestDollarsMonths && Array.isArray(payload.interestDollarsMonths)) {
         await run('DELETE FROM interest WHERE currency = ?', ['USD']);
         for (const m of payload.interestDollarsMonths) {
-          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [m.month, 'USD', m.amount, Date.now()]);
+          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+            m.month,
+            'USD',
+            m.amount,
+            Date.now(),
+          ]);
         }
       }
       if (payload.alerts && Array.isArray(payload.alerts)) {
         for (const a of payload.alerts) {
           await run(
             'INSERT OR REPLACE INTO alerts (id, symbol, alert_type, threshold, condition, reference_price, is_active, created_at, current_price, previous_price, percentage_change, triggered_at, dismissed_at, is_dismissed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [a.id ?? randomUUID(), a.symbol, a.alert_type, a.threshold, a.condition, a.reference_price ?? null, a.is_active ?? 1, a.created_at ?? Date.now(), a.current_price ?? null, a.previous_price ?? null, a.percentage_change ?? null, a.triggered_at ?? null, a.dismissed_at ?? null, a.is_dismissed ?? 0],
+            [
+              a.id ?? randomUUID(),
+              a.symbol,
+              a.alert_type,
+              a.threshold,
+              a.condition,
+              a.reference_price ?? null,
+              a.is_active ?? 1,
+              a.created_at ?? Date.now(),
+              a.current_price ?? null,
+              a.previous_price ?? null,
+              a.percentage_change ?? null,
+              a.triggered_at ?? null,
+              a.dismissed_at ?? null,
+              a.is_dismissed ?? 0,
+            ],
           );
         }
       }
       if (payload.scenarios && Array.isArray(payload.scenarios)) {
         for (const s of payload.scenarios) {
-          await run(
-            'INSERT OR REPLACE INTO scenarios (id, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-            [s.id ?? randomUUID(), s.name, s.data, s.created_at ?? Date.now(), s.updated_at ?? null],
-          );
+          await run('INSERT OR REPLACE INTO scenarios (id, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+            s.id ?? randomUUID(),
+            s.name,
+            s.data,
+            s.created_at ?? Date.now(),
+            s.updated_at ?? null,
+          ]);
         }
       }
       if (payload.cashEntries && Array.isArray(payload.cashEntries)) {
         await run('DELETE FROM cash');
         for (const e of payload.cashEntries) {
-          await run(
-            'INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',
-            [e.id ?? randomUUID(), e.currency, e.amount, e.description ?? '', e.ts ?? Date.now()],
-          );
+          await run('INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+            e.id ?? randomUUID(),
+            e.currency,
+            e.amount,
+            e.description ?? '',
+            e.ts ?? Date.now(),
+          ]);
         }
       } else if (typeof payload.cashReais !== 'undefined' || typeof payload.cashDollars !== 'undefined') {
         const cashReais = Number(payload.cashReais) || 0;
@@ -119,12 +169,22 @@ stateRouter.post('/import', async (req, res) => {
         await run('DELETE FROM cash');
         const entryTs = Date.now();
         if (cashReais !== 0) {
-          await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',
-            [randomUUID(), 'BRL', cashReais, 'Imported Balance', entryTs]);
+          await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+            randomUUID(),
+            'BRL',
+            cashReais,
+            'Imported Balance',
+            entryTs,
+          ]);
         }
         if (cashDollars !== 0) {
-          await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',
-            [randomUUID(), 'USD', cashDollars, 'Imported Balance', entryTs]);
+          await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+            randomUUID(),
+            'USD',
+            cashDollars,
+            'Imported Balance',
+            entryTs,
+          ]);
         }
       }
       await run('COMMIT');

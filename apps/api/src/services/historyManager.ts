@@ -12,9 +12,7 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
 
   const trades: any[] = await all('SELECT * FROM trades ORDER BY time ASC');
   const lots = replayFIFOLots(trades, prices);
-  const realizedFromSells = trades
-    .filter(t => t.side === 'sell')
-    .reduce((s, t) => s + (t.profit || 0), 0);
+  const realizedFromSells = trades.filter((t) => t.side === 'sell').reduce((s, t) => s + (t.profit || 0), 0);
 
   const cashRow: any = await get(`
     SELECT
@@ -23,7 +21,7 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
     FROM cash
   `);
   const cash = {
-    cashReais:   cashRow?.cashReais   ?? 0,
+    cashReais: cashRow?.cashReais ?? 0,
     cashDollars: cashRow?.cashDollars ?? 0,
   };
 
@@ -33,13 +31,18 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
   const interestUSDMonthsTotal = usdMonths.reduce((s, m) => s + (m.amount || 0), 0);
 
   const { total, investedNet, p, brlUsdRate } = computePortfolioValue({
-    lots, prices, cash, realizedFromSells, interestBRLMonthsTotal, interestUSDMonthsTotal,
+    lots,
+    prices,
+    cash,
+    realizedFromSells,
+    interestBRLMonthsTotal,
+    interestUSDMonthsTotal,
   });
 
   // Dedup guard: skip scheduled insertions if a point already exists within the last 25 minutes
   const last: any = await get('SELECT * FROM portfolio_snapshots ORDER BY ts DESC LIMIT 1');
   const now = Date.now();
-  if (!options.manual && last && (now - (last.ts || 0)) < 25 * 60 * 1000) {
+  if (!options.manual && last && now - (last.ts || 0) < 25 * 60 * 1000) {
     console.log('Skipping scheduled history insertion; recent point exists', last.ts);
     return last;
   }
@@ -59,11 +62,10 @@ export async function recomputeHistoryAt(ts: number) {
   const trades: any[] = await all('SELECT * FROM trades WHERE time <= ? ORDER BY time ASC', [cutoff]);
 
   const lots = replayFIFOLots(trades, {});
-  const realizedFromSells = trades
-    .filter(t => t.side === 'sell')
-    .reduce((s, t) => s + (t.profit || 0), 0);
+  const realizedFromSells = trades.filter((t) => t.side === 'sell').reduce((s, t) => s + (t.profit || 0), 0);
 
-  const tickRows: any[] = await all(`
+  const tickRows: any[] = await all(
+    `
     SELECT p.symbol, p.price
     FROM price_ticks p
     INNER JOIN (
@@ -72,7 +74,9 @@ export async function recomputeHistoryAt(ts: number) {
       WHERE ts <= ?
       GROUP BY symbol
     ) latest ON p.symbol = latest.symbol AND p.ts = latest.max_ts
-  `, [ts]);
+  `,
+    [ts],
+  );
 
   if (tickRows.length === 0) {
     throw new Error(`No price_ticks data at or before ts=${ts}. Run npm run migrate:backfill-prices first.`);
@@ -81,15 +85,18 @@ export async function recomputeHistoryAt(ts: number) {
   const prices: Record<string, number> = {};
   for (const r of tickRows) prices[r.symbol] = r.price;
 
-  const cashRow: any = await get(`
+  const cashRow: any = await get(
+    `
     SELECT
       COALESCE(SUM(CASE WHEN currency='BRL' THEN amount ELSE 0 END), 0) AS cashReais,
       COALESCE(SUM(CASE WHEN currency='USD' THEN amount ELSE 0 END), 0) AS cashDollars
     FROM cash
     WHERE ts <= ?
-  `, [ts]);
+  `,
+    [ts],
+  );
   const cash = {
-    cashReais:   cashRow?.cashReais   ?? 0,
+    cashReais: cashRow?.cashReais ?? 0,
     cashDollars: cashRow?.cashDollars ?? 0,
   };
 
@@ -99,16 +106,20 @@ export async function recomputeHistoryAt(ts: number) {
   const interestUSDMonthsTotal = usdMonthsAt.reduce((s, m) => s + (m.amount || 0), 0);
 
   const { total, investedNet, p, brlUsdRate } = computePortfolioValue({
-    lots, prices, cash, realizedFromSells, interestBRLMonthsTotal, interestUSDMonthsTotal,
+    lots,
+    prices,
+    cash,
+    realizedFromSells,
+    interestBRLMonthsTotal,
+    interestUSDMonthsTotal,
   });
 
   return {
-    t:           new Date(ts).toISOString(),
+    t: new Date(ts).toISOString(),
     ts,
-    v:           total,
-    i:           investedNet,
+    v: total,
+    i: investedNet,
     p,
     brlusd_rate: brlUsdRate,
   };
 }
-

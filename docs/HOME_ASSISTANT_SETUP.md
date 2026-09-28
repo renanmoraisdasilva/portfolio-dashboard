@@ -20,8 +20,8 @@ trigger:
 action:
   - service: notify.mobile_app_your_phone
     data:
-      title: "{{ trigger.json.title }}"
-      message: "{{ trigger.json.message }}"
+      title: '{{ trigger.json.title }}'
+      message: '{{ trigger.json.message }}'
 ```
 
 3. Note your Home Assistant host and port (for example `homeassistant.local:8123`, or your server's IP address)
@@ -70,6 +70,7 @@ When a portfolio alert is triggered, the server sends a POST request with this J
 ```
 
 For percentage-based alerts:
+
 ```json
 {
   "title": "Portfolio Alert",

@@ -14,7 +14,7 @@ async function start(): Promise<void> {
   if (APP_ROLE === 'web' || APP_ROLE === 'all') await startWeb();
 }
 
-start().catch(err => {
+start().catch((err) => {
   console.error('Failed to initialize server', err);
   process.exit(1);
 });

@@ -58,16 +58,13 @@ export function useAnalyticsCharts() {
     const cashUSD = series.map((p) => p.cashUSD);
 
     const currencySeries = buildCashCurrencySeries(points, store.cashEntries);
-    const cashBRLSeries = currencySeries.length
-      ? currencySeries.map((p) => Number(p.cashBRL) || 0)
-      : series.map(() => 0);
+    const cashBRLSeries = currencySeries.length ? currencySeries.map((p) => Number(p.cashBRL) || 0) : series.map(() => 0);
     const cashUSDNativeSeries = currencySeries.length
       ? currencySeries.map((p) => Number(p.cashUSDNative) || 0)
       : series.map(() => 0);
 
     const sortedHistory = [...points].sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0));
-    const fxRef =
-      Number(cashCtx?.brlUsd) || Number(sortedHistory[sortedHistory.length - 1]?.brlusd_rate) || 1;
+    const fxRef = Number(cashCtx?.brlUsd) || Number(sortedHistory[sortedHistory.length - 1]?.brlusd_rate) || 1;
 
     const isAssetsCash = store.cashChartMode === CASH_CHART_MODE.ASSETS_CASH;
 
@@ -267,7 +264,8 @@ export function useAnalyticsCharts() {
           legend,
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: $${Number(ctx.parsed.y).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+              label: (ctx) =>
+                `${ctx.dataset.label}: $${Number(ctx.parsed.y).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
             },
           },
         },

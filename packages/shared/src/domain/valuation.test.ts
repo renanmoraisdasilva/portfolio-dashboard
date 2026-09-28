@@ -79,10 +79,7 @@ describe('computeValuation totals', () => {
   });
 
   test('unrealizedPct is measured against invested and is zero when nothing is invested', () => {
-    expect(valuation().unrealizedPct).toBeCloseTo(
-      ((valuation().total - valuation().invested) / valuation().invested) * 100,
-      8,
-    );
+    expect(valuation().unrealizedPct).toBeCloseTo(((valuation().total - valuation().invested) / valuation().invested) * 100, 8);
     const empty = computeValuation({
       ...baseInput,
       trades: [],

@@ -15,8 +15,14 @@ const CASH_SUM_SQL = `
 cashRouter.get('/', async (req: Request, res: Response) => {
   try {
     const pos = await get(CASH_SUM_SQL);
-    const brlInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['BRL']);
-    const usdInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['USD']);
+    const brlInterest = await get<{ total: number }>(
+      'SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?',
+      ['BRL'],
+    );
+    const usdInterest = await get<{ total: number }>(
+      'SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?',
+      ['USD'],
+    );
     res.json({
       cashReais: pos?.cashReais ?? 0,
       cashDollars: pos?.cashDollars ?? 0,
@@ -33,8 +39,14 @@ cashRouter.get('/', async (req: Request, res: Response) => {
 cashRouter.put('/', async (req: Request, res: Response) => {
   try {
     const pos = await get(CASH_SUM_SQL);
-    const brlInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['BRL']);
-    const usdInterest = await get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['USD']);
+    const brlInterest = await get<{ total: number }>(
+      'SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?',
+      ['BRL'],
+    );
+    const usdInterest = await get<{ total: number }>(
+      'SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?',
+      ['USD'],
+    );
     res.json({
       cashReais: pos?.cashReais ?? 0,
       cashDollars: pos?.cashDollars ?? 0,
@@ -67,16 +79,17 @@ cashRouter.post('/entries', async (req: Request, res: Response) => {
     }
     const id = randomUUID();
     const entryTs = ts ?? Date.now();
-    await run(
-      'INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)',
-      [id, currency, amount, description ?? '', entryTs],
-    );
+    await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+      id,
+      currency,
+      amount,
+      description ?? '',
+      entryTs,
+    ]);
     const row = await get('SELECT * FROM cash WHERE id = ?', [id]);
     const pos = await get(CASH_SUM_SQL);
     res.status(201).json({ entry: row, totals: pos });
-    computeAndInsertHistoryPoint({ note: 'post-cash' }).catch(err =>
-      console.error('[cash] post-cash snapshot failed:', err),
-    );
+    computeAndInsertHistoryPoint({ note: 'post-cash' }).catch((err) => console.error('[cash] post-cash snapshot failed:', err));
   } catch (err) {
     console.error('Error adding cash entry', err);
     res.status(500).json({ error: 'Failed to add cash entry' });
@@ -89,9 +102,7 @@ cashRouter.delete('/entries/:id', async (req: Request, res: Response) => {
     await run('DELETE FROM cash WHERE id = ?', [id]);
     const pos = await get(CASH_SUM_SQL);
     res.json({ ok: true, totals: pos });
-    computeAndInsertHistoryPoint({ note: 'post-cash' }).catch(err =>
-      console.error('[cash] post-cash snapshot failed:', err),
-    );
+    computeAndInsertHistoryPoint({ note: 'post-cash' }).catch((err) => console.error('[cash] post-cash snapshot failed:', err));
   } catch (err) {
     console.error('Error deleting cash entry', err);
     res.status(500).json({ error: 'Failed to delete cash entry' });

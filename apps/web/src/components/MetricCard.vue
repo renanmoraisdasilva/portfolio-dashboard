@@ -28,22 +28,12 @@ defineProps<{
     <div class="metric-tooltip">
       <div class="tt-title">{{ tooltip.title }}</div>
       <div class="tt-body">{{ tooltip.body }}</div>
-      <div
-        v-if="tooltip.value"
-        class="tt-value"
-        :style="{ color: tooltip.value.color }"
-      >
+      <div v-if="tooltip.value" class="tt-value" :style="{ color: tooltip.value.color }">
         {{ tooltip.value.text }}
       </div>
       <div v-for="(hint, i) in tooltip.hints" :key="`h${i}`" class="tt-hint">{{ hint }}</div>
       <div v-if="tooltip.scale" class="tt-scale">
-        <span
-          v-for="item in tooltip.scale"
-          :key="item.label"
-          class="tt-scale-item"
-          :class="item.kind"
-          >{{ item.label }}</span
-        >
+        <span v-for="item in tooltip.scale" :key="item.label" class="tt-scale-item" :class="item.kind">{{ item.label }}</span>
       </div>
       <div v-for="(line, i) in tooltip.footer" :key="`f${i}`" class="tt-hint">{{ line }}</div>
     </div>

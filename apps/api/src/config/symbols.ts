@@ -1,4 +1,3 @@
-
 export interface SymbolConfig {
   id: string;
   name: string;
@@ -6,7 +5,7 @@ export interface SymbolConfig {
   yahooTicker?: string;
   historicalFallbacks?: string[];
   type: 'crypto' | 'stock' | 'currency';
-  denominatedInBRL?: boolean;    // true when price/value is natively in BRL (BOVA11, IVVB11)
+  denominatedInBRL?: boolean; // true when price/value is natively in BRL (BOVA11, IVVB11)
 }
 
 export const SYMBOLS: Record<string, SymbolConfig> = {
@@ -89,6 +88,15 @@ export const SYMBOLS: Record<string, SymbolConfig> = {
 
 export const SYMBOL_IDS = Object.keys(SYMBOLS);
 
-export const getCryptoSymbols = () => Object.values(SYMBOLS).filter(s => s.type === 'crypto').map(s => s.id);
-export const getStockSymbols = () => Object.values(SYMBOLS).filter(s => s.type === 'stock').map(s => s.id);
-export const getCurrencySymbols = () => Object.values(SYMBOLS).filter(s => s.type === 'currency').map(s => s.id);
+export const getCryptoSymbols = () =>
+  Object.values(SYMBOLS)
+    .filter((s) => s.type === 'crypto')
+    .map((s) => s.id);
+export const getStockSymbols = () =>
+  Object.values(SYMBOLS)
+    .filter((s) => s.type === 'stock')
+    .map((s) => s.id);
+export const getCurrencySymbols = () =>
+  Object.values(SYMBOLS)
+    .filter((s) => s.type === 'currency')
+    .map((s) => s.id);

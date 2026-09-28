@@ -43,15 +43,24 @@ onBeforeUnmount(() => {
 <template>
   <PageHeader icon="₿" title="Portfolio Dashboard" subtitle="Holdings, cash, trades and alerts in one view">
     <template #actions>
-      <button class="btn" title="Settings & Tools" style="font-size: 1.25rem; padding: 7px 13px; line-height: 1" @click="store.settingsOpen = true">
+      <button
+        class="btn"
+        title="Settings & Tools"
+        style="font-size: 1.25rem; padding: 7px 13px; line-height: 1"
+        @click="store.settingsOpen = true"
+      >
         ⚙
       </button>
     </template>
   </PageHeader>
 
   <div class="view-tabs">
-    <button class="view-tab" :class="{ 'is-active': store.tab === 'dashboard' }" @click="store.setTab('dashboard')">Overview</button>
-    <button class="view-tab" :class="{ 'is-active': store.tab === 'assetCharts' }" @click="store.setTab('assetCharts')">Asset Charts</button>
+    <button class="view-tab" :class="{ 'is-active': store.tab === 'dashboard' }" @click="store.setTab('dashboard')">
+      Overview
+    </button>
+    <button class="view-tab" :class="{ 'is-active': store.tab === 'assetCharts' }" @click="store.setTab('assetCharts')">
+      Asset Charts
+    </button>
   </div>
 
   <template v-if="store.tab === 'dashboard'">
@@ -68,15 +77,11 @@ onBeforeUnmount(() => {
           <div class="card-title"><span class="card-icon">📈</span>Portfolio Value Over Time</div>
           <div class="chart-controls">
             <div class="chart-group chart-series-group">
-              <button class="chip" :class="{ active: store.activeSeries === 'all' }" @click="store.setMetric('all')">
-                All
-              </button>
+              <button class="chip" :class="{ active: store.activeSeries === 'all' }" @click="store.setMetric('all')">All</button>
               <button class="chip" :class="{ active: store.activeSeries === 'value' }" @click="store.setMetric('value')">
                 Value
               </button>
-              <button class="chip" :class="{ active: store.activeSeries === 'pnl' }" @click="store.setMetric('pnl')">
-                P/L
-              </button>
+              <button class="chip" :class="{ active: store.activeSeries === 'pnl' }" @click="store.setMetric('pnl')">P/L</button>
             </div>
             <div class="chart-group chart-projection-group">
               <button

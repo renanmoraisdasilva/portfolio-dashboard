@@ -262,12 +262,7 @@ export const useSimulationStore = defineStore(
     const tradeRows = computed(() =>
       simTrades.value.map((t) => {
         const price = t.price || priceOf(t.symbol);
-        const totalDisplay =
-          t.total !== undefined
-            ? t.currency === 'BRL'
-              ? brl(t.total)
-              : usd(t.total)
-            : usd(price * t.qty);
+        const totalDisplay = t.total !== undefined ? (t.currency === 'BRL' ? brl(t.total) : usd(t.total)) : usd(price * t.qty);
         return {
           time: new Date(t.time).toLocaleString(),
           symbol: t.symbol,
@@ -396,15 +391,16 @@ export const useSimulationStore = defineStore(
 
       if (side.value === 'sell') {
         const avail = portfolio.value.positions[s] || 0;
-        return +(avail * pct / 100).toFixed(4);
+        return +((avail * pct) / 100).toFixed(4);
       }
       if (isBRLNonBond(s)) {
-        const availBRL = cashSource.value === 'USD' ? (simCashDollars.value || 0) / (brlUsdRate.value || 1) : simCashReais.value || 0;
-        return +((availBRL * pct / 100) / price).toFixed(4);
+        const availBRL =
+          cashSource.value === 'USD' ? (simCashDollars.value || 0) / (brlUsdRate.value || 1) : simCashReais.value || 0;
+        return +((availBRL * pct) / 100 / price).toFixed(4);
       }
       if (cashSource.value === 'BRL' && (!brlUsdRate.value || brlUsdRate.value <= 0)) return 0;
       const availUsd = cashSource.value === 'USD' ? simCashDollars.value : (simCashReais.value || 0) * (brlUsdRate.value || 0);
-      return +((availUsd * pct / 100) / price).toFixed(4);
+      return +((availUsd * pct) / 100 / price).toFixed(4);
     }
 
     /**
@@ -447,9 +443,8 @@ export const useSimulationStore = defineStore(
 
     function setTotal(text: string): void {
       const parsed = parseMoney(text, cashSource.value === 'USD' ? 'USD' : 'BRL');
-      totalInput.value = parsed && parsed > 0
-        ? cashSource.value === 'USD' ? formatMoney(parsed, 'USD') : formatMoney(parsed, 'BRL')
-        : text;
+      totalInput.value =
+        parsed && parsed > 0 ? (cashSource.value === 'USD' ? formatMoney(parsed, 'USD') : formatMoney(parsed, 'BRL')) : text;
       const qty = qtyFromTotal();
       if (qty) qtyInput.value = qty;
     }
@@ -648,9 +643,8 @@ export const useSimulationStore = defineStore(
         return 'Failed to load scenario';
       }
       // Version guard: unversioned blobs are treated as v1 (schema evolution).
-      const warning = (blob.version ?? 1) !== 1
-        ? 'Scenario was saved with a newer version of this app and may not load correctly.'
-        : null;
+      const warning =
+        (blob.version ?? 1) !== 1 ? 'Scenario was saved with a newer version of this app and may not load correctly.' : null;
 
       if (blob.simPrices) simPrices.value = blob.simPrices;
       if (blob.simPricePcts) simPricePcts.value = blob.simPricePcts;

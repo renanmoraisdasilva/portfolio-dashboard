@@ -26,7 +26,9 @@ const store = useDashboardStore();
         <tr v-for="(row, i) in store.tradeRows" :key="row.id ?? i">
           <td>{{ row.time }}</td>
           <td>{{ row.symbol }}</td>
-          <td><span class="badge" :class="row.isBuy ? 'badge-success' : 'badge-danger'">{{ row.side }}</span></td>
+          <td>
+            <span class="badge" :class="row.isBuy ? 'badge-success' : 'badge-danger'">{{ row.side }}</span>
+          </td>
           <td>{{ row.qty }}</td>
           <td>{{ row.price }}</td>
           <td>{{ row.total }}</td>

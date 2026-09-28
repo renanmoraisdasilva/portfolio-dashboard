@@ -1,0 +1,15 @@
+# Build output, dependencies, coverage and baseline artifacts
+dist/
+node_modules/
+coverage/
+playwright-report/
+test-results/
+.baseline/
+
+# Written by drizzle-kit, not by us: reformatting them would make every
+# `npm run db:generate` produce a spurious diff.
+apps/api/drizzle/migrations/meta/
+
+# Generated from openapi.yaml by `npm run api:types` - never hand-edited, so
+# there is nothing for a formatter to fix and a lot of noise to hide real diffs.
+packages/shared/src/generated/

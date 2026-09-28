@@ -6,11 +6,7 @@ const inFlight = new Map<string, Promise<unknown>>();
 
 export const ANALYTICS_CACHE_KEY = 'analytics';
 
-export async function getOrSetResponse<T>(
-  key: string,
-  ttlMs: number,
-  loader: () => Promise<T>,
-): Promise<T> {
+export async function getOrSetResponse<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
   const cached = cache.get(key);
   if (cached !== undefined) {
     cacheHitsTotal.inc({ cache: key });

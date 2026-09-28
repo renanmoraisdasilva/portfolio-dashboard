@@ -91,10 +91,14 @@ export function mountWebRoutes(app: Express): void {
   // default, including in the Docker image — Phase 3 of
   // docs/MODERNIZATION-PLAN.md.
   const sqlExplorerEnabled = process.env.ENABLE_SQL_EXPLORER === 'true';
-  app.use('/api/sql', (_req, res, next) => {
-    if (sqlExplorerEnabled) return next();
-    res.status(403).json({ error: 'SQL Explorer is disabled. Set ENABLE_SQL_EXPLORER=true to enable it.' });
-  }, sqlExplorerRouter);
+  app.use(
+    '/api/sql',
+    (_req, res, next) => {
+      if (sqlExplorerEnabled) return next();
+      res.status(403).json({ error: 'SQL Explorer is disabled. Set ENABLE_SQL_EXPLORER=true to enable it.' });
+    },
+    sqlExplorerRouter,
+  );
   app.use('/api/scenarios', scenariosRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/portfolio', portfolioRouter);

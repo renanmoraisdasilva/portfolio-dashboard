@@ -89,18 +89,10 @@ const rows = computed(() =>
       <div style="display: flex; align-items: center; gap: 8px; width: 100%; justify-content: space-between">
         <div class="summary-label">Allocation</div>
         <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px">
-          <button
-            class="chip"
-            :class="{ active: store.simAllocCurrency === 'USD' }"
-            @click="store.simAllocCurrency = 'USD'"
-          >
+          <button class="chip" :class="{ active: store.simAllocCurrency === 'USD' }" @click="store.simAllocCurrency = 'USD'">
             USD
           </button>
-          <button
-            class="chip"
-            :class="{ active: store.simAllocCurrency === 'BRL' }"
-            @click="store.simAllocCurrency = 'BRL'"
-          >
+          <button class="chip" :class="{ active: store.simAllocCurrency === 'BRL' }" @click="store.simAllocCurrency = 'BRL'">
             BRL
           </button>
         </div>

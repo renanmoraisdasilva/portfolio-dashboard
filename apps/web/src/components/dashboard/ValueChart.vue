@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { createChart, CrosshairMode, LineStyle, type CandlestickData, type IChartApi, type ISeriesApi, type UTCTimestamp } from 'lightweight-charts';
+import {
+  createChart,
+  CrosshairMode,
+  LineStyle,
+  type CandlestickData,
+  type IChartApi,
+  type ISeriesApi,
+  type UTCTimestamp,
+} from 'lightweight-charts';
 import { useDashboardStore } from '../../stores/dashboard';
 
 const store = useDashboardStore();
@@ -103,11 +111,7 @@ onMounted(() => {
   sync();
 });
 
-watch(
-  () => [store.valueCandles, store.projection, store.activeMetric, store.projectionEnabled],
-  sync,
-  { deep: true },
-);
+watch(() => [store.valueCandles, store.projection, store.activeMetric, store.projectionEnabled], sync, { deep: true });
 
 onBeforeUnmount(destroy);
 </script>

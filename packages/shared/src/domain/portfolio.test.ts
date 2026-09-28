@@ -1,4 +1,3 @@
-
 import { createPortfolioCalculator } from './portfolio';
 
 const calculator = createPortfolioCalculator({
@@ -7,7 +6,6 @@ const calculator = createPortfolioCalculator({
 });
 
 const { isBRLNonBond, replayFIFOLots, replayTradesWithRealized, computePortfolioValue } = calculator;
-
 
 describe('isBRLNonBond', () => {
   test('returns true for BRL-denominated stocks (BOVA11, IVVB11)', () => {
@@ -24,7 +22,6 @@ describe('isBRLNonBond', () => {
     expect(isBRLNonBond('UNKNOWN')).toBe(false);
   });
 });
-
 
 describe('replayTradesWithRealized', () => {
   test('returns the same lots as replayFIFOLots', () => {
@@ -92,8 +89,8 @@ describe('replayFIFOLots', () => {
 
   test('sell fully consumes oldest lot (FIFO)', () => {
     const trades = [
-      { symbol: 'BTC', side: 'buy',  qty: 1, price: 40000 },
-      { symbol: 'BTC', side: 'buy',  qty: 2, price: 50000 },
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 40000 },
+      { symbol: 'BTC', side: 'buy', qty: 2, price: 50000 },
       { symbol: 'BTC', side: 'sell', qty: 1, price: 60000 },
     ];
     const lots = replayFIFOLots(trades);
@@ -102,7 +99,7 @@ describe('replayFIFOLots', () => {
 
   test('sell partially consumes oldest lot', () => {
     const trades = [
-      { symbol: 'BTC', side: 'buy',  qty: 3, price: 40000 },
+      { symbol: 'BTC', side: 'buy', qty: 3, price: 40000 },
       { symbol: 'BTC', side: 'sell', qty: 1, price: 60000 },
     ];
     const lots = replayFIFOLots(trades);
@@ -111,8 +108,8 @@ describe('replayFIFOLots', () => {
 
   test('sell spanning multiple lots consumes them in order', () => {
     const trades = [
-      { symbol: 'ETH', side: 'buy',  qty: 2, price: 2000 },
-      { symbol: 'ETH', side: 'buy',  qty: 3, price: 3000 },
+      { symbol: 'ETH', side: 'buy', qty: 2, price: 2000 },
+      { symbol: 'ETH', side: 'buy', qty: 3, price: 3000 },
       { symbol: 'ETH', side: 'sell', qty: 3, price: 4000 }, // exhausts first lot + 1 from second
     ];
     const lots = replayFIFOLots(trades);
@@ -121,7 +118,7 @@ describe('replayFIFOLots', () => {
 
   test('selling entire position leaves empty lot array', () => {
     const trades = [
-      { symbol: 'BTC', side: 'buy',  qty: 1, price: 50000 },
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 50000 },
       { symbol: 'BTC', side: 'sell', qty: 1, price: 60000 },
     ];
     const lots = replayFIFOLots(trades);
@@ -130,7 +127,7 @@ describe('replayFIFOLots', () => {
 
   test('oversell beyond lots does not throw and empties lots', () => {
     const trades = [
-      { symbol: 'BTC', side: 'buy',  qty: 1, price: 50000 },
+      { symbol: 'BTC', side: 'buy', qty: 1, price: 50000 },
       { symbol: 'BTC', side: 'sell', qty: 5, price: 60000 }, // sell more than owned
     ];
     expect(() => replayFIFOLots(trades)).not.toThrow();
@@ -160,48 +157,80 @@ describe('replayFIFOLots', () => {
   });
 });
 
-
 const zeroCash = { cashReais: 0, cashDollars: 0 };
 
 describe('computePortfolioValue', () => {
   test('single USD position: total = qty * price', () => {
-    const lots  = { BTC: [{ qty: 2, price: 40000 }] };
+    const lots = { BTC: [{ qty: 2, price: 40000 }] };
     const prices = { BTC: 50000, BRLUSD: 0.2 };
-    const { total } = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const { total } = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
     expect(total).toBeCloseTo(100000);
   });
 
   test('BRL-denominated position (BOVA11) is converted to USD', () => {
     const brlusd = 0.2;
-    const lots   = { BOVA11: [{ qty: 100, price: 50 }] };
+    const lots = { BOVA11: [{ qty: 100, price: 50 }] };
     const prices = { BOVA11: 55, BRLUSD: brlusd };
 
-    const { total } = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const { total } = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
     expect(total).toBeCloseTo(1100);
   });
 
   test('cash in BRL and USD is included in total', () => {
-    const lots   = {};
+    const lots = {};
     const prices = { BRLUSD: 0.2 };
-    const cash   = { cashReais: 1000, cashDollars: 200 };
+    const cash = { cashReais: 1000, cashDollars: 200 };
 
-    const { total } = computePortfolioValue({ lots, prices, cash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const { total } = computePortfolioValue({
+      lots,
+      prices,
+      cash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
     expect(total).toBeCloseTo(400);
   });
 
   test('missing BRLUSD defaults to rate 1', () => {
-    const lots   = {};
+    const lots = {};
     const prices = {};
-    const cash   = { cashReais: 100, cashDollars: 0 };
+    const cash = { cashReais: 100, cashDollars: 0 };
 
-    const { total, brlUsdRate } = computePortfolioValue({ lots, prices, cash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const { total, brlUsdRate } = computePortfolioValue({
+      lots,
+      prices,
+      cash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
     expect(brlUsdRate).toBe(1);
     expect(total).toBeCloseTo(100);
   });
 
   test('brlUsdRate in result matches BRLUSD price', () => {
     const { brlUsdRate } = computePortfolioValue({
-      lots: {}, prices: { BRLUSD: 0.18 }, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0,
+      lots: {},
+      prices: { BRLUSD: 0.18 },
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
     });
     expect(brlUsdRate).toBeCloseTo(0.18);
   });
@@ -210,31 +239,62 @@ describe('computePortfolioValue', () => {
     const lots = { ETH: [{ qty: 1, price: 2000 }] };
     const prices = { BRLUSD: 0.2 };
 
-    expect(() => computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 }))
-      .toThrow(/Missing price for ETH/);
+    expect(() =>
+      computePortfolioValue({
+        lots,
+        prices,
+        cash: zeroCash,
+        realizedFromSells: 0,
+        interestBRLMonthsTotal: 0,
+        interestUSDMonthsTotal: 0,
+      }),
+    ).toThrow(/Missing price for ETH/);
   });
 
   test('throws when open position has price 0', () => {
     const lots = { BTC: [{ qty: 1, price: 50000 }] };
     const prices = { BTC: 0, BRLUSD: 0.2 };
 
-    expect(() => computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 }))
-      .toThrow(/Missing price for BTC/);
+    expect(() =>
+      computePortfolioValue({
+        lots,
+        prices,
+        cash: zeroCash,
+        realizedFromSells: 0,
+        interestBRLMonthsTotal: 0,
+        interestUSDMonthsTotal: 0,
+      }),
+    ).toThrow(/Missing price for BTC/);
   });
 
   test('zero-qty lots do not trigger missing-price error', () => {
     const lots = { BTC: [{ qty: 0, price: 50000 }] };
     const prices = { BTC: 0, BRLUSD: 0.2 };
 
-    expect(() => computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 }))
-      .not.toThrow();
+    expect(() =>
+      computePortfolioValue({
+        lots,
+        prices,
+        cash: zeroCash,
+        realizedFromSells: 0,
+        interestBRLMonthsTotal: 0,
+        interestUSDMonthsTotal: 0,
+      }),
+    ).not.toThrow();
   });
 
   test('investedNet reflects cost basis of open lots in USD', () => {
     const lots = { BTC: [{ qty: 2, price: 40000 }] };
     const prices = { BTC: 60000, BRLUSD: 0.2 };
 
-    const { investedNet } = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const { investedNet } = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
     expect(investedNet).toBeCloseTo(80000);
   });
 
@@ -243,7 +303,12 @@ describe('computePortfolioValue', () => {
     const prices = { BTC: 60000, BRLUSD: 0.2 };
 
     const { investedNet } = computePortfolioValue({
-      lots, prices, cash: zeroCash, realizedFromSells: 10000, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0,
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 10000,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
     });
     expect(investedNet).toBeCloseTo(40000);
   });
@@ -253,7 +318,12 @@ describe('computePortfolioValue', () => {
     const prices = { BRLUSD: 0.2 };
 
     const { investedNet } = computePortfolioValue({
-      lots, prices, cash: zeroCash, realizedFromSells: 999999, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0,
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 999999,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
     });
     expect(investedNet).toBe(0);
   });
@@ -262,7 +332,14 @@ describe('computePortfolioValue', () => {
     const lots = { BTC: [{ qty: 1, price: 40000 }] };
     const prices = { BTC: 50000, BRLUSD: 0.2 };
 
-    const { total, p } = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const { total, p } = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
     expect(total).toBeCloseTo(50000);
     expect(p).toBeCloseTo(10000);
   });
@@ -271,8 +348,22 @@ describe('computePortfolioValue', () => {
     const lots = { BTC: [{ qty: 1, price: 50000 }] };
     const prices = { BTC: 50000, BRLUSD: 0.2 };
 
-    const withInterest    = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 5000, interestUSDMonthsTotal: 0 });
-    const withoutInterest = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const withInterest = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 5000,
+      interestUSDMonthsTotal: 0,
+    });
+    const withoutInterest = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
 
     expect(withInterest.investedNet).toBeCloseTo(withoutInterest.investedNet - 1000);
   });
@@ -281,8 +372,22 @@ describe('computePortfolioValue', () => {
     const lots = { BTC: [{ qty: 1, price: 50000 }] };
     const prices = { BTC: 50000, BRLUSD: 0.2 };
 
-    const withInterest    = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 500 });
-    const withoutInterest = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const withInterest = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 500,
+    });
+    const withoutInterest = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
 
     expect(withInterest.investedNet).toBeCloseTo(withoutInterest.investedNet - 500);
   });
@@ -291,8 +396,22 @@ describe('computePortfolioValue', () => {
     const lots = { BTC: [{ qty: 1, price: 50000 }] };
     const prices = { BTC: 50000, BRLUSD: 0.2 };
 
-    const result = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 5000, interestUSDMonthsTotal: 300 });
-    const baseline = computePortfolioValue({ lots, prices, cash: zeroCash, realizedFromSells: 0, interestBRLMonthsTotal: 0, interestUSDMonthsTotal: 0 });
+    const result = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 5000,
+      interestUSDMonthsTotal: 300,
+    });
+    const baseline = computePortfolioValue({
+      lots,
+      prices,
+      cash: zeroCash,
+      realizedFromSells: 0,
+      interestBRLMonthsTotal: 0,
+      interestUSDMonthsTotal: 0,
+    });
 
     expect(result.investedNet).toBeCloseTo(baseline.investedNet - 1300);
   });

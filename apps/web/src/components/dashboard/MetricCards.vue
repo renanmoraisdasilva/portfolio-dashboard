@@ -19,8 +19,8 @@ function brlOf(usdValue: number): string {
         {{ store.usd(m.total) }}<br />
         <span class="metric-sub-line">{{ brlOf(m.total) }}</span>
       </div>
-      <div class="metric-change neutral" v-if="m.breakEven">Break even</div>
-      <div class="metric-change" :class="m.unrealized >= 0 ? 'positive' : 'negative'" v-else>
+      <div v-if="m.breakEven" class="metric-change neutral">Break even</div>
+      <div v-else class="metric-change" :class="m.unrealized >= 0 ? 'positive' : 'negative'">
         {{ store.signedUsd(m.unrealized) }} ({{ m.unrealizedPct.toFixed(2) }}%)
       </div>
     </div>

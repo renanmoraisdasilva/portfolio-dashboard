@@ -1,4 +1,3 @@
-
 jest.mock('../db', () => ({
   run: jest.fn(),
   get: jest.fn(),
@@ -23,13 +22,12 @@ beforeEach(() => {
 
 const tick = (symbol: string, price: number) => ({ symbol, price });
 
-
 describe('recomputeHistoryAt – error paths', () => {
   test('throws when price_ticks has no data at or before ts', async () => {
     const ts = Date.now();
     mockedDb.all.mockImplementation((sql: string) => {
-      if (sql.includes('FROM trades'))          return Promise.resolve([]);
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve([]);
+      if (sql.includes('FROM trades')) return Promise.resolve([]);
+      if (sql.includes('FROM price_ticks')) return Promise.resolve([]);
       if (sql.includes('FROM interest')) return Promise.resolve([]);
       return Promise.resolve([]);
     });
@@ -39,20 +37,19 @@ describe('recomputeHistoryAt – error paths', () => {
   });
 });
 
-
 describe('recomputeHistoryAt – cash resolution', () => {
   test('sums cash up to ts for BRL and USD', async () => {
     const ts = Date.now();
     const prices = { BTC: 50000, BRLUSD: 0.2 };
 
     mockedDb.all.mockImplementation((sql: string) => {
-      if (sql.includes('FROM trades'))          return Promise.resolve([]);
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve(Object.entries(prices).map(([s, p]) => tick(s, p)));
+      if (sql.includes('FROM trades')) return Promise.resolve([]);
+      if (sql.includes('FROM price_ticks')) return Promise.resolve(Object.entries(prices).map(([s, p]) => tick(s, p)));
       if (sql.includes('FROM interest')) return Promise.resolve([]);
       return Promise.resolve([]);
     });
     mockedDb.get.mockImplementation((sql: string) => {
-      if (sql.includes('FROM cash'))   return Promise.resolve({ cashReais: 500, cashDollars: 100 });
+      if (sql.includes('FROM cash')) return Promise.resolve({ cashReais: 500, cashDollars: 100 });
       return Promise.resolve(undefined);
     });
 
@@ -65,13 +62,13 @@ describe('recomputeHistoryAt – cash resolution', () => {
     const prices = { BRLUSD: 0.2 };
 
     mockedDb.all.mockImplementation((sql: string) => {
-      if (sql.includes('FROM trades'))          return Promise.resolve([]);
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve(Object.entries(prices).map(([s, p]) => tick(s, p)));
+      if (sql.includes('FROM trades')) return Promise.resolve([]);
+      if (sql.includes('FROM price_ticks')) return Promise.resolve(Object.entries(prices).map(([s, p]) => tick(s, p)));
       if (sql.includes('FROM interest')) return Promise.resolve([]);
       return Promise.resolve([]);
     });
     mockedDb.get.mockImplementation((sql: string) => {
-      if (sql.includes('FROM cash'))   return Promise.resolve({ cashReais: 0, cashDollars: 0 });
+      if (sql.includes('FROM cash')) return Promise.resolve({ cashReais: 0, cashDollars: 0 });
       return Promise.resolve(undefined);
     });
 
@@ -80,15 +77,14 @@ describe('recomputeHistoryAt – cash resolution', () => {
   });
 });
 
-
 describe('recomputeHistoryAt – result shape', () => {
   test('returns t (ISO string), ts, v, i, p, brlusd_rate', async () => {
     const ts = 1700000000000;
     const prices = { BRLUSD: 0.2 };
 
     mockedDb.all.mockImplementation((sql: string) => {
-      if (sql.includes('FROM trades'))          return Promise.resolve([]);
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve(Object.entries(prices).map(([s, p]) => tick(s, p)));
+      if (sql.includes('FROM trades')) return Promise.resolve([]);
+      if (sql.includes('FROM price_ticks')) return Promise.resolve(Object.entries(prices).map(([s, p]) => tick(s, p)));
       if (sql.includes('FROM interest')) return Promise.resolve([]);
       return Promise.resolve([]);
     });
@@ -96,11 +92,11 @@ describe('recomputeHistoryAt – result shape', () => {
 
     const result = await recomputeHistoryAt(ts);
     expect(result).toMatchObject({
-      t:           new Date(ts).toISOString(),
+      t: new Date(ts).toISOString(),
       ts,
-      v:           expect.any(Number),
-      i:           expect.any(Number),
-      p:           expect.any(Number),
+      v: expect.any(Number),
+      i: expect.any(Number),
+      p: expect.any(Number),
       brlusd_rate: expect.any(Number),
     });
   });
@@ -108,8 +104,8 @@ describe('recomputeHistoryAt – result shape', () => {
   test('brlusd_rate in result matches BRLUSD tick price', async () => {
     const ts = Date.now();
     mockedDb.all.mockImplementation((sql: string) => {
-      if (sql.includes('FROM trades'))          return Promise.resolve([]);
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve([tick('BRLUSD', 0.19)]);
+      if (sql.includes('FROM trades')) return Promise.resolve([]);
+      if (sql.includes('FROM price_ticks')) return Promise.resolve([tick('BRLUSD', 0.19)]);
       if (sql.includes('FROM interest')) return Promise.resolve([]);
       return Promise.resolve([]);
     });
@@ -124,8 +120,8 @@ describe('recomputeHistoryAt – result shape', () => {
     const brlusd = 0.2;
 
     mockedDb.all.mockImplementation((sql: string) => {
-      if (sql.includes('FROM trades'))          return Promise.resolve([]);
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve([tick('BRLUSD', brlusd)]);
+      if (sql.includes('FROM trades')) return Promise.resolve([]);
+      if (sql.includes('FROM price_ticks')) return Promise.resolve([tick('BRLUSD', brlusd)]);
       if (sql.includes('FROM interest')) return Promise.resolve([{ amount: 1000 }, { amount: 500 }]);
       return Promise.resolve([]);
     });
@@ -135,7 +131,6 @@ describe('recomputeHistoryAt – result shape', () => {
     expect(withInterest.i).toBe(0);
   });
 });
-
 
 describe('recomputeHistoryAt – trade cutoff', () => {
   test('passes ISO cutoff to trades query', async () => {
@@ -147,7 +142,7 @@ describe('recomputeHistoryAt – trade cutoff', () => {
         expect(params).toContain(cutoff);
         return Promise.resolve([]);
       }
-      if (sql.includes('FROM price_ticks'))     return Promise.resolve([tick('BRLUSD', 0.2)]);
+      if (sql.includes('FROM price_ticks')) return Promise.resolve([tick('BRLUSD', 0.2)]);
       if (sql.includes('FROM interest')) return Promise.resolve([]);
       return Promise.resolve([]);
     });

@@ -15,12 +15,9 @@ const enabled = process.env.OTEL_SDK_DISABLED !== 'true';
 
 if (enabled) {
   const serviceName = process.env.OTEL_SERVICE_NAME ?? 'portfolio-web';
-  const tracesEndpoint = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-    ?? 'http://host.docker.internal:4318/v1/traces';
-  const metricsEndpoint = process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
-    ?? 'http://host.docker.internal:4318/v1/metrics';
-  const logsEndpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-    ?? 'http://host.docker.internal:4318/v1/logs';
+  const tracesEndpoint = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ?? 'http://host.docker.internal:4318/v1/traces';
+  const metricsEndpoint = process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ?? 'http://host.docker.internal:4318/v1/metrics';
+  const logsEndpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ?? 'http://host.docker.internal:4318/v1/logs';
 
   const exporter = new OTLPTraceExporter({
     url: tracesEndpoint,
@@ -33,9 +30,7 @@ if (enabled) {
       exporter: new OTLPMetricExporter({ url: metricsEndpoint }),
       exportIntervalMillis: 60000,
     }),
-    logRecordProcessors: [
-      new BatchLogRecordProcessor(new OTLPLogExporter({ url: logsEndpoint })),
-    ],
+    logRecordProcessors: [new BatchLogRecordProcessor(new OTLPLogExporter({ url: logsEndpoint }))],
     instrumentations: [
       getNodeAutoInstrumentations({
         '@opentelemetry/instrumentation-fs': { enabled: false },
@@ -53,11 +48,7 @@ if (enabled) {
     error: console.error.bind(console),
   };
 
-  const emitConsoleLog = (
-    method: keyof typeof originalConsole,
-    severityNumber: SeverityNumber,
-    args: unknown[],
-  ) => {
+  const emitConsoleLog = (method: keyof typeof originalConsole, severityNumber: SeverityNumber, args: unknown[]) => {
     originalConsole[method](...args);
     logger.emit({
       severityNumber,

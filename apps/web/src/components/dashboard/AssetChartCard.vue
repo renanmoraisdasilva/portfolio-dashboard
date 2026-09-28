@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { createChart, CrosshairMode, type CandlestickData, type IChartApi, type ISeriesApi, type UTCTimestamp } from 'lightweight-charts';
+import {
+  createChart,
+  CrosshairMode,
+  type CandlestickData,
+  type IChartApi,
+  type ISeriesApi,
+  type UTCTimestamp,
+} from 'lightweight-charts';
 import { formatMoney } from '@portfolio-dashboard/shared';
 import type { OhlcCandle } from '../../stores/dashboard';
 import { useDashboardStore } from '../../stores/dashboard';
@@ -19,11 +26,7 @@ const isBond = computed(() => !isAlias.value && store.symbolDetails[props.symbol
 
 /** The price in the asset's own currency, plus any bond yield badge. */
 const priceText = computed(() => {
-  const current = isAlias.value
-    ? store.brlUsdRate
-      ? 1 / store.brlUsdRate
-      : null
-    : (store.prices[props.symbol] ?? null);
+  const current = isAlias.value ? (store.brlUsdRate ? 1 / store.brlUsdRate : null) : (store.prices[props.symbol] ?? null);
   if (typeof current !== 'number' || isNaN(current)) return '';
 
   const meta = store.priceMeta[props.symbol];
@@ -117,7 +120,10 @@ onMounted(() => {
 });
 
 watch(() => props.candles, sync, { deep: true });
-watch(() => store.selectedDays, () => chart.value?.applyOptions({ timeScale: { timeVisible: store.selectedDays <= 7 } }));
+watch(
+  () => store.selectedDays,
+  () => chart.value?.applyOptions({ timeScale: { timeVisible: store.selectedDays <= 7 } }),
+);
 
 onBeforeUnmount(destroy);
 </script>

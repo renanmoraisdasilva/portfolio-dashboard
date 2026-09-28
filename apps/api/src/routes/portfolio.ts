@@ -55,9 +55,7 @@ portfolioRouter.get('/valuation', async (req: Request, res: Response) => {
     const includeCashInAllocation = req.query.cash !== 'investments';
 
     const [trades, priceRows, cash, brlInterest, usdInterest] = await Promise.all([
-      all<{ symbol: string; side: string; qty: number; price: number | null }>(
-        'SELECT symbol, side, qty, price FROM trades',
-      ),
+      all<{ symbol: string; side: string; qty: number; price: number | null }>('SELECT symbol, side, qty, price FROM trades'),
       all<PriceRow>('SELECT symbol, price, meta FROM price_cache'),
       get<{ cashReais: number; cashDollars: number }>(CASH_SUM_SQL),
       get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['BRL']),

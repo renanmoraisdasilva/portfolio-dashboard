@@ -73,7 +73,12 @@ describe('computeProjection', () => {
     expect(fromMissing[0].ts).toBeGreaterThan(0);
 
     // Every sample at the same instant is not a line, so there is nothing to draw.
-    expect(computeProjection([{ ts: null, v: null }, { ts: null, v: null }])).toEqual([]);
+    expect(
+      computeProjection([
+        { ts: null, v: null },
+        { ts: null, v: null },
+      ]),
+    ).toEqual([]);
   });
 
   test('defaults to the half-year horizon the dashboard used', () => {

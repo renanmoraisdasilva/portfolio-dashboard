@@ -5,7 +5,7 @@ import Database from 'better-sqlite3';
 export const sqlExplorerRouter = Router();
 
 export const VALID_DBS = ['portfolio'] as const;
-export type DbName = typeof VALID_DBS[number];
+export type DbName = (typeof VALID_DBS)[number];
 
 const DB_MAP: Record<string, Database.Database> = {
   portfolio: sqlite,
@@ -15,10 +15,7 @@ export function isSelectQuery(sql: string): boolean {
   return /^\s*(SELECT|EXPLAIN|PRAGMA|WITH)\b/i.test(sql.trim());
 }
 
-export function resolveDb(
-  name: string,
-  map: Record<string, Database.Database> = DB_MAP,
-): Database.Database | undefined {
+export function resolveDb(name: string, map: Record<string, Database.Database> = DB_MAP): Database.Database | undefined {
   return map[name];
 }
 
@@ -34,10 +31,12 @@ sqlExplorerRouter.get('/tables', (req: Request, res: Response) => {
     return;
   }
   try {
-    const tables = db.prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__drizzle_%' ORDER BY name`
-    ).all() as { name: string }[];
-    res.json({ tables: tables.map(t => t.name) });
+    const tables = db
+      .prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__drizzle_%' ORDER BY name`,
+      )
+      .all() as { name: string }[];
+    res.json({ tables: tables.map((t) => t.name) });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -82,7 +81,7 @@ sqlExplorerRouter.post('/query', (req: Request, res: Response) => {
 
     if (isSelectQuery(sql)) {
       const rows = stmt.all() as Record<string, unknown>[];
-      const columns = rows.length > 0 ? Object.keys(rows[0]) : stmt.columns?.().map((c: { name: string }) => c.name) ?? [];
+      const columns = rows.length > 0 ? Object.keys(rows[0]) : (stmt.columns?.().map((c: { name: string }) => c.name) ?? []);
       res.json({ rows, columns, rowCount: rows.length, type: 'select' });
     } else {
       const info = stmt.run() as Database.RunResult;

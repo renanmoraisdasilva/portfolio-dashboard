@@ -1,37 +1,27 @@
 'use strict';
 
-
-
-const {
-  formatMoney,
-  parseMoney,
-  brlToUSD,
-  usdToBRL,
-  createSymbolClassifier,
-} = require('@portfolio-dashboard/shared');
-
+const { formatMoney, parseMoney, brlToUSD, usdToBRL, createSymbolClassifier } = require('@portfolio-dashboard/shared');
 
 const KNOWN_SYMBOLS = {
   detailed: {
-    BTC:       { type: 'crypto' },
-    ETH:       { type: 'crypto' },
-    SOL:       { type: 'crypto' },
-    SPY:       { type: 'stock' },
-    GLD:       { type: 'stock' },
-    IBIT:      { type: 'stock' },
-    BOVA11:    { type: 'stock',  denominatedInBRL: true },
-    IVVB11:    { type: 'stock',  denominatedInBRL: true },
-    RENDA2065: { type: 'bond',   denominatedInBRL: true },
-    BRLUSD:    { type: 'currency' },
+    BTC: { type: 'crypto' },
+    ETH: { type: 'crypto' },
+    SOL: { type: 'crypto' },
+    SPY: { type: 'stock' },
+    GLD: { type: 'stock' },
+    IBIT: { type: 'stock' },
+    BOVA11: { type: 'stock', denominatedInBRL: true },
+    IVVB11: { type: 'stock', denominatedInBRL: true },
+    RENDA2065: { type: 'bond', denominatedInBRL: true },
+    BRLUSD: { type: 'currency' },
   },
 };
 
 const { isBRLAsset, isBRLNonBond, isBRLBond } = createSymbolClassifier(KNOWN_SYMBOLS.detailed);
 
-
 function computeTotalUSD(positions, prices, brlUsdRate) {
   return Object.keys(positions)
-    .filter(s => s !== 'BRLUSD')
+    .filter((s) => s !== 'BRLUSD')
     .reduce((sum, s) => {
       const p = prices[s] || 0;
       return sum + (isBRLNonBond(s) ? positions[s] * p * brlUsdRate : positions[s] * p);
@@ -50,7 +40,7 @@ function computeInvestedUSD(lots, brlUsdRate) {
 
 function computeRealizedUSD(trades, brlUsdRate) {
   return trades
-    .filter(t => t.side === 'sell')
+    .filter((t) => t.side === 'sell')
     .reduce((sum, t) => {
       const p = t.profit || 0;
       return sum + (isBRLNonBond(t.symbol) ? p * brlUsdRate : p);
@@ -68,9 +58,8 @@ function computeTradeAmounts(symbol, price, qty, brlUsdRate) {
   return { brlAmount, usdAmount };
 }
 
-
 function computeAllocationValuesUSD(symbols, positions, prices, brlUsdRate) {
-  return symbols.map(s => {
+  return symbols.map((s) => {
     const p = prices[s] || 0;
     return isBRLNonBond(s) ? positions[s] * p * brlUsdRate : positions[s] * p;
   });
@@ -116,50 +105,48 @@ function computeTotalFromQty(symbol, qty, price, source, brlUsdRate) {
 function computeQtyFromPct(symbol, pct, price, simCashDollars, simCashReais, source, brlUsdRate) {
   if (isBRLNonBond(symbol)) {
     const availBRL = source === 'USD' ? simCashDollars / brlUsdRate : simCashReais;
-    return (availBRL * pct / 100) / price;
+    return (availBRL * pct) / 100 / price;
   }
   const availUSD = source === 'USD' ? simCashDollars : simCashReais * brlUsdRate;
-  return (availUSD * pct / 100) / price;
+  return (availUSD * pct) / 100 / price;
 }
-
 
 const RATE = 0.18;
 
 const PRICES = {
-  BOVA11:     50.00,   // BRL (Yahoo .SA)
-  IVVB11:    300.00,   // BRL (Yahoo .SA)
-  RENDA2065:   2.00,   // USD (priceFetcher converts BRL→USD before storing)
-  BTC:     60000.00,   // USD
-  ETH:      3000.00,   // USD
-  SPY:       500.00,   // USD
+  BOVA11: 50.0, // BRL (Yahoo .SA)
+  IVVB11: 300.0, // BRL (Yahoo .SA)
+  RENDA2065: 2.0, // USD (priceFetcher converts BRL→USD before storing)
+  BTC: 60000.0, // USD
+  ETH: 3000.0, // USD
+  SPY: 500.0, // USD
 };
 
 const POSITIONS = {
-  BOVA11:    100,
-  IVVB11:     50,
+  BOVA11: 100,
+  IVVB11: 50,
   RENDA2065: 1000,
-  BTC:         0.5,
-  ETH:         2,
-  SPY:         3,
+  BTC: 0.5,
+  ETH: 2,
+  SPY: 3,
 };
 
 const LOTS = {
-  BOVA11:    [{ qty: 100,  price:  45.00  }],  // BRL avg cost
-  IVVB11:    [{ qty:  50,  price: 280.00  }],  // BRL avg cost
-  RENDA2065: [{ qty: 1000, price:   1.90  }],  // USD avg cost
-  BTC:       [{ qty:   0.5, price: 55000  }],  // USD avg cost
-  ETH:       [{ qty:   2,  price:  2500   }],  // USD avg cost
-  SPY:       [{ qty:   3,  price:   480   }],  // USD avg cost
+  BOVA11: [{ qty: 100, price: 45.0 }], // BRL avg cost
+  IVVB11: [{ qty: 50, price: 280.0 }], // BRL avg cost
+  RENDA2065: [{ qty: 1000, price: 1.9 }], // USD avg cost
+  BTC: [{ qty: 0.5, price: 55000 }], // USD avg cost
+  ETH: [{ qty: 2, price: 2500 }], // USD avg cost
+  SPY: [{ qty: 3, price: 480 }], // USD avg cost
 };
 
 const SELL_TRADES = [
-  { symbol: 'BOVA11',    side: 'sell', profit:   500 },  // BRL profit
-  { symbol: 'IVVB11',    side: 'sell', profit:  1000 },  // BRL profit
-  { symbol: 'BTC',       side: 'sell', profit:  2000 },  // USD profit
-  { symbol: 'ETH',       side: 'sell', profit:  -500 },  // USD loss
-  { symbol: 'BOVA11',    side: 'buy'  },                 // buy — ignored by realized calc
+  { symbol: 'BOVA11', side: 'sell', profit: 500 }, // BRL profit
+  { symbol: 'IVVB11', side: 'sell', profit: 1000 }, // BRL profit
+  { symbol: 'BTC', side: 'sell', profit: 2000 }, // USD profit
+  { symbol: 'ETH', side: 'sell', profit: -500 }, // USD loss
+  { symbol: 'BOVA11', side: 'buy' }, // buy — ignored by realized calc
 ];
-
 
 describe('formatMoney', () => {
   test('BRL: uses dot as thousands separator and comma as decimal', () => {
@@ -200,11 +187,11 @@ describe('parseMoney', () => {
   });
 
   test('BRL: no thousands separator', () => {
-    expect(parseMoney('50,00', 'BRL')).toBeCloseTo(50.00, 6);
+    expect(parseMoney('50,00', 'BRL')).toBeCloseTo(50.0, 6);
   });
 
   test('BRL: strips R$ prefix and non-breaking space', () => {
-    expect(parseMoney('R$ 300,00', 'BRL')).toBeCloseTo(300.00, 6);
+    expect(parseMoney('R$ 300,00', 'BRL')).toBeCloseTo(300.0, 6);
   });
 
   test('USD: comma-thousands, dot-decimal → number', () => {
@@ -212,11 +199,11 @@ describe('parseMoney', () => {
   });
 
   test('USD: strips $ prefix', () => {
-    expect(parseMoney('$50.00', 'USD')).toBeCloseTo(50.00, 6);
+    expect(parseMoney('$50.00', 'USD')).toBeCloseTo(50.0, 6);
   });
 
   test('USD: no thousands separator', () => {
-    expect(parseMoney('60000.00', 'USD')).toBeCloseTo(60000.00, 6);
+    expect(parseMoney('60000.00', 'USD')).toBeCloseTo(60000.0, 6);
   });
 
   test('passthrough for plain numbers', () => {
@@ -276,11 +263,11 @@ describe('brlToUSD / usdToBRL (BRL bond price conversion)', () => {
   // RENDA2065: form shows BRL, DB stores USD.
 
   test('brlToUSD(11.1111, 0.18) ≈ 2.00', () => {
-    expect(brlToUSD(11.1111, RATE)).toBeCloseTo(2.00, 3);
+    expect(brlToUSD(11.1111, RATE)).toBeCloseTo(2.0, 3);
   });
 
   test('usdToBRL(2.00, 0.18) ≈ 11.1111', () => {
-    expect(usdToBRL(2.00, RATE)).toBeCloseTo(11.1111, 3);
+    expect(usdToBRL(2.0, RATE)).toBeCloseTo(11.1111, 3);
   });
 
   test('round-trip: brlToUSD(usdToBRL(x)) ≈ x', () => {
@@ -289,13 +276,12 @@ describe('brlToUSD / usdToBRL (BRL bond price conversion)', () => {
   });
 
   test('round-trip: usdToBRL(brlToUSD(x)) ≈ x', () => {
-    const original = 11.50;
+    const original = 11.5;
     expect(usdToBRL(brlToUSD(original, RATE), RATE)).toBeCloseTo(original, 6);
   });
 });
 
 describe('computeTotalUSD — portfolio ticker value', () => {
-
   test('BOVA11 contributes BRL price × rate to USD total', () => {
     const total = computeTotalUSD({ BOVA11: 100 }, { BOVA11: 50 }, RATE);
     expect(total).toBeCloseTo(900, 6);
@@ -335,7 +321,6 @@ describe('computeTotalUSD — portfolio ticker value', () => {
 });
 
 describe('computeInvestedUSD — cost basis', () => {
-
   test('BOVA11 cost basis uses BRL lot price × rate', () => {
     const cost = computeInvestedUSD({ BOVA11: [{ qty: 100, price: 45 }] }, RATE);
     expect(cost).toBeCloseTo(810, 6);
@@ -347,7 +332,7 @@ describe('computeInvestedUSD — cost basis', () => {
   });
 
   test('RENDA2065 cost basis uses USD lot price directly', () => {
-    const cost = computeInvestedUSD({ RENDA2065: [{ qty: 1000, price: 1.90 }] }, RATE);
+    const cost = computeInvestedUSD({ RENDA2065: [{ qty: 1000, price: 1.9 }] }, RATE);
     expect(cost).toBeCloseTo(1900, 6);
   });
 
@@ -369,51 +354,38 @@ describe('computeInvestedUSD — cost basis', () => {
       ],
     };
     const cost = computeInvestedUSD(lots, RATE);
-    expect(cost).toBeCloseTo(806.40, 4);
+    expect(cost).toBeCloseTo(806.4, 4);
   });
 });
 
 describe('computeRealizedUSD — realized P&L', () => {
-
   test('BRL non-bond profit is converted to USD', () => {
-    const realized = computeRealizedUSD(
-      [{ symbol: 'BOVA11', side: 'sell', profit: 500 }], RATE
-    );
+    const realized = computeRealizedUSD([{ symbol: 'BOVA11', side: 'sell', profit: 500 }], RATE);
     expect(realized).toBeCloseTo(90, 6);
   });
 
   test('BRL non-bond loss is converted to USD', () => {
-    const realized = computeRealizedUSD(
-      [{ symbol: 'IVVB11', side: 'sell', profit: -200 }], RATE
-    );
+    const realized = computeRealizedUSD([{ symbol: 'IVVB11', side: 'sell', profit: -200 }], RATE);
     expect(realized).toBeCloseTo(-36, 6);
   });
 
   test('USD asset profit is used directly', () => {
-    const realized = computeRealizedUSD(
-      [{ symbol: 'BTC', side: 'sell', profit: 2000 }], RATE
-    );
+    const realized = computeRealizedUSD([{ symbol: 'BTC', side: 'sell', profit: 2000 }], RATE);
     expect(realized).toBeCloseTo(2000, 6);
   });
 
   test('USD asset loss is used directly', () => {
-    const realized = computeRealizedUSD(
-      [{ symbol: 'ETH', side: 'sell', profit: -500 }], RATE
-    );
+    const realized = computeRealizedUSD([{ symbol: 'ETH', side: 'sell', profit: -500 }], RATE);
     expect(realized).toBeCloseTo(-500, 6);
   });
 
   test('buy-side trades are excluded', () => {
-    const realized = computeRealizedUSD(
-      [{ symbol: 'BOVA11', side: 'buy', profit: 9999 }], RATE
-    );
+    const realized = computeRealizedUSD([{ symbol: 'BOVA11', side: 'buy', profit: 9999 }], RATE);
     expect(realized).toBeCloseTo(0, 6);
   });
 
   test('RENDA2065 (bond stored USD) profit is used directly', () => {
-    const realized = computeRealizedUSD(
-      [{ symbol: 'RENDA2065', side: 'sell', profit: 100 }], RATE
-    );
+    const realized = computeRealizedUSD([{ symbol: 'RENDA2065', side: 'sell', profit: 100 }], RATE);
     expect(realized).toBeCloseTo(100, 6);
   });
 
@@ -423,16 +395,13 @@ describe('computeRealizedUSD — realized P&L', () => {
   });
 
   test('BRL non-bond profit NOT converted would be ~5.56× wrong', () => {
-    const correct = computeRealizedUSD(
-      [{ symbol: 'BOVA11', side: 'sell', profit: 500 }], RATE
-    );
+    const correct = computeRealizedUSD([{ symbol: 'BOVA11', side: 'sell', profit: 500 }], RATE);
     const wrong = 500;
     expect(wrong / correct).toBeCloseTo(1 / RATE, 2);
   });
 });
 
 describe('computeTradeAmounts — add trade cash deduction', () => {
-
   test('BRL non-bond buy: computes correct brlAmount and usdAmount', () => {
     const { brlAmount, usdAmount } = computeTradeAmounts('BOVA11', 50, 100, RATE);
     expect(brlAmount).toBeCloseTo(5000, 4);
@@ -461,40 +430,39 @@ describe('computeTradeAmounts — add trade cash deduction', () => {
 
 describe('computePositionDisplayBRL — BRL values for positions table', () => {
   test('BOVA11: avg, current, value, P&L all in BRL', () => {
-    const disp = computePositionDisplayBRL(
-      'BOVA11', 100, [{ qty: 100, price: 45 }], 50, RATE
-    );
-    expect(disp.avgBRL).toBeCloseTo(45.00, 4);
-    expect(disp.curBRL).toBeCloseTo(50.00, 4);
-    expect(disp.valueBRL).toBeCloseTo(5000.00, 4);
-    expect(disp.plBRL).toBeCloseTo(500.00, 4);
+    const disp = computePositionDisplayBRL('BOVA11', 100, [{ qty: 100, price: 45 }], 50, RATE);
+    expect(disp.avgBRL).toBeCloseTo(45.0, 4);
+    expect(disp.curBRL).toBeCloseTo(50.0, 4);
+    expect(disp.valueBRL).toBeCloseTo(5000.0, 4);
+    expect(disp.plBRL).toBeCloseTo(500.0, 4);
   });
 
   test('IVVB11: avg, current, value, P&L all in BRL', () => {
-    const disp = computePositionDisplayBRL(
-      'IVVB11', 50, [{ qty: 50, price: 280 }], 300, RATE
-    );
-    expect(disp.avgBRL).toBeCloseTo(280.00, 4);
-    expect(disp.curBRL).toBeCloseTo(300.00, 4);
-    expect(disp.valueBRL).toBeCloseTo(15000.00, 4);
-    expect(disp.plBRL).toBeCloseTo(1000.00, 4);
+    const disp = computePositionDisplayBRL('IVVB11', 50, [{ qty: 50, price: 280 }], 300, RATE);
+    expect(disp.avgBRL).toBeCloseTo(280.0, 4);
+    expect(disp.curBRL).toBeCloseTo(300.0, 4);
+    expect(disp.valueBRL).toBeCloseTo(15000.0, 4);
+    expect(disp.plBRL).toBeCloseTo(1000.0, 4);
   });
 
   test('BOVA11 multiple lots: avg is weighted average', () => {
     const disp = computePositionDisplayBRL(
-      'BOVA11', 150,
-      [{ qty: 100, price: 40 }, { qty: 50, price: 55 }],
-      50, RATE
+      'BOVA11',
+      150,
+      [
+        { qty: 100, price: 40 },
+        { qty: 50, price: 55 },
+      ],
+      50,
+      RATE,
     );
-    expect(disp.avgBRL).toBeCloseTo(45.00, 4);
+    expect(disp.avgBRL).toBeCloseTo(45.0, 4);
     expect(disp.valueBRL).toBeCloseTo(7500, 4);
     expect(disp.plBRL).toBeCloseTo(750, 4);
   });
 
   test('RENDA2065 (bond): displays as BRL, divides USD price by rate', () => {
-    const disp = computePositionDisplayBRL(
-      'RENDA2065', 1000, [{ qty: 1000, price: 1.90 }], 2.00, RATE
-    );
+    const disp = computePositionDisplayBRL('RENDA2065', 1000, [{ qty: 1000, price: 1.9 }], 2.0, RATE);
     expect(disp.curBRL).toBeCloseTo(11.1111, 3);
     expect(disp.avgBRL).toBeCloseTo(10.5556, 3);
     expect(disp.valueBRL).toBeCloseTo(11111.11, 1);
@@ -638,7 +606,7 @@ describe('portfolio sums: consistency across BRL and USD', () => {
 
   test('changing brlUsdRate changes BRL-asset totals proportionally', () => {
     const rate1 = 0.18;
-    const rate2 = 0.20;
+    const rate2 = 0.2;
     const total1 = computeTotalUSD({ BOVA11: 100 }, { BOVA11: 50 }, rate1);
     const total2 = computeTotalUSD({ BOVA11: 100 }, { BOVA11: 50 }, rate2);
     expect(total2 / total1).toBeCloseTo(rate2 / rate1, 6);
@@ -646,7 +614,7 @@ describe('portfolio sums: consistency across BRL and USD', () => {
 
   test('changing brlUsdRate does NOT affect USD-asset totals', () => {
     const rate1 = 0.18;
-    const rate2 = 0.20;
+    const rate2 = 0.2;
     const total1 = computeTotalUSD({ BTC: 0.5 }, { BTC: 60000 }, rate1);
     const total2 = computeTotalUSD({ BTC: 0.5 }, { BTC: 60000 }, rate2);
     expect(total1).toBeCloseTo(total2, 6);
@@ -654,7 +622,7 @@ describe('portfolio sums: consistency across BRL and USD', () => {
 
   test('BRL bond position total is rate-independent (stored in USD)', () => {
     const total1 = computeTotalUSD({ RENDA2065: 1000 }, { RENDA2065: 2 }, 0.18);
-    const total2 = computeTotalUSD({ RENDA2065: 1000 }, { RENDA2065: 2 }, 0.20);
+    const total2 = computeTotalUSD({ RENDA2065: 1000 }, { RENDA2065: 2 }, 0.2);
     expect(total1).toBeCloseTo(total2, 6);
   });
 

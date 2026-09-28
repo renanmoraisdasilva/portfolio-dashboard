@@ -46,10 +46,7 @@ export interface ProjectionOptions {
  * Returns an empty array for fewer than two samples or a degenerate fit, which
  * is what the chart treats as "nothing to draw".
  */
-export function computeProjection(
-  history: readonly HistorySample[],
-  options: ProjectionOptions = {},
-): ProjectedPoint[] {
+export function computeProjection(history: readonly HistorySample[], options: ProjectionOptions = {}): ProjectedPoint[] {
   const days = options.days ?? PROJECTION_DAYS;
   const minSamples = options.minSamples ?? 2;
   const n = history.length;

@@ -20,10 +20,14 @@ const store = useDashboardStore();
       </thead>
       <tbody>
         <template v-if="store.hasPriceError">
-          <tr><td colspan="7" class="empty-state">Error fetching prices.</td></tr>
+          <tr>
+            <td colspan="7" class="empty-state">Error fetching prices.</td>
+          </tr>
         </template>
         <template v-else-if="store.positionRows.length === 0 && store.cashPositionRows.length === 0">
-          <tr><td colspan="7" class="empty-state">No open positions yet.</td></tr>
+          <tr>
+            <td colspan="7" class="empty-state">No open positions yet.</td>
+          </tr>
         </template>
         <tr v-for="row in store.positionRows" v-else :key="row.symbol">
           <td>{{ row.symbol }}</td>

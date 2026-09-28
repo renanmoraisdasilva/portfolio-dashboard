@@ -1,4 +1,4 @@
-import express, { Express } from 'express';
+import type { Express } from 'express';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
@@ -46,11 +46,7 @@ function normalizePath(p: string): string {
   const trimmed = p.replace(/\/$/, '') || '/';
   return trimmed
     .split('/')
-    .map((segment) =>
-      segment.startsWith(':') || (segment.startsWith('{') && segment.endsWith('}'))
-        ? '{param}'
-        : segment
-    )
+    .map((segment) => (segment.startsWith(':') || (segment.startsWith('{') && segment.endsWith('}')) ? '{param}' : segment))
     .join('/');
 }
 

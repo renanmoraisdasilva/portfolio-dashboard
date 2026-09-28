@@ -9,18 +9,13 @@ useDocumentTitle('Portfolio Dashboard');
 </script>
 
 <template>
-  <PageHeader
-    icon="₿"
-    title="Portfolio Dashboard"
-    subtitle="Holdings, cash, trades and alerts in one view"
-  />
+  <PageHeader icon="₿" title="Portfolio Dashboard" subtitle="Holdings, cash, trades and alerts in one view" />
 
   <section class="card">
     <h2>Strangler shell</h2>
     <p>
-      This is the Vue app. Pages move here one at a time; until then each one is served
-      untouched from <code>/legacy/</code> by the same API, so nothing breaks while the
-      migration runs.
+      This is the Vue app. Pages move here one at a time; until then each one is served untouched from <code>/legacy/</code> by
+      the same API, so nothing breaks while the migration runs.
     </p>
     <table class="data-table">
       <thead>

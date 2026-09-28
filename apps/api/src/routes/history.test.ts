@@ -1,18 +1,18 @@
 import { sinceForRange, bucketRows, BUCKET_MS } from './history';
 
-const DAY_MS  = 24 * 60 * 60 * 1000;
-const HOUR_MS =       60 * 60 * 1000;
-const MIN_MS  =            60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const MIN_MS = 60 * 1000;
 
 describe('sinceForRange', () => {
   const now = 1_700_000_000_000;
 
   test.each([
-    ['day',      now - DAY_MS],
-    ['week',     now - 7 * DAY_MS],
-    ['month',    now - 30 * DAY_MS],
-    ['6months',  now - 180 * DAY_MS],
-    ['year',     now - 365 * DAY_MS],
+    ['day', now - DAY_MS],
+    ['week', now - 7 * DAY_MS],
+    ['month', now - 30 * DAY_MS],
+    ['6months', now - 180 * DAY_MS],
+    ['year', now - 365 * DAY_MS],
   ])('range=%s returns correct cutoff', (range, expected) => {
     expect(sinceForRange(range, now)).toBe(expected);
   });
@@ -54,8 +54,8 @@ describe('bucketRows', () => {
 
   test('keeps the LAST row when two rows fall in the same bucket', () => {
     const base = Math.floor(1_700_000_000_000 / DAY_MS) * DAY_MS;
-    const first  = { id: '1', ts: base,              v: 10 };
-    const second = { id: '2', ts: base + HOUR_MS,    v: 20 };
+    const first = { id: '1', ts: base, v: 10 };
+    const second = { id: '2', ts: base + HOUR_MS, v: 20 };
     const result = bucketRows([first, second], DAY_MS);
     expect(result).toHaveLength(1);
     expect(result[0]).toBe(second);
@@ -63,8 +63,8 @@ describe('bucketRows', () => {
 
   test('keeps both rows when they fall in different buckets', () => {
     const base = Math.floor(1_700_000_000_000 / DAY_MS) * DAY_MS;
-    const day1 = { id: '1', ts: base,              v: 10 };
-    const day2 = { id: '2', ts: base + DAY_MS,     v: 20 };
+    const day1 = { id: '1', ts: base, v: 10 };
+    const day2 = { id: '2', ts: base + DAY_MS, v: 20 };
     const result = bucketRows([day1, day2], DAY_MS);
     expect(result).toHaveLength(2);
     expect(result[0]).toBe(day1);
@@ -109,7 +109,7 @@ describe('bucketRows', () => {
 
   test('30-min bucket for day range: two snapshots 31 min apart land in different buckets', () => {
     const base = 1_700_000_000_000;
-    const r1 = { id: '1', ts: base,             v: 1 };
+    const r1 = { id: '1', ts: base, v: 1 };
     const r2 = { id: '2', ts: base + 31 * MIN_MS, v: 2 };
     const result = bucketRows([r1, r2], BUCKET_MS.day);
     expect(result).toHaveLength(2);
@@ -117,7 +117,7 @@ describe('bucketRows', () => {
 
   test('30-min bucket for day range: two snapshots 10 min apart stay in same bucket', () => {
     const base = 1_700_000_000_000;
-    const r1 = { id: '1', ts: base,             v: 1 };
+    const r1 = { id: '1', ts: base, v: 1 };
     const r2 = { id: '2', ts: base + 10 * MIN_MS, v: 2 };
     const result = bucketRows([r1, r2], BUCKET_MS.day);
     expect(result).toHaveLength(1);

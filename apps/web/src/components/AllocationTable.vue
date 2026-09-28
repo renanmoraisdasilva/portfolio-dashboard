@@ -57,22 +57,13 @@ const rows = computed(() => {
           <td>{{ row.allocPct.toFixed(1) }}%</td>
           <td>{{ fmtUSD(row.cost) }}</td>
           <td>{{ fmtUSD(row.market) }}</td>
-          <td :class="row.pnl >= 0 ? 'positive' : 'negative'">
-            {{ row.pnl >= 0 ? '+' : '−' }}{{ fmtUSD(Math.abs(row.pnl)) }}
-          </td>
+          <td :class="row.pnl >= 0 ? 'positive' : 'negative'">{{ row.pnl >= 0 ? '+' : '−' }}{{ fmtUSD(Math.abs(row.pnl)) }}</td>
           <td>
             <div class="pnl-bar-wrap">
               <div class="pnl-bar-bg">
-                <div
-                  class="pnl-bar-fill"
-                  :class="row.pnl < 0 ? 'negative' : ''"
-                  :style="{ width: `${row.barPct}%` }"
-                ></div>
+                <div class="pnl-bar-fill" :class="row.pnl < 0 ? 'negative' : ''" :style="{ width: `${row.barPct}%` }"></div>
               </div>
-              <span
-                :class="row.pnl >= 0 ? 'positive' : 'negative'"
-                style="min-width: 48px; text-align: right; font-weight: 600"
-              >
+              <span :class="row.pnl >= 0 ? 'positive' : 'negative'" style="min-width: 48px; text-align: right; font-weight: 600">
                 {{ row.pnl >= 0 ? '+' : '' }}{{ row.pnlPct.toFixed(1) }}%
               </span>
             </div>

@@ -18,7 +18,7 @@ export async function startWeb(): Promise<void> {
 }
 
 if (require.main === module) {
-  startWeb().catch(err => {
+  startWeb().catch((err) => {
     console.error('Failed to initialize web server', err);
     process.exit(1);
   });

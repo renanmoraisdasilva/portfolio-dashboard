@@ -35,6 +35,7 @@ npm run db:studio      # open Drizzle Studio (local DB browser)
 ## Architecture
 
 One SQLite database lives in `apps/api/data/` (created on first run):
+
 - **portfolio.db** — managed by **Drizzle ORM**; schema defined in `apps/api/src/schema.ts`. Tables: `trades`, `portfolio_snapshots`, `price_cache`, `asset_chart_cache`, `interest`, `cash`, `price_ticks`, `scenarios`, `alerts`, `analytics_snapshots`
 
 ### Backend layout
@@ -120,13 +121,13 @@ The simulator's allocation currency lives in the store as `simAllocCurrency`, an
 
 `npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (Phase 4 strangler seam, in `mountWebRoutes`):
 
-| Path | Served by |
-|------|-----------|
-| `/` and any client-side route | `apps/web/dist/index.html` (SPA fallback) — `/` is the dashboard |
-| `/legacy/sql-explorer.html` | the one vanilla page left, gated behind `ENABLE_SQL_EXPLORER` |
-| `/static/...`, `/icon.png` | shared assets, referenced by absolute path from the legacy page |
-| `/pages/x.html`, `/x.html` | 302 → `/legacy/x.html`, or to the Vue route for migrated pages (see `migratedPages` in `app.ts`); `/index.html` → `/` |
-| `/api/*` | the API routers |
+| Path                          | Served by                                                                                                             |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `/` and any client-side route | `apps/web/dist/index.html` (SPA fallback) — `/` is the dashboard                                                      |
+| `/legacy/sql-explorer.html`   | the one vanilla page left, gated behind `ENABLE_SQL_EXPLORER`                                                         |
+| `/static/...`, `/icon.png`    | shared assets, referenced by absolute path from the legacy page                                                       |
+| `/pages/x.html`, `/x.html`    | 302 → `/legacy/x.html`, or to the Vue route for migrated pages (see `migratedPages` in `app.ts`); `/index.html` → `/` |
+| `/api/*`                      | the API routers                                                                                                       |
 
 `apps/api/src/seam.test.ts` covers that routing. Note the mount order: `pages/` is registered **before** the SPA fallback, otherwise `/legacy/index.html` would be swallowed by the Vue app and the redirects would loop.
 
@@ -135,55 +136,65 @@ To migrate a page (Phase 5): build the view under `src/views/` (and its store/co
 ## Key conventions
 
 ### Database helpers
+
 The promisified helpers for `portfolio.db` live in `db.ts`:
+
 - `run()`, `get()`, `all()` — portfolio.db (db.ts); wraps `better-sqlite3` synchronous API in promises
 
 `db.ts` also exports `drizzleDb` (typed Drizzle ORM instance) for use with Drizzle query builders, and `sqlite` (the raw `better-sqlite3` `Database` instance).
 
 ### Entity IDs & timestamps
+
 - IDs: UUIDs via Node.js built-in `randomUUID()` from `node:crypto` (the `uuid` package is no longer used)
 - Timestamps stored as ISO strings (`time` field) or Unix milliseconds (`ts` field) — check the model before assuming
 
 ### Symbol configuration
+
 Add new assets in `apps/api/src/config/symbols.ts` — this is the **only file** that needs to change to add a new ticker. The frontend fetches `/api/config/symbols` on load and auto-populates all selects, asset rows, and price charts dynamically.
 
 Key fields per symbol:
+
 - `type: 'crypto' | 'stock' | 'currency'` — determines which price source is used
 - `coingeckoId` — set for crypto assets; drives CoinGecko price fetching (derived automatically in `priceFetcher.ts`)
 - `yahooTicker` + `historicalFallbacks` — Yahoo Finance tickers tried in order for price history
 - `currency` type symbols (`BRLUSD`) are excluded from tradeable asset lists but shown separately
 
 ### Schema migrations
+
 **portfolio.db** is managed by Drizzle ORM. `apps/api/src/schema.ts` is the single source of truth. To add a column or table:
+
 1. Edit `schema.ts`
 2. Run `npm run db:generate` to create a migration file in `apps/api/drizzle/migrations/`
 3. Commit the generated `.sql` file — it runs automatically on next server start
 
-Apply migrations without booting the server with `npm run db:migrate` (dev/CI only — the runtime image prunes devDependencies, so the container migrates on boot instead). `npm run migrate:init` is a *different* thing: it imports `fixtures/portfolio_data.json` into the database.
+Apply migrations without booting the server with `npm run db:migrate` (dev/CI only — the runtime image prunes devDependencies, so the container migrates on boot instead). `npm run migrate:init` is a _different_ thing: it imports `fixtures/portfolio_data.json` into the database.
 
 **Never** add ad-hoc `ALTER TABLE` calls to `db.ts` for portfolio.db.
 
 ### API routes
+
 All routes mount at `/api/`. See [openapi.yaml](apps/api/openapi.yaml) and [README-backend.md](docs/README-backend.md) for full documentation. Swagger UI runs at `http://localhost:3000/api/docs`.
 
 Key route files and what they own:
-| File | Endpoints |
-|------|-----------|
-| `routes/state.ts` | `GET /api/state/export`, `POST /api/state/import`, `DELETE /api/state` - whole-database backup, restore and erase. The former `GET /api/state` aggregation is gone: the Vue views read `/trades`, `/cash` and `/interest/months` |
-| `routes/health.ts` | `GET /api/health` — uptime + last price/asset-cache timestamps; `503` when the DB read fails, which is what the container healthcheck keys on |
-| `routes/trades.ts` | `GET/POST/DELETE /api/trades` |
-| `routes/prices.ts` | `GET /api/prices` |
-| `routes/asset.ts` | `GET /api/asset/:symbol` — rolling price history for charts |
-| `routes/history.ts` | `GET/POST/DELETE /api/history`, `POST /api/history/fill-gaps` |
-| `routes/cash.ts` | `GET/PUT /api/cash` |
-| `routes/interest.ts` | `GET/POST/DELETE /api/interest` |
-| `routes/alerts.ts` | Alert CRUD + triggered alerts |
-| `routes/scenarios.ts` | Simulation scenarios (save/load) |
-| `routes/analytics.ts` | `GET /api/analytics` — analytics snapshots |
-| `routes/portfolio.ts` | `GET /api/portfolio/valuation?cash=with-cash\|investments` — the portfolio's derived values (totals, invested cost, per-position P/L, allocation split, `salesCount`), computed by `computeValuation` from `packages/shared`. The dashboard renders these; it does not recompute them. The simulator cannot use this endpoint — its prices are hypothetical and change on every keystroke — so it calls the same `computeValuation` locally, with `realizedFromSells` from the FIFO walk |
-| `routes/migrations.ts` | `POST /api/migrations/backfill-prices`, `POST /api/migrations/backfill-cash` — maintenance migrations (replaced standalone scripts) |
+
+| File                   | Endpoints                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `routes/state.ts`      | `GET /api/state/export`, `POST /api/state/import`, `DELETE /api/state` - whole-database backup, restore and erase. The former `GET /api/state` aggregation is gone: the Vue views read `/trades`, `/cash` and `/interest/months`                                                                                                                                                                                                                                                         |
+| `routes/health.ts`     | `GET /api/health` — uptime + last price/asset-cache timestamps; `503` when the DB read fails, which is what the container healthcheck keys on                                                                                                                                                                                                                                                                                                                                            |
+| `routes/trades.ts`     | `GET/POST/DELETE /api/trades`                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `routes/prices.ts`     | `GET /api/prices`                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `routes/asset.ts`      | `GET /api/asset/:symbol` — rolling price history for charts                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `routes/history.ts`    | `GET/POST/DELETE /api/history`, `POST /api/history/fill-gaps`                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `routes/cash.ts`       | `GET/PUT /api/cash`                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `routes/interest.ts`   | `GET/POST/DELETE /api/interest`                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `routes/alerts.ts`     | Alert CRUD + triggered alerts                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `routes/scenarios.ts`  | Simulation scenarios (save/load)                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `routes/analytics.ts`  | `GET /api/analytics` — analytics snapshots                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `routes/portfolio.ts`  | `GET /api/portfolio/valuation?cash=with-cash\|investments` — the portfolio's derived values (totals, invested cost, per-position P/L, allocation split, `salesCount`), computed by `computeValuation` from `packages/shared`. The dashboard renders these; it does not recompute them. The simulator cannot use this endpoint — its prices are hypothetical and change on every keystroke — so it calls the same `computeValuation` locally, with `realizedFromSells` from the FIFO walk |
+| `routes/migrations.ts` | `POST /api/migrations/backfill-prices`, `POST /api/migrations/backfill-cash` — maintenance migrations (replaced standalone scripts)                                                                                                                                                                                                                                                                                                                                                      |
 
 ### Frontend API calls
+
 Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fetched; no client-side state management library.
 
 ## Known pitfalls
@@ -216,7 +227,7 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
 - Price fetching uses multiple external APIs — tests that exercise `priceFetcher.ts` should mock network calls.
 - Coverage thresholds are enforced at 80%; new code in `src/` should include tests or the build will fail.
 - **Always use the promisified helpers** `run()`, `get()`, `all()` from `db.ts` — never call the raw `sqlite` instance directly in routes (it bypasses the async contract the rest of the codebase expects).
-- **Coverage collection is narrow by design** — Jest's `rootDir` is the repo root (the babel coverage provider only instruments files under it), and `collectCoverageFrom` lists exactly the files that are genuinely test-covered: `apps/api/src/config/`, `apps/api/src/schema.ts`, `apps/api/src/routes/health.ts`, `apps/api/src/services/cashBackfill.ts`, `apps/api/src/services/portfolioCalculator.ts` and `packages/shared/src/domain/`. Widen that list only *after* adding tests — the gate is 80% on all four metrics, globally.
+- **Coverage collection is narrow by design** — Jest's `rootDir` is the repo root (the babel coverage provider only instruments files under it), and `collectCoverageFrom` lists exactly the files that are genuinely test-covered: `apps/api/src/config/`, `apps/api/src/schema.ts`, `apps/api/src/routes/health.ts`, `apps/api/src/services/cashBackfill.ts`, `apps/api/src/services/portfolioCalculator.ts` and `packages/shared/src/domain/`. Widen that list only _after_ adding tests — the gate is 80% on all four metrics, globally.
 - **`apps/api` imports `@portfolio-dashboard/shared`**, which compiles to `packages/shared/dist`. The root `build`, `typecheck` and `dev` scripts build it first, and the Docker image copies `packages/shared` into the runtime stage — running `tsc` inside `apps/api` on its own fails on the missing declarations.
 - **ts-jest type-checks with `apps/api/tsconfig.jest.json`**, which is `tsconfig.json` without `rootDir`/`outDir`: `rootDir: src` makes the compiler reject every file outside `apps/api/src`, including `packages/shared` (which Jest maps to its source).
 - **Frontend JS files are plain scripts, not ES modules** — no page scripts remain; only `static/js/__tests__` is left, and those suites import `packages/shared` directly.

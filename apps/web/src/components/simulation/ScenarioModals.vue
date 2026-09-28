@@ -33,7 +33,7 @@ async function remove(id: string): Promise<void> {
 </script>
 
 <template>
-  <div class="modal" v-if="store.saveModalOpen">
+  <div v-if="store.saveModalOpen" class="modal">
     <div class="modal-content">
       <h2>Save Scenario</h2>
       <div class="row">
@@ -43,9 +43,7 @@ async function remove(id: string): Promise<void> {
         <label class="small">Overwrite existing:</label>
         <select v-model="store.scenarioOverwriteId">
           <option value="">(New scenario)</option>
-          <option v-for="row in rows" :key="row.id" :value="row.id">
-            {{ row.name }} — {{ row.updated }}
-          </option>
+          <option v-for="row in rows" :key="row.id" :value="row.id">{{ row.name }} — {{ row.updated }}</option>
         </select>
       </div>
       <div class="actions">
@@ -55,13 +53,18 @@ async function remove(id: string): Promise<void> {
     </div>
   </div>
 
-  <div class="modal" v-if="store.openModalOpen">
+  <div v-if="store.openModalOpen" class="modal">
     <div class="modal-content">
       <h2>Open Scenario</h2>
       <div style="max-height: 360px; overflow: auto">
         <table>
           <thead>
-            <tr><th>Name</th><th>Created</th><th>Last Saved</th><th>Actions</th></tr>
+            <tr>
+              <th>Name</th>
+              <th>Created</th>
+              <th>Last Saved</th>
+              <th>Actions</th>
+            </tr>
           </thead>
           <tbody>
             <tr v-for="row in rows" :key="row.id">
