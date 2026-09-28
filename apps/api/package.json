@@ -15,6 +15,7 @@
     "test:coverage": "jest --config ./jest.config.cjs --coverage",
     "migrate:import": "ts-node src/migrate.ts",
     "migrate:init": "ts-node src/migrate.ts --init",
+    "db:migrate": "ts-node src/dbMigrate.ts",
     "seed:local": "ts-node src/seed.ts ../../fixtures/portfolio_data.json",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"

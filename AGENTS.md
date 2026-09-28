@@ -25,6 +25,7 @@ npm test               # Jest test suite (apps/api/src tests + static/js tests)
 npm run test:coverage  # coverage report; thresholds: 80% on all metrics
 npm run check          # build + test in one command (what CI runs)
 npm run db:generate    # generate Drizzle migration from schema.ts changes
+npm run db:migrate     # apply pending schema migrations without starting the server
 npm run db:studio      # open Drizzle Studio (local DB browser)
 ```
 
@@ -109,6 +110,8 @@ Key fields per symbol:
 1. Edit `schema.ts`
 2. Run `npm run db:generate` to create a migration file in `apps/api/drizzle/migrations/`
 3. Commit the generated `.sql` file — it runs automatically on next server start
+
+Apply migrations without booting the server with `npm run db:migrate` (dev/CI only — the runtime image prunes devDependencies, so the container migrates on boot instead). `npm run migrate:init` is a *different* thing: it imports `fixtures/portfolio_data.json` into the database.
 
 **Never** add ad-hoc `ALTER TABLE` calls to `db.ts` for portfolio.db.
 

@@ -21,6 +21,7 @@
     "check": "npm run build && npm test",
     "api:types": "openapi-typescript apps/api/openapi.yaml -o packages/shared/src/generated/api.ts",
     "migrate:init": "npm run migrate:init --workspace apps/api",
+    "db:migrate": "npm run db:migrate --workspace apps/api",
     "seed:local": "npm run seed:local --workspace apps/api",
     "db:generate": "npm run db:generate --workspace apps/api",
     "db:studio": "npm run db:studio --workspace apps/api"
