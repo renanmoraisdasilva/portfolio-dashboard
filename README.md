@@ -104,7 +104,7 @@ npm run dev:web           # http://localhost:5173
 | `npm run lint` / `npm run format:check` | ESLint and Prettier                                    |
 | `npm run check`                         | everything CI verifies, in one command                 |
 | `npm run scan:secrets`                  | asserts no data or credential ever entered git history |
-| `npm run audit`                         | dependency audit, failing on high and critical only    |
+| `npm run audit`                         | dependency audit - currently 0 vulnerabilities         |
 | `npm run demo:build`                    | regenerates the GIF above from the real app            |
 | `npm run api:types`                     | regenerate the typed client from `openapi.yaml`        |
 | `npm run db:generate`                   | generate a Drizzle migration after editing `schema.ts` |

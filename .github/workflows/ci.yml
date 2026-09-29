@@ -33,10 +33,11 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run scan:secrets
-      # Fails on high or critical only. One moderate advisory is accepted on
-      # purpose and documented in AGENTS.md; a gate that has to be ignored is a
-      # gate nobody reads, so the bar is high/critical and the exception is
-      # written down rather than left as a shrug.
+      # Any severity fails the build. The tree is currently at 0, and the one
+      # finding that needed an override to get there (esbuild, via drizzle-kit)
+      # is documented in AGENTS.md together with the `npm dedupe` step that
+      # actually applies it - a lockfile that silently reintroduces the nested
+      # copy would otherwise turn this red for a reason nobody could see.
       - run: npm run audit
 
   build:

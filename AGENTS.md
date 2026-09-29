@@ -26,7 +26,7 @@ npm run api:types      # regenerate packages/shared/src/generated/api.ts from op
 npm start              # run compiled apps/api/dist/web.js
 npm test               # Vitest suite across apps/api, apps/web, packages/shared and static/js
 npm run test:watch     # the same, in watch mode
-npm run audit          # dependency audit; fails on high/critical, one moderate is accepted (see pitfalls)
+npm run audit          # dependency audit; currently 0 vulnerabilities (see pitfalls if it is ever non-zero)
 npm run test:e2e       # Playwright smoke tests (needs a build first; see e2e/README)
 npm run test:coverage  # coverage report; thresholds: 80% on all metrics
 npm run check          # build + test in one command (what CI runs)
@@ -216,19 +216,31 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
   migration has to de-duplicate existing rows first — a decision about real
   financial data, not a refactor's to take. Listed in
   ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
-- **One moderate `npm audit` finding is accepted on purpose.** `drizzle-kit`
-  pulls `@esbuild-kit/core-utils`, which pins `esbuild ~0.18.20`
-  (GHSA-67mh-4wv8-2f99, moderate: esbuild's _dev server_ can be reached by any
-  website). `drizzle-kit` uses esbuild to bundle its TypeScript config and never
-  calls `serve()`, so there is no dev server and no reachable path — but the code
-  is installed. The fixes npm suggests are both worse than the finding: downgrade
-  `drizzle-kit` to 0.18.1 (a 2023 release) or take `1.0.0-rc`, which fails
-  against the pinned `drizzle-orm` with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
-  `npm run audit` therefore fails on **high and critical only**. Do not "fix"
-  this with `npm audit fix --force`: it moves dev tools into
-  `apps/api/dependencies` (shipping Vitest, Playwright and sharp in the runtime
-  image), pins versions without carets, and forces the test runner through two
-  majors.
+- **The `esbuild` override needs `npm dedupe`, and the override must be at the
+  repo root.** `drizzle-kit` pulls `@esbuild-kit/core-utils`, which pins
+  `esbuild ~0.18.20` (GHSA-67mh-4wv8-2f99: esbuild's _dev server_ can be
+  reached by any website). `package.json`'s `overrides` replaces it — and
+  `npm run audit` is **0 vulnerabilities**, not "nothing high" — but two things
+  make it look like it silently did nothing:
+  1. The override has to be in the **root** `package.json`. npm does not honour
+     `overrides` from a workspace member's `package.json`, and this repo's
+     `apps/api/package.json` already carried an identical `esbuild` entry that
+     never did anything. Root `overrides` wins for the whole tree.
+  2. `npm install` alone leaves the old copy in place, because the existing
+     lockfile already satisfies the (unresolved) edge — it reports success
+     while `node_modules/@esbuild-kit/core-utils/node_modules/esbuild` is still
+     0.18.20. **`npm dedupe` is what actually re-resolves it.** The tell is
+     `added 2 packages` on the first install and the nested copy surviving a
+     second one.
+
+  After `npm dedupe`, esbuild is 0.28.2 hoisted, `drizzle-kit generate` still
+  emits correct SQL, and esbuild is not in the runtime image at all (it is
+  dev-only). If a future `npm install` reintroduces the nested copy, run
+  `npm dedupe` — do not reach for `npm audit fix --force`, which moves dev tools
+  into `apps/api/dependencies` (shipping Vitest, Playwright and sharp in the
+  runtime image), pins versions without carets, and forces the test runner
+  through two majors.
+
 - **Upgrade with `npm install <pkg>@<range>`, never with `audit fix`.** Then run
   `npm run check` and the e2e suite. A `git checkout -- package.json` after an
   install also silently reverts the _declared_ version while `node_modules`
