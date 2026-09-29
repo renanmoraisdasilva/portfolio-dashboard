@@ -86,10 +86,29 @@ stateRouter.post('/import', async (req, res) => {
         }
       }
       if (payload.history && Array.isArray(payload.history)) {
+        // `brlusd_rate` was missing from this column list while the export sent
+        // it (`SELECT *`), so a restore silently nulled the exchange rate on
+        // every snapshot: 0% null before a restore, 100% after. `analyticsService`
+        // reads that column to convert BRL interest at the rate of the following
+        // snapshot and falls back to today's rate when it is null, so the
+        // analytics came out of a restore converted at the wrong rate until
+        // Fill History Gaps re-derived it. The candles are unaffected - the
+        // high/low of each one comes from `v` and `p` - which is why this hid.
+        // `?? null` keeps backups taken before the column existed importable.
         for (const h of payload.history) {
           await run(
-            'INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [h.id ?? null, h.t ?? null, h.ts ?? null, h.v ?? 0, h.i ?? null, h.p ?? null, h.manual ? 1 : 0, h.note ?? null],
+            'INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note, brlusd_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              h.id ?? null,
+              h.t ?? null,
+              h.ts ?? null,
+              h.v ?? 0,
+              h.i ?? null,
+              h.p ?? null,
+              h.manual ? 1 : 0,
+              h.note ?? null,
+              h.brlusd_rate ?? null,
+            ],
           );
         }
       }
