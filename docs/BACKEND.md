@@ -1,15 +1,22 @@
 # Backend
 
 The `apps/api` workspace: TypeScript + Express + SQLite (Drizzle ORM) serving
-the portfolio API and the static pages.
+the portfolio API and the built Vue SPA. Renamed from `README-backend.md` in
+Phase 8 so the only file called a README is the root one; the Quickstart table in
+[the root README](../README.md) is the entry point, and this is the detail.
 
 Getting started (dev):
 
 - Install dependencies: run `npm install` from the repository root (npm workspaces)
-- Initialize DB with sample data: npm run migrate:init
-- Run in development mode: npm run dev
-- Build: npm run build
-- Start: npm start
+- Initialize DB with sample data: `npm run seed:local` (the old `migrate:init` is
+  the legacy import path; migrations themselves run automatically on first start)
+- Run in development mode: `npm run dev`
+- Build: `npm run build`
+- Start: `npm start`
+
+Two processes share one database file: the web process (`src/web.ts`) and the
+worker (`src/worker.ts`), which runs the price, history and analytics jobs.
+`src/index.ts` is a compatibility dispatcher for local `APP_ROLE` use.
 
 API notes:
 

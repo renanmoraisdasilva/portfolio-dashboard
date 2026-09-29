@@ -19,6 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Phase 8: the secret scan needs the full history and the local-only
+          # tag. The repository has no remote, so the scan is informational here;
+          # a fork with a remote can drop `fetch-depth: 0` into place.
+          fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -27,6 +32,7 @@ jobs:
       # Phase 7: a PR cannot merge with an unused import or a stray semicolon.
       - run: npm run lint
       - run: npm run format:check
+      - run: npm run scan:secrets
 
   build:
     name: Typecheck and build

@@ -179,7 +179,7 @@ Apply migrations without booting the server with `npm run db:migrate` (dev/CI on
 
 ### API routes
 
-All routes mount at `/api/`. See [openapi.yaml](apps/api/openapi.yaml) and [README-backend.md](docs/README-backend.md) for full documentation. Swagger UI runs at `http://localhost:3000/api/docs`.
+All routes mount at `/api/`. See [openapi.yaml](apps/api/openapi.yaml) and [BACKEND.md](docs/BACKEND.md) for full documentation. Swagger UI runs at `http://localhost:3000/api/docs`.
 
 Key route files and what they own:
 

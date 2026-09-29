@@ -1,156 +1,189 @@
 # Portfolio Dashboard
 
-A full-stack portfolio dashboard repository: a Vue 3 frontend (`apps/web`) being migrated from vanilla pages, and a TypeScript + Express backend.
+A personal portfolio tracker: holdings, cash, trades and performance analytics for a
+multi-currency book (USD, BRL, crypto, equities, ETFs), with price alerts, a
+what-if simulator, and scheduled history/analytics snapshots.
 
-## What is included
+![The dashboard, simulator and analytics pages](docs/dashboard-demo.gif)
 
-- `apps/web/` — the Vue app and the whole user-facing frontend: dashboard at `/`, `/analytics`, `/simulation`.
-- `pages/sql-explorer.html` — the only vanilla page left: a read-only SQL console over `portfolio.db`, gated behind `ENABLE_SQL_EXPLORER`.
-- `apps/api/` — backend implementation with Express, SQLite, routes, migrations, and tests.
-- `packages/shared/` — API types generated from the OpenAPI spec, plus pure domain logic shared by both apps.
-- `apps/api/openapi.yaml` — API specification for the backend endpoints.
-- `docs/` — architecture, server setup, backend API notes, and the modernization plan.
-- `fixtures/` — synthetic sample dataset used for seeding.
+The demo above is not a mock-up. It is the real app, screenshotted by
+`npm run demo:build` against the committed fixture, with prices synthesised from
+the fixture's own buy prices (see [the script](scripts/build-demo-gif.mjs)).
 
-## Project structure
+## Why it exists
 
-This is an npm workspaces monorepo:
+Three things motivated building it, and all three are visible in the code:
 
-```text
-apps/
-  api/           TypeScript + Express + SQLite backend (Drizzle ORM)
-    src/           web.ts, worker.ts, app.ts, routes/, services/, jobs/
-    Dockerfile     multi-stage image build
-    openapi.yaml   OpenAPI 3 spec for the backend API
-  web/           Frontend workspace — Vue 3 + Vite scaffold (empty; Phase 4 of the plan)
-packages/
-  shared/        Shared contracts + domain logic scaffold (empty; Phase 2 of the plan)
-pages/           Static HTML pages served by the backend
-static/          JS and CSS assets for the static pages
-fixtures/        Synthetic seed and import datasets
-docs/            Project documentation
-scripts/         Benchmark and k6 load-test scripts
+1. **Most portfolio trackers assume a single currency and no basis.** A BRL-denominated
+   holding is stored in USD, quoted in BRL, and its _return_ depends on the FX rate
+   at purchase — so every number here carries the currency it is in, and the
+   conversion happens in exactly one place.
+2. **"What if I had sold last year?" needs a real FIFO walk.** The simulator replays
+   trades through the same lot logic the server uses, so a scenario cannot disagree
+   with history.
+3. **The interesting numbers should be computed once.** The dashboard, the API's
+   history snapshots and the analytics service all call the same `computeValuation`
+   in `packages/shared`. Two copies of one rule drift, and the drift only shows up
+   as a chart that disagrees with the number above it.
+
+## Tech stack
+
+| Layer     | Choice                                                      | Why                                                                                                                                           |
+| --------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend  | Vue 3 (Composition API, `<script setup>`), TypeScript, Vite | Three pages, a 400-line store each; the migration was done by strangler pattern so the app was never broken mid-move                          |
+| Charts    | Chart.js, lightweight-charts                                | Doughnut and line charts, plus candlesticks for the per-asset views                                                                           |
+| Backend   | Node 22, Express 4, TypeScript                              | Small, boring, and the whole API is ~20 route modules                                                                                         |
+| Database  | SQLite via Drizzle ORM                                      | One file, one writer, no server to operate — appropriate for a single-user app                                                                |
+| Contracts | OpenAPI 3 → generated TypeScript                            | `npm run api:types` regenerates `paths`; a route that drifts from the spec fails the contract test, and a payload that drifts fails `vue-tsc` |
+| Tests     | Vitest (unit + jsdom), Playwright (browser)                 | One runner for API, web and shared; six smoke tests that drive the built bundle                                                               |
+| Quality   | ESLint 9 flat config, Prettier, five-job CI                 | A PR cannot merge with an unused import, an unformatted file or a red image                                                                   |
+| Telemetry | OpenTelemetry → SigNoz                                      | Request spans on the existing endpoints; no vendor lock-in in the code                                                                        |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser[Vue SPA<br/>apps/web]
+  subgraph App[Node process]
+    Express[Express app]
+    Shared["packages/shared<br/>computeValuation · FIFO lots"]
+  end
+  DB[(portfolio.db<br/>SQLite + Drizzle)]
+  Worker[Worker process<br/>prices · history · analytics]
+  Providers[CoinGecko · Yahoo<br/>ExchangeRate · Home Assistant]
+
+  Browser -->|/api/*| Express
+  Express --> Shared
+  Express --> DB
+  Worker --> Shared
+  Worker --> DB
+  Worker --> Providers
 ```
 
-`apps/web` and `packages/shared` are workspace placeholders only — they contain a
-`package.json` and nothing else until Phases 4 and 2 of
-`docs/MODERNIZATION-PLAN.md` fill them in.
+One database, two processes: the web process serves HTTP, the worker runs the
+scheduled jobs. Both use the domain logic in `packages/shared`, so a snapshot
+written at 3pm and a dashboard rendered at 3:01pm are computed by the same code.
+See [docs/ARCHITECTURE-OVERVIEW.md](docs/ARCHITECTURE-OVERVIEW.md) for the
+schema, the caching layers and the scaling path.
 
-- `apps/api/package.json` — backend install and runtime scripts
-- `apps/api/tsconfig.json` — TypeScript config
-- `vitest.config.ts` - one test runner for the whole workspace (API, web, shared)
-- `package.json` — workspace root: `dev`, `build`, `test`, `check`
-
-## Getting started
-
-### Backend
-
-Run from the repository root:
+## Quick start
 
 ```bash
+git clone https://github.com/<you>/portfolio-dashboard.git
+cd portfolio-dashboard
 npm install
-npm run migrate:init   # optional: import fixtures/portfolio_data.json into an empty DB
-npm run dev
+npm run seed:local        # import the synthetic fixture into an empty database
+npm run dev               # http://localhost:3000
 ```
 
-- `npm run migrate:init` initializes SQLite tables and applies migrations.
-- `npm run dev` starts the backend in development mode with hot reload.
-- `npm run start:web` starts only the web process from compiled output.
-- `npm run start:worker` starts only the scheduled-work process from compiled output.
+Migrations run automatically on first start. `npm run seed:local` is optional —
+without it you get an empty portfolio, and the pages render their empty states.
 
-### Dashboard load workflow
-
-The k6 workflow models the dashboard's initial request sequence and reports
-request failures plus end-to-end workflow latency. Start the local stack first,
-then run k6 from the repository root:
-
-```bash
-k6 run scripts/k6/dashboard-workflow.js
-```
-
-Set `BASE_URL`, `VUS`, `RAMP_UP`, `STEADY`, and `RAMP_DOWN` to adjust the test.
-The default thresholds are less than 1% failed requests and a workflow p95
-below 500 ms.
-
-To run it with a SigNoz instance available on the Docker host:
-
-```bash
-docker compose -f docker-compose.local.yml up -d --build
-BASE_URL=http://localhost:3000 k6 run scripts/k6/dashboard-workflow.js
-```
-
-### Local Docker with sample data
-
-The local Compose file keeps data in the `portfolio-data` volume and starts a
-one-shot seed container automatically after the web service is healthy:
+With Docker, sample data included:
 
 ```bash
 docker compose -f docker-compose.local.yml up -d --build
 ```
 
-The seed imports the sample portfolio from `fixtures/portfolio_data.json`
-and skips automatically if the database already contains data. To start over,
-remove the local volume first and start the stack again:
+To work on the frontend with hot reload (proxies `/api` to `:3000`):
 
 ```bash
-docker compose -f docker-compose.local.yml down -v
+npm run dev:web           # http://localhost:5173
 ```
 
-### Frontend
+## Development
 
-The frontend is static HTML, CSS and plain JavaScript with no build step: four
-pages under `pages/`, their scripts and stylesheets under `static/`. Start the
-backend and open `http://localhost:3000` — it serves both the pages and the
-`/api/*` endpoints they call, so opening the HTML over `file://` will render
-the layout but not the data.
+| Command                                 | What it does                                           |
+| --------------------------------------- | ------------------------------------------------------ |
+| `npm run dev`                           | API with hot reload, on `:3000`                        |
+| `npm run dev:web`                       | Vite dev server, on `:5173`                            |
+| `npm run build`                         | shared → API → web                                     |
+| `npm test`                              | Vitest across all three workspaces (408 tests)         |
+| `npm run test:coverage`                 | …with coverage against the 80% gate                    |
+| `npm run test:e2e`                      | Playwright smoke tests (needs a build first)           |
+| `npm run lint` / `npm run format:check` | ESLint and Prettier                                    |
+| `npm run check`                         | everything CI verifies, in one command                 |
+| `npm run scan:secrets`                  | asserts no data or credential ever entered git history |
+| `npm run demo:build`                    | regenerates the GIF above from the real app            |
+| `npm run api:types`                     | regenerate the typed client from `openapi.yaml`        |
+| `npm run db:generate`                   | generate a Drizzle migration after editing `schema.ts` |
 
-## Backend API docs
+Two processes, one database. In development `npm run dev` starts only the web
+process; the worker is a separate entry point (`npm run start:worker`) because the
+scheduled jobs are the part you least want running while you are editing.
 
-- The backend API is documented in `apps/api/openapi.yaml`.
-- Swagger UI is available at `http://localhost:3000/api/docs` when the backend is running.
-- Backend-specific usage notes are in `docs/README-backend.md`.
+## API
 
-## Testing
+- `apps/api/openapi.yaml` is the contract; Swagger UI is at `/api/docs`.
+- `GET /api/portfolio/valuation?cash=with-cash|investments` is the one to read first:
+  it returns totals, invested cost, realized and unrealized P/L, one row per
+  position and per cash balance, and the allocation split — all computed
+  server-side, with each amount stating the currency it is in.
+- A trade creates a matching cash entry, so the cash ledger and the trade list can
+  never disagree.
+- The SQL Explorer is closed unless `ENABLE_SQL_EXPLORER=true`; it is arbitrary SQL
+  over the database, and that is not something to ship open by default.
 
-Run the whole unit suite from the repository root (Vitest, across the API, the
-web app and the shared package):
+More in [docs/BACKEND.md](docs/BACKEND.md).
 
-```bash
-npm test
-```
+## What I'd do differently
 
-To run coverage:
+This repository is the product of migrating a working app rather than writing a new
+one, and the seams show. In rough order of how much they cost:
 
-```bash
-npm run test:coverage
-```
+- **The strangler pattern was the right call and I would do it again**, but the
+  redirect map (`migratedPages` in `app.ts`) and the `LegacyHandoff` card existed
+  for two phases and are now nearly dead code. A rewrite would have been faster
+  overall for four pages; the pattern earns its keep when the legacy surface is
+  bigger than this one was.
+- **The test suite arrived too late.** For six phases, "does it still work?" meant
+  opening the page and reading the numbers. Phase 7 added Vitest and Playwright,
+  which immediately found a live bug (`request()` swallowed network failures) that
+  several careful manual passes had missed. Unit tests for the Pinia stores should
+  have been written alongside the first component, not after the last one.
+- **Two database defects sat in `POST /api/state/import` for the whole life of the
+  app**: it wrote a column dropped years earlier, so every restore failed; and
+  `interest` has no unique key, so restoring a backup _doubled_ every interest
+  month. Neither was a design error — they were code nobody ran. The fix was two
+  lines each, found only by testing the restore path against itself.
+- **`packages/shared` should have existed on day one.** The money helpers and the
+  FIFO walk were duplicated in three files before Phase 2 moved them, and the
+  dashboard spent Phase 6 deleting a second copy of the valuation rules it had
+  written in Phase 5.
+- **SQLite was the right call and is also the ceiling.** A single file with a
+  single writer is exactly right for one person's portfolio, and it removes an
+  entire class of operational work. It also means the history snapshot job cannot
+  overlap with a heavy export, and the write path is serialised. If this ever
+  served more than one user, Postgres is the first change — the Drizzle schema
+  would carry over unchanged, which is the main reason to use an ORM here.
+- **Alerting by webhook was under-designed.** The alert engine evaluates
+  thresholds and posts to Home Assistant, but there is no record of _why_ an alert
+  fired beyond the current and previous price. A small `alert_events` table would
+  make the history of the portfolio much easier to explain.
 
-Browser smoke tests, which drive the built app in Chromium against a throwaway
-database seeded from the fixture (see [e2e/README.md](e2e/README.md)):
+## Documentation
 
-```bash
-npm run build      # the suite runs dist/, not ts-node
-npm run test:e2e
-```
+| Document                                                       | For                                                                                       |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [AGENTS.md](AGENTS.md)                                         | Conventions, architecture and the pitfalls list — read this before changing anything      |
+| [docs/ARCHITECTURE-OVERVIEW.md](docs/ARCHITECTURE-OVERVIEW.md) | Schema, caching, processes, scaling path                                                  |
+| [docs/BACKEND.md](docs/BACKEND.md)                             | API behaviour, the two-process model, deployment notes                                    |
+| [docs/SERVER-SETUP.md](docs/SERVER-SETUP.md)                   | Ubuntu, Docker and Dokploy deployment                                                     |
+| [docs/HOME_ASSISTANT_SETUP.md](docs/HOME_ASSISTANT_SETUP.md)   | Alert notifications                                                                       |
+| [docs/MODERNIZATION-PLAN.md](docs/MODERNIZATION-PLAN.md)       | The eight-phase migration, what was decided and why, and the open questions for the owner |
+| [e2e/README.md](e2e/README.md)                                 | Browser tests: how to run them and what not to assert                                     |
+| [scripts/README.md](scripts/README.md)                         | Benchmarks and the k6 load test                                                           |
 
-To verify everything CI verifies — lint, formatting, build and tests:
+## A note on the data
 
-```bash
-npm run check
-```
+Everything in `fixtures/` is synthetic: 14 invented trades, invented cash
+balances, invented snapshots. The real portfolio data that lived in this
+repository was removed from **every commit** before it was made public, and
+`npm run scan:secrets` checks that on every run — the database, the old backup
+directory, the exported JSON, and any credential-shaped string in a tracked file.
+If that script ever fails, the answer is not to delete the file; it is to rewrite
+the history, because the secret is already in the clone.
 
-## Notes
+## License
 
-- The backend uses SQLite and stores data in `apps/api/data/`.
-- For a containerized deployment, the backend Dockerfile is in `apps/api/Dockerfile`.
-
-## Additional resources
-
-- `docs/README-backend.md` — backend API documentation
-- `apps/api/openapi.yaml` — OpenAPI endpoint definitions and schemas
-- `docs/ARCHITECTURE-OVERVIEW.md` — architecture, caching layers and schema diagrams
-- `docs/SERVER-SETUP.md` — Ubuntu, Docker and Dokploy deployment
-- `docs/HOME_ASSISTANT_SETUP.md` — alert notifications via Home Assistant
-- `docs/MODERNIZATION-PLAN.md` — phased plan for moving the static frontend to Vue 3 + Vite
-- `AGENTS.md` — conventions and pitfalls for working on this codebase
-- `fixtures/` — synthetic dataset used for seeding
+MIT — see [LICENSE](LICENSE).
