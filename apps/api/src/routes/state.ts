@@ -74,14 +74,15 @@ stateRouter.post('/import', async (req, res) => {
           // No `profit` column: it was dropped in migration 0003, and writing it
           // made every restore fail with "table trades has no column named
           // profit". Exported backups may still carry the field; it is ignored.
-          await run('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
-            t.id ?? null,
-            t.symbol,
-            t.side,
-            t.qty,
-            t.price ?? null,
-            t.time,
-          ]);
+          //
+          // `cash_entry_id` is restored so that deleting a restored trade still
+          // reverses its cash movement. It is null in backups taken before that
+          // column existed, and nulling it is safe: there is no link to follow,
+          // so nothing is reversed.
+          await run(
+            'INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time, cash_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [t.id ?? null, t.symbol, t.side, t.qty, t.price ?? null, t.time, t.cash_entry_id ?? t.cashEntryId ?? null],
+          );
         }
       }
       if (payload.history && Array.isArray(payload.history)) {

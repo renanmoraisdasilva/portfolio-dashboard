@@ -1,0 +1,1 @@
+ALTER TABLE `trades` ADD `cash_entry_id` text;

@@ -178,6 +178,8 @@ Apply migrations without booting the server with `npm run db:migrate` (dev/CI on
 
 **Never** add ad-hoc `ALTER TABLE` calls to `db.ts` for portfolio.db.
 
+`trades` also carries `cash_entry_id`, which is not about the schema's shape but about a correctness rule: **every column list that writes a `trades` row must include it**, or the trade loses the link to the cash movement it created and deleting it strands that cash. That applies to `routes/trades.ts` and to `POST /api/state/import` — a restore that drops the column silently reintroduces the leak the column was added to close. The export uses `SELECT *` and needs no change.
+
 ### API routes
 
 All routes mount at `/api/`. See [openapi.yaml](apps/api/openapi.yaml) and [BACKEND.md](docs/BACKEND.md) for full documentation. Swagger UI runs at `http://localhost:3000/api/docs`.
@@ -259,14 +261,28 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
   trade history renders; and the trades must be **time-ordered** (`ORDER BY time
 ASC`, never rowid — on this database they differ), because a FIFO walk on
   unsorted input produces a plausible wrong number rather than an error.
-- **Deleting a trade does not reverse its cash entry.** `POST /api/trades` writes
-  a `cash` row through `createAutoCashEntry`; `DELETE /api/trades/:id` removes
-  only the `trades` row. So every deleted trade leaves its proceeds in cash
-  permanently, inflating cash, `invested` and therefore `total` — delete a $600
-  sale and the portfolio is $600 too rich forever. Pre-existing, not introduced
-  by the realized-P/L work. It cannot be fixed cheaply because `cash` has no
-  `trade_id` column to join on, so it needs a migration on a financial table;
-  see ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
+- **`trades.cash_entry_id` is the only link between a trade and the cash it
+  moved.** `POST /api/trades` writes a `cash` row through `createAutoCashEntry`
+  and stores its id on the trade, and `DELETE /api/trades/:id` removes both in
+  one transaction. Before that column existed, delete removed only the trade, so
+  every deleted trade left its proceeds in the balance permanently — cash,
+  `invested` and `total` each inflated by the sale amount, never coming back
+  down. The link lives on the trade, not as a `trade_id` on `cash`, because a
+  trade produces at most one cash row while `cash` also holds hand-entered
+  adjustments that belong to no trade. It is **null** for trades the fixture
+  import wrote and for any trade restored from a backup predating the column;
+  deleting those reverses nothing, which is correct. `POST /api/state/import`
+  restores the column — without that, a round trip through a backup would
+  silently reintroduce the leak. The cash entry is created _before_ the trade
+  row, so the link lands in the same INSERT and there is no window where a
+  delete could miss it.
+- **A rejected trade's status travels with the message, not inside it.**
+  `validateTradeRequest` returns `{ status, message }`; it used to derive the
+  status from `error.includes('currency') ? 409 : 400`, and neither message
+  contains the word "currency", so the 409 could never fire — taking
+  `ApiError.isConflict` on the client with it, which is documented as covering
+  exactly this case. A status that depends on message wording breaks the moment
+  someone rewords the message.
 - **`analyticsService` reads `interest` unfiltered and books anything that is not
   BRL as USD.** `row.currency === 'BRL' ? amount * brlRate : amount`, so a row in
   a third currency is silently counted at 1:1. The one stray EUR row that did

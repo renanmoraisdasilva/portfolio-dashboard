@@ -9,6 +9,22 @@ export const trades = sqliteTable(
     qty: real('qty').notNull(),
     price: real('price'),
     time: text('time').notNull(),
+    /**
+     * The `cash` row this trade created, so deleting the trade can reverse it.
+     *
+     * `POST /api/trades` writes a cash movement for every trade, but
+     * `DELETE /api/trades/:id` used to remove only the trade — so a deleted
+     * trade's proceeds stayed in the balance permanently, inflating cash,
+     * `invested` and `total` forever. The link lives on the trade rather than as
+     * a `trade_id` on `cash` because a trade produces at most one cash row,
+     * while `cash` also holds hand-entered adjustments that belong to no trade.
+     *
+     * Null for trades that have no cash entry: the six imported from the fixture
+     * (the import path writes trades without cash movements), and any trade
+     * restored from a backup taken before this column existed. Deleting those
+     * reverses nothing, which is correct — there is nothing of ours to undo.
+     */
+    cashEntryId: text('cash_entry_id'),
   },
   (t) => [index('idx_trades_time').on(t.time)],
 );

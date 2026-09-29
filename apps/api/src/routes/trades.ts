@@ -22,24 +22,44 @@ function getAssetCurrency(symbol: string): 'USD' | 'BRL' {
   return asset.denominatedInBRL ? 'BRL' : 'USD';
 }
 
+/**
+ * A rejected request, with the status to answer it with.
+ *
+ * The status travels with the message rather than being derived from it. It used
+ * to be `error.includes('currency') ? 409 : 400`, and neither message contains
+ * the word "currency" - so the 409 was unreachable, and with it the 409 handling
+ * on the client (`ApiError.isConflict`) that is documented as covering exactly
+ * this case. A status that depends on message wording breaks the moment someone
+ * rewords the message.
+ */
+interface TradeValidationError {
+  status: number;
+  message: string;
+}
+
 function validateTradeRequest(
   symbol: string,
   side: string,
   qty: number,
   price: number | null,
   cashSource?: string,
-): string | null {
+): TradeValidationError | null {
   if (!symbol || !side || !qty) {
-    return 'Missing required fields';
+    return { status: 400, message: 'Missing required fields' };
   }
 
   if (side === 'sell' && (price === undefined || price === null)) {
-    return 'Price required for sell trades';
+    return { status: 400, message: 'Price required for sell trades' };
   }
 
   const assetCurrency = getAssetCurrency(symbol);
   if (cashSource && cashSource !== assetCurrency) {
-    return `Asset ${symbol} uses ${assetCurrency}, but ${cashSource} selected as cash source`;
+    // 409: the request is well-formed and the asset is tradeable, it conflicts
+    // with the cash source chosen for it.
+    return {
+      status: 409,
+      message: `Asset ${symbol} uses ${assetCurrency}, but ${cashSource} selected as cash source`,
+    };
   }
 
   return null;
@@ -92,24 +112,28 @@ tradesRouter.post('/', async (req, res) => {
 
     const validationError = validateTradeRequest(symbol, side, qty, price, cashSource);
     if (validationError) {
-      const status = validationError.includes('currency') ? 409 : 400;
-      return res.status(status).json({ error: validationError });
+      return res.status(validationError.status).json({ error: validationError.message });
     }
 
     const id = randomUUID();
     const t = time || new Date().toISOString();
 
-    await run('INSERT INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
+    // The cash entry is created first so its id can be stored on the trade in
+    // the same INSERT. The other order leaves a window where the trade exists
+    // with no link, and a delete in that window would leave the cash behind -
+    // which is the bug this link exists to close.
+    const cashEntry = await createAutoCashEntry(symbol, side, qty, price, t);
+
+    await run('INSERT INTO trades (id, symbol, side, qty, price, time, cash_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?)', [
       id,
       symbol,
       side,
       qty,
       price ?? null,
       t,
+      cashEntry?.id ?? null,
     ]);
     const row = await get('SELECT * FROM trades WHERE id = ?', [id]);
-
-    const cashEntry = await createAutoCashEntry(symbol, side, qty, price, t);
 
     res.status(201).json({ trade: row, cashEntry });
 
@@ -125,7 +149,28 @@ tradesRouter.post('/', async (req, res) => {
 tradesRouter.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    await run('DELETE FROM trades WHERE id = ?', [id]);
+    // Reverse the cash movement the trade created, in the same transaction as
+    // removing the trade. Before `trades.cash_entry_id` existed this deleted
+    // only the trade, so every deleted trade left its proceeds in the balance
+    // permanently: cash, `invested` and `total` were each inflated by the sale
+    // amount and never came back down.
+    //
+    // A null link means the trade created no cash row of ours — a fixture import,
+    // or a restore from a backup predating the column — and there is then
+    // nothing to reverse. Hand-entered cash adjustments are never touched,
+    // because no trade points at them.
+    const trade = await get<{ cash_entry_id: string | null }>('SELECT cash_entry_id FROM trades WHERE id = ?', [id]);
+    await run('BEGIN TRANSACTION');
+    try {
+      await run('DELETE FROM trades WHERE id = ?', [id]);
+      if (trade?.cash_entry_id) {
+        await run('DELETE FROM cash WHERE id = ?', [trade.cash_entry_id]);
+      }
+      await run('COMMIT');
+    } catch (txErr) {
+      await run('ROLLBACK');
+      throw txErr;
+    }
     res.status(204).send();
     computeAndInsertHistoryPoint({ note: 'post-trade-delete' }).catch((err) =>
       console.error('History snapshot after trade delete failed', err),
