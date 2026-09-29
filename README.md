@@ -136,7 +136,7 @@ one, and the seams show. In rough order of how much they cost:
   for two phases and are now nearly dead code. A rewrite would have been faster
   overall for four pages; the pattern earns its keep when the legacy surface is
   bigger than this one was.
-- **The test suite arrived too late.** For six phases, "does it still work?" meant
+- **The test suite arrived too late.** For phase after phase, "does it still work?" meant
   opening the page and reading the numbers. Phase 7 added Vitest and Playwright,
   which immediately found a live bug (`request()` swallowed network failures) that
   several careful manual passes had missed. Unit tests for the Pinia stores should

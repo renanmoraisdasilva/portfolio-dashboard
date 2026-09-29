@@ -224,7 +224,7 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
   having `historyManager` and the dashboard read that. **This is an open decision
   for the repo owner, not a bug to fix on the fly** — see
   ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
-- **Asset chart cache** is a rolling-window snapshot stored in the `asset_chart_cache` table (previously `asset_history`). It is **not immutable** — rows can be overwritten. See [memories/repo/asset-history-caching.md](memories/repo/asset-history-caching.md) for context.
+- **Asset chart cache** is a rolling-window snapshot stored in the `asset_chart_cache` table (previously `asset_history`). It is **not immutable** - rows are overwritten in place, so a backfill rewrites history rather than extending it. The table was renamed by migration, not recreated, and the old name still appears in older SQL comments.
 - **`price_ticks` grows indefinitely** — never query it without a WHERE clause on the indexed `(symbol, ts)` columns. Full table scans will be slow once the table contains months of 8-minute ticks across all symbols.
 - **Backfill migrations are now HTTP routes** (`POST /api/migrations/backfill-cash`, `POST /api/migrations/backfill-prices`) exposed via the Settings UI in `index.html`. The standalone `migrate-backfill-*.ts` scripts no longer exist. The backfill-cash logic lives in `routes/migrations.ts` + `services/cashBackfill.ts`.
 - **Bond symbols (`type: 'bond'`) are absent from `price_ticks` history** before the migration date — the Yahoo backfill script skips them. `recomputeHistoryAt(ts)` will throw if asked to recompute a timestamp before the first non-bond price tick exists.
