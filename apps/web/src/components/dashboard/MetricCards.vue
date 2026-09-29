@@ -28,10 +28,10 @@ function brlOf(usdValue: number): string {
     <div class="metric-card">
       <div class="metric-label">Total Invested</div>
       <div class="metric-value">
-        {{ store.usd(m.tickerValue) }}<br />
-        <span class="metric-sub-line">{{ brlOf(m.tickerValue) }}</span>
+        {{ store.usd(m.invested) }}<br />
+        <span class="metric-sub-line">{{ brlOf(m.invested) }}</span>
       </div>
-      <div class="metric-change neutral">{{ m.investedPct.toFixed(2) }}% invested</div>
+      <div class="metric-change neutral">{{ m.investedShareOfTotal.toFixed(2) }}% of current value</div>
     </div>
 
     <div class="metric-card">

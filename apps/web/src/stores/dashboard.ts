@@ -226,15 +226,28 @@ export const useDashboardStore = defineStore(
 
     const metrics = computed(() => {
       const v = valuation.value;
+      const total = v?.total ?? 0;
+      const invested = v?.invested ?? 0;
       return {
-        total: v?.total ?? 0,
-        invested: v?.invested ?? 0,
+        total,
+        invested,
         investedNet: v?.investedNet ?? 0,
         realized: v?.realized ?? 0,
         unrealized: v?.unrealized ?? 0,
         unrealizedPct: v?.unrealizedPct ?? 0,
         tickerValue: v?.tickerValue ?? 0,
         investedPct: v?.investedPct ?? 0,
+        /**
+         * The cost basis as a share of what the portfolio is worth now, for the
+         * "Total Invested" card's sub-line.
+         *
+         * Not the server's `investedPct`, which is a different and separately
+         * tested quantity: that one is the share of the portfolio sitting in
+         * tickers, excluding cash and the BRLUSD pair. This is cost basis over
+         * total, which is what makes the card legible next to "Net invested" -
+         * the two then differ by exactly the realized figure.
+         */
+        investedShareOfTotal: total > 0 ? (invested / total) * 100 : 0,
         breakEven: v?.breakEven ?? true,
         salesCount: v?.salesCount ?? 0,
       };

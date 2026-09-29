@@ -105,6 +105,17 @@ describe('dashboard store — a healthy server', () => {
     expect(store.metrics.investedNet).toBe(38_548.88);
     expect(store.metrics.realized).toBe(3_959.01);
     expect(store.metrics.salesCount).toBe(0);
+    // "Total Invested" is the cost basis, and it has to sit above "Net invested"
+    // by exactly the realized figure. It used to render `tickerValue` here, which
+    // made the card read $20,283.13 beside a "Net invested" of $38,548.88 - a net
+    // figure 190% of the gross one, which cannot both be true.
+    expect(store.metrics.invested).toBe(42_507.89);
+    expect(store.metrics.invested - store.metrics.investedNet).toBeCloseTo(store.metrics.realized, 6);
+    expect(store.metrics.investedShareOfTotal).toBeCloseTo((42_507.89 / 42_635.13) * 100, 6);
+    // ...and it is not the server's `investedPct`, which is the share at risk in
+    // tickers: a different quantity, separately tested in the shared package.
+    expect(store.metrics.investedPct).toBe(47.57);
+    expect(store.metrics.investedShareOfTotal).not.toBeCloseTo(store.metrics.investedPct, 1);
     // The legacy table printed position amounts without a thousands separator —
     // `formatMoney` is for the metric cards. What matters here is the sign and
     // the two decimals, so the exact string is pinned to that behaviour.
