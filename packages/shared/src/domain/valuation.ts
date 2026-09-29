@@ -8,10 +8,11 @@
  * at all. Both call this, and so does `GET /api/portfolio/valuation`, so the
  * number a browser renders is the number the API would have computed.
  *
- * Realized P/L arrives as an *input* rather than being derived here, because the
- * callers trust different sources: the API reads the `profit` column the server
- * recorded on each sell (see `realizedFromTradeProfit`), while the simulator
- * replays lots because its trades do not exist in the database yet.
+ * Realized P/L from sales arrives as an *input* rather than being derived here,
+ * because this function must also value a portfolio that does not exist yet: the
+ * simulator's what-if trades. Callers that have real trades should derive it with
+ * `computeRealizedFromSales` and pass the result, so that the server, the
+ * snapshot writer and the simulator cannot disagree about it.
  *
  * Pure: no DOM, no database, no clock. The FIFO walk itself stays in
  * `portfolio.ts` — this module composes it rather than repeating it, because two
@@ -127,6 +128,91 @@ export interface ValuationResult {
 
 function sum(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
+}
+
+/** A trade as the FIFO walk needs it, plus the id used to report P/L per sell. */
+export interface RealizedSaleTrade {
+  id?: string;
+  symbol: string;
+  side: string;
+  qty: number;
+  price?: number | null;
+}
+
+export interface RealizedFromSales {
+  /**
+   * Realized P/L booked by sells, in USD. This is the number `computeValuation`
+   * wants as `realizedFromSells`, so the two cannot disagree about currency.
+   */
+  totalUsd: number;
+  /**
+   * Realized P/L per sell, keyed by trade id, **in the symbol's own currency** —
+   * BRL for BOVA11, USD for a bond (which is stored in USD and quoted in BRL).
+   * Buys are absent, and a sell that consumed no lot is 0.
+   *
+   * Native rather than USD on purpose: this replaces the `trades.profit` column,
+   * which was recorded per trade in the asset's own currency, and the trade
+   * history renders each row in that currency. Only the *total* has to be one
+   * currency, because only the total is added to the portfolio figures.
+   */
+  nativeByTradeId: Record<string, number>;
+}
+
+/**
+ * Realized P/L from sales, derived from the FIFO walk.
+ *
+ * One function, because the alternative was three copies of the same idea
+ * disagreeing: `GET /api/portfolio/valuation` and the two snapshot paths in
+ * `historyManager` each had their own `trades.profit` sum, and once the column
+ * was dropped in migration 0003 all three silently returned zero while every
+ * downstream figure (realized P/L, invested net, the analytics) stayed
+ * internally consistent and wrong together.
+ *
+ * Two rules that are easy to get wrong, and are the reason this is shared rather
+ * than inlined:
+ *
+ * 1. **Currency.** A FIFO gain is in the *symbol's* currency. A BRL-denominated
+ *    stock (BOVA11, IVVB11) realizes BRL, and adding that to a USD total would
+ *    be wrong by the exchange rate. `isBRLNonBond` is the same test
+ *    `computeValuation` uses for invested cost, so cost and gain convert
+ *    identically. A *bond* is stored in USD and quoted in BRL, so its trades are
+ *    already USD and must not be converted — hence non-bond.
+ * 2. **Order.** The walk is only correct over chronologically ordered trades;
+ *    on unsorted input it produces a plausible wrong number rather than an
+ *    error. Callers must pass trades ordered oldest first. In SQLite that means
+ *    `ORDER BY time ASC` — *not* rowid order, which differs on this database.
+ *
+ * Pure: no clock, no database. `trades` must be time-ordered; `fallbackPrices`
+ * prices a trade that has no explicit price, exactly as the walk does for lots.
+ */
+export function computeRealizedFromSales(
+  trades: readonly RealizedSaleTrade[],
+  symbols: SymbolMap,
+  brlUsdRate: number,
+  fallbackPrices: Record<string, number> = {},
+): RealizedFromSales {
+  const calculator = createPortfolioCalculator(symbols);
+  const { realizedByTradeIndex } = calculator.replayTradesWithRealized(
+    trades.map((t) => ({ symbol: t.symbol, side: t.side, qty: t.qty, price: t.price ?? null })),
+    fallbackPrices,
+  );
+  // Same 1:1 fallback as `computeValuation`: a missing BRLUSD must not make a
+  // BRL gain vanish, and must not turn a small one into a large one either.
+  const rate = brlUsdRate || 1;
+
+  let totalUsd = 0;
+  const nativeByTradeId: Record<string, number> = {};
+  trades.forEach((trade, index) => {
+    if (trade.side !== 'sell') return;
+    const native = realizedByTradeIndex[index] ?? 0;
+    // Only a BRL-denominated *non-bond* needs converting. A bond is stored in
+    // USD and quoted in BRL, so its trades are already USD — the same test
+    // `computeValuation` applies to invested cost, so cost and gain agree.
+    totalUsd += calculator.isBRLNonBond(trade.symbol) ? brlToUSD(native, rate) : native;
+    if (trade.id) nativeByTradeId[trade.id] = native;
+  });
+
+  return { totalUsd, nativeByTradeId };
 }
 
 export function computeValuation(input: ValuationInput): ValuationResult {

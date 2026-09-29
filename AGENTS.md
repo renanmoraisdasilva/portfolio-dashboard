@@ -246,15 +246,32 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
   install also silently reverts the _declared_ version while `node_modules`
   keeps the new one, and the next `npm install` puts the old one back — which is
   how a Playwright upgrade can appear to have worked and then vanish.
-- **`trades.profit` does not exist.** The column was dropped in migration
-  `0003_cheerful_rocket_raccoon.sql`, so realized P/L from sales is zero
-  everywhere: in the dashboard's "Realized P/L" card, in `historyManager`'s
-  snapshots, and in `analyticsService`. What those figures show is interest only.
-  The trade-history "Profit" column is permanently `-` for the same reason.
-  Restoring the capability means deriving it from the FIFO walk in one place and
-  having `historyManager` and the dashboard read that. **This is an open decision
-  for the repo owner, not a bug to fix on the fly** — see
-  ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
+- **`trades.profit` does not exist, and realized P/L from sales is derived, not
+  stored.** The column was dropped in migration `0003_cheerful_rocket_raccoon.sql`,
+  so for a while realized P/L from sales was zero everywhere while every
+  downstream figure stayed internally consistent and wrong together.
+  `computeRealizedFromSales` in `packages/shared/src/domain/valuation.ts` is now
+  the single derivation, and the valuation route, both `historyManager` snapshot
+  paths and `GET /api/trades` all go through it. Two rules it exists to enforce:
+  a BRL-denominated symbol's gain is converted to USD for the _total_ using
+  `isBRLNonBond` — a bond is stored in USD and must not be converted — while the
+  per-trade `profit` stays in the symbol's own currency, because that is what the
+  trade history renders; and the trades must be **time-ordered** (`ORDER BY time
+ASC`, never rowid — on this database they differ), because a FIFO walk on
+  unsorted input produces a plausible wrong number rather than an error.
+- **Deleting a trade does not reverse its cash entry.** `POST /api/trades` writes
+  a `cash` row through `createAutoCashEntry`; `DELETE /api/trades/:id` removes
+  only the `trades` row. So every deleted trade leaves its proceeds in cash
+  permanently, inflating cash, `invested` and therefore `total` — delete a $600
+  sale and the portfolio is $600 too rich forever. Pre-existing, not introduced
+  by the realized-P/L work. It cannot be fixed cheaply because `cash` has no
+  `trade_id` column to join on, so it needs a migration on a financial table;
+  see ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
+- **`analyticsService` reads `interest` unfiltered and books anything that is not
+  BRL as USD.** `row.currency === 'BRL' ? amount * brlRate : amount`, so a row in
+  a third currency is silently counted at 1:1. The one stray EUR row that did
+  exist has been deleted; the _conversion_ is still the fragile part, and a
+  `uniqueIndex` or a currency check on `interest` would be the durable fix.
 - **Asset chart cache** is a rolling-window snapshot stored in the `asset_chart_cache` table (previously `asset_history`). It is **not immutable** - rows are overwritten in place, so a backfill rewrites history rather than extending it. The table was renamed by migration, not recreated, and the old name still appears in older SQL comments.
 - **`price_ticks` grows indefinitely** — never query it without a WHERE clause on the indexed `(symbol, ts)` columns. Full table scans will be slow once the table contains months of 8-minute ticks across all symbols.
 - **Backfill migrations are now HTTP routes** (`POST /api/migrations/backfill-cash`, `POST /api/migrations/backfill-prices`) exposed via the Settings UI in `index.html`. The standalone `migrate-backfill-*.ts` scripts no longer exist. The backfill-cash logic lives in `routes/migrations.ts` + `services/cashBackfill.ts`.

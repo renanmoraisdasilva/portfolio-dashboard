@@ -933,6 +933,13 @@ components:
         time:
           type: string
           format: date-time
+        profit:
+          type: number
+          description: >-
+            Realized P/L this sell booked, in the symbol's own currency. Derived
+            by the server from the FIFO walk on every read, not stored: the
+            `trades.profit` column was dropped in migration 0003. Present on
+            sells only, and 0 for a sell with no lot behind it.
     HistoryPoint:
       type: object
       properties:

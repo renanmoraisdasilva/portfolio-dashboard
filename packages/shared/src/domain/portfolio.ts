@@ -41,6 +41,15 @@ export interface ReplayResult {
   positions: Record<string, number>;
   /** Realized P/L booked by sells, priced at the sell price. */
   realized: number;
+  /**
+   * Realized P/L per input trade, aligned by index: `realizedByTradeIndex[i]` is
+   * what `trades[i]` booked. Buys and sells that consumed no lot are 0.
+   *
+   * Index-aligned rather than keyed by id because this walk does not require ids
+   * — the simulator's trades have never been in the database. `sum` equals
+   * `realized`, so a caller that only needs the total can keep reading that.
+   */
+  realizedByTradeIndex: number[];
 }
 
 export interface PortfolioCalculator {
@@ -51,8 +60,9 @@ export interface PortfolioCalculator {
   ): Record<string, LotEntry[]>;
   /**
    * The same FIFO walk as `replayFIFOLots`, but also books realized P/L as
-   * sells consume lots. The simulator needs that; the history manager does not
-   * — it reads realized P/L from the `trades.profit` column instead.
+   * sells consume lots, per trade as well as in total. Used by the simulator,
+   * whose trades are not in the database, and by `computeRealizedFromSales`,
+   * which every server-side consumer of realized P/L goes through.
    */
   replayTradesWithRealized(
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
@@ -96,28 +106,34 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
   ): ReplayResult {
     const lots: Record<string, LotEntry[]> = {};
     let realized = 0;
-    for (const t of trades) {
+    const realizedByTradeIndex: number[] = new Array(trades.length).fill(0);
+    for (let index = 0; index < trades.length; index++) {
+      const t = trades[index];
       if (!lots[t.symbol]) lots[t.symbol] = [];
       if (t.side === 'buy') {
         lots[t.symbol].push({ qty: t.qty, price: t.price ?? fallbackPrices[t.symbol] ?? 0 });
       } else if (t.side === 'sell') {
         let qtyToSell = t.qty;
         const price = t.price ?? fallbackPrices[t.symbol] ?? 0;
+        let booked = 0;
         while (qtyToSell > 0 && lots[t.symbol].length > 0) {
           const lot = lots[t.symbol][0];
           const used = Math.min(lot.qty, qtyToSell);
-          realized += used * (price - lot.price);
+          const gain = used * (price - lot.price);
+          realized += gain;
+          booked += gain;
           lot.qty -= used;
           qtyToSell -= used;
           if (lot.qty <= 0) lots[t.symbol].shift();
         }
+        realizedByTradeIndex[index] = booked;
       }
     }
     const positions: Record<string, number> = {};
     for (const s of Object.keys(lots)) {
       positions[s] = lots[s].reduce((a, b) => a + b.qty, 0);
     }
-    return { lots, positions, realized };
+    return { lots, positions, realized, realizedByTradeIndex };
   }
 
   function computePortfolioValue(input: PortfolioInput): PortfolioResult {

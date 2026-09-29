@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { computeRealizedFromSales } from '@portfolio-dashboard/shared';
+import { SYMBOLS } from '../config/symbols';
 import { all, get, run } from '../db';
 import { refreshPrices } from './priceFetcher';
 import { replayFIFOLots, computePortfolioValue } from './portfolioCalculator';
@@ -12,7 +14,10 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
 
   const trades: any[] = await all('SELECT * FROM trades ORDER BY time ASC');
   const lots = replayFIFOLots(trades, prices);
-  const realizedFromSells = trades.filter((t) => t.side === 'sell').reduce((s, t) => s + (t.profit || 0), 0);
+  // The same derivation `GET /api/portfolio/valuation` uses. These two must
+  // agree: one draws the live card, the other writes the history the chart
+  // behind it is drawn from.
+  const realizedFromSells = computeRealizedFromSales(trades, SYMBOLS, prices['BRLUSD'] ?? 1, prices).totalUsd;
 
   const cashRow: any = await get(`
     SELECT
@@ -62,7 +67,6 @@ export async function recomputeHistoryAt(ts: number) {
   const trades: any[] = await all('SELECT * FROM trades WHERE time <= ? ORDER BY time ASC', [cutoff]);
 
   const lots = replayFIFOLots(trades, {});
-  const realizedFromSells = trades.filter((t) => t.side === 'sell').reduce((s, t) => s + (t.profit || 0), 0);
 
   const tickRows: any[] = await all(
     `
@@ -109,7 +113,11 @@ export async function recomputeHistoryAt(ts: number) {
     lots,
     prices,
     cash,
-    realizedFromSells,
+    // Same derivation as the live valuation, over the trades that existed at `ts`
+    // and converted at the BRLUSD tick from `ts` — a recomputed point must not
+    // book a sale using today's exchange rate. Deliberately after `prices` is
+    // built, which is where that rate comes from.
+    realizedFromSells: computeRealizedFromSales(trades, SYMBOLS, prices['BRLUSD'] ?? 1, prices).totalUsd,
     interestBRLMonthsTotal,
     interestUSDMonthsTotal,
   });

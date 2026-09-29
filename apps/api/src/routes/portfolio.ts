@@ -17,7 +17,7 @@
 import { Router, Request, Response } from 'express';
 import { all, get } from '../db';
 import { SYMBOLS } from '../config/symbols';
-import { computeValuation, type ValuationInput } from '@portfolio-dashboard/shared';
+import { computeValuation, computeRealizedFromSales, type ValuationInput } from '@portfolio-dashboard/shared';
 
 export const portfolioRouter = Router();
 
@@ -55,7 +55,12 @@ portfolioRouter.get('/valuation', async (req: Request, res: Response) => {
     const includeCashInAllocation = req.query.cash !== 'investments';
 
     const [trades, priceRows, cash, brlInterest, usdInterest] = await Promise.all([
-      all<{ symbol: string; side: string; qty: number; price: number | null }>('SELECT symbol, side, qty, price FROM trades'),
+      // `ORDER BY time ASC` is load-bearing, not tidiness: the FIFO walk that
+      // derives realized P/L below is only correct over trades in the order they
+      // happened, and on this database rowid order is *not* that order.
+      all<{ symbol: string; side: string; qty: number; price: number | null }>(
+        'SELECT symbol, side, qty, price FROM trades ORDER BY time ASC',
+      ),
       all<PriceRow>('SELECT symbol, price, meta FROM price_cache'),
       get<{ cashReais: number; cashDollars: number }>(CASH_SUM_SQL),
       get<{ total: number }>('SELECT COALESCE(SUM(amount), 0) AS total FROM interest WHERE currency = ?', ['BRL']),
@@ -71,19 +76,18 @@ portfolioRouter.get('/valuation', async (req: Request, res: Response) => {
     }
 
     const brlUsdRate = prices['BRLUSD'] ?? 1;
+    // Realized P/L from sales, derived once here and used by the two snapshot
+    // paths in `historyManager` the same way. The `trades.profit` column that
+    // used to carry it was dropped in migration 0003, so for a while this was a
+    // hardcoded 0 and the figure was interest only — see decision #1 in
+    // docs/MODERNIZATION-PLAN.md.
+    const realizedFromSales = computeRealizedFromSales(trades ?? [], SYMBOLS, brlUsdRate);
     const input: ValuationInput = {
       trades: trades ?? [],
       prices,
       priceMeta,
       cash: { cashReais: cash?.cashReais ?? 0, cashDollars: cash?.cashDollars ?? 0 },
-      // Zero, and that is not an oversight: the `trades.profit` column that used
-      // to carry the P/L booked on each sell was dropped in migration 0003, so the
-      // database cannot supply realized P/L from sales. What the legacy page
-      // showed — and what `historyManager` writes into `portfolio_snapshots` —
-      // is therefore interest only. Deriving it from the FIFO walk instead would
-      // make this endpoint disagree with the history behind it, so both would
-      // have to change together; see docs/MODERNIZATION-PLAN.md.
-      realizedFromSells: 0,
+      realizedFromSells: realizedFromSales.totalUsd,
       interest: { brlTotal: brlInterest?.total ?? 0, usdTotal: usdInterest?.total ?? 0 },
       brlUsdRate,
       symbols: SYMBOLS,

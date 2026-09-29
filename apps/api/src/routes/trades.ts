@@ -1,10 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
+import { computeRealizedFromSales } from '@portfolio-dashboard/shared';
 import { run, get, all } from '../db';
 import { computeAndInsertHistoryPoint } from '../services/historyManager';
 import { SYMBOLS } from '../config/symbols';
 
 export const tradesRouter = Router();
+
+/** A `trades` row, as the FIFO walk needs it. */
+interface TradeRow {
+  id: string;
+  symbol: string;
+  side: string;
+  qty: number;
+  price?: number | null;
+}
 
 function getAssetCurrency(symbol: string): 'USD' | 'BRL' {
   const asset = SYMBOLS[symbol];
@@ -54,8 +64,22 @@ async function createAutoCashEntry(symbol: string, side: string, qty: number, pr
 
 tradesRouter.get('/', async (req: Request, res: Response) => {
   try {
+    // Time-ordered because the FIFO walk that fills in `profit` is only correct
+    // in the order the trades happened.
     const rows = await all('SELECT * FROM trades ORDER BY time ASC');
-    res.json(rows);
+    const priceRows = await all<{ symbol: string; price: number }>('SELECT symbol, price FROM price_cache');
+    const prices: Record<string, number> = {};
+    for (const row of priceRows) prices[row.symbol] = row.price;
+
+    // The `profit` column was dropped in migration 0003, so the trade history's
+    // Profit column showed `-` on every sell. It is derived here rather than
+    // stored, because a stored copy would need writing on every sell and would
+    // be wrong anyway if a trade were ever edited. Per trade it is the gain in
+    // the symbol's own currency, which is what the old column held and what the
+    // view renders; the USD total is `computeRealizedFromSales(...).totalUsd`,
+    // used by the valuation and the snapshot writer.
+    const { nativeByTradeId } = computeRealizedFromSales(rows as TradeRow[], SYMBOLS, prices['BRLUSD'] ?? 1, prices);
+    res.json(rows.map((row) => (row.side === 'sell' ? { ...row, profit: nativeByTradeId[(row as TradeRow).id] ?? 0 } : row)));
   } catch (err) {
     console.error('Error fetching trades', err);
     res.status(500).json({ error: 'Failed to fetch trades' });

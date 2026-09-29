@@ -33,9 +33,9 @@ export interface PriceMeta {
 /**
  * A trade as this page uses it.
  *
- * The OpenAPI schema types every field as optional and omits `profit`, which the
- * server does return and the realized-P/L maths needs. This is the normalized
- * shape the store works in; `reloadState` maps the API rows onto it.
+ * The OpenAPI schema types every field as optional, so this is the normalized
+ * shape the store works in; `reloadState` maps the API rows onto it. `profit` is
+ * the server's derived realized P/L for a sell, in the symbol's own currency.
  */
 export interface DashboardTrade {
   id?: string;
@@ -92,9 +92,9 @@ export const CHART_DAY_RANGES = [
  *
  * Arithmetic is deliberately unchanged: FIFO comes from
  * `createPortfolioCalculator(...).replayFIFOLots`, and each formula below is the
- * legacy line for line. Realized P/L still comes from `trades.profit` (what the
- * server recorded), not from replaying lots — that is the legacy behaviour and
- * the two differ once interest is involved.
+ * legacy line for line. Realized P/L and the per-sale Profit column both come
+ * from the server, which derives them with `computeRealizedFromSales`; the store
+ * does not replay lots to second-guess them.
  */
 export const useDashboardStore = defineStore(
   'dashboard',
@@ -181,11 +181,12 @@ export const useDashboardStore = defineStore(
     /**
      * Maps an API trade row onto `DashboardTrade`.
      *
-     * The spec types every field optional and omits `profit`, so this is the one
-     * place that looseness is absorbed. Rows without a symbol or quantity cannot
-     * be replayed and are dropped by the caller.
+     * The spec types every field optional, so this is the one place that
+     * looseness is absorbed. Rows without a symbol or quantity cannot be
+     * replayed and are dropped by the caller. `profit` is the server's derived
+     * realized P/L for a sell, in the symbol's own currency.
      */
-    function normalizeTrade(t: Trade & { profit?: number }): DashboardTrade {
+    function normalizeTrade(t: Trade): DashboardTrade {
       return {
         id: t.id,
         symbol: t.symbol as string,
