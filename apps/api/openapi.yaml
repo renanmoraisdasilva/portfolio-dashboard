@@ -353,36 +353,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/OhlcCandle'
-  /history/fill-gaps:
-    post:
-      tags: [History]
-      summary: Recompute history points across gaps
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                interval:
-                  type: string
-                  enum: [1h, 1d]
-                  default: 1d
-                from:
-                  type: integer
-                  description: Start timestamp in milliseconds; defaults to the first trade
-                to:
-                  type: integer
-                  description: End timestamp in milliseconds; defaults to now
-      responses:
-        '200':
-          description: Counts of inserted and skipped points
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HistoryFillGapsResult'
-        '400':
-          description: interval must be 1h or 1d
   /history/{id}:
     delete:
       tags: [History]
@@ -1274,19 +1244,6 @@ components:
           type: number
         close:
           type: number
-    HistoryFillGapsResult:
-      type: object
-      properties:
-        inserted:
-          type: integer
-        skipped:
-          type: integer
-        errors:
-          type: integer
-        from:
-          type: integer
-        to:
-          type: integer
     PortfolioValuation:
       type: object
       description: >

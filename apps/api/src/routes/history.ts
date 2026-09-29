@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { run, all, get } from '../db';
-import { recomputeHistoryAt } from '../services/historyManager';
 
 export const historyRouter = Router();
 
@@ -52,66 +51,6 @@ historyRouter.get('/', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Error fetching history', err);
     res.status(500).json({ error: 'Failed to fetch history' });
-  }
-});
-
-// Requires price_ticks data (run npm run migrate:backfill-prices first for historical ranges).
-historyRouter.post('/fill-gaps', async (req: Request, res: Response) => {
-  try {
-    const { interval = '1d' } = req.body;
-    if (!['1h', '1d'].includes(interval)) {
-      return res.status(400).json({ error: '"interval" must be "1h" or "1d"' });
-    }
-
-    let { from, to } = req.body;
-
-    if (typeof from !== 'number') {
-      const firstTrade = await get<{ time: string }>('SELECT time FROM trades ORDER BY time ASC LIMIT 1');
-      from = firstTrade?.time ? new Date(firstTrade.time).getTime() : Date.now() - 365 * 24 * 60 * 60 * 1000;
-    }
-    if (typeof to !== 'number') {
-      to = Date.now();
-    }
-
-    const intervalMs = interval === '1h' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    const halfWindow = intervalMs / 2;
-
-    // Load existing timestamps in range to avoid duplicates (expand window slightly)
-    const existing: any[] = await all('SELECT ts FROM portfolio_snapshots WHERE ts >= ? AND ts <= ?', [
-      from - halfWindow,
-      to + halfWindow,
-    ]);
-    const existingTs = existing.map((r) => r.ts as number);
-
-    let inserted = 0;
-    let skipped = 0;
-    const errors: string[] = [];
-
-    for (let targetTs = from; targetTs <= to; targetTs += intervalMs) {
-      const hasCoverage = existingTs.some((ets) => Math.abs(ets - targetTs) <= halfWindow);
-      if (hasCoverage) {
-        skipped++;
-        continue;
-      }
-
-      try {
-        const result = await recomputeHistoryAt(targetTs);
-        const id = randomUUID();
-        await run(
-          'INSERT INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note, brlusd_rate) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)',
-          [id, result.t, result.ts, result.v, result.i, result.p, 'gap-fill', result.brlusd_rate],
-        );
-        existingTs.push(targetTs);
-        inserted++;
-      } catch (e: any) {
-        errors.push(`ts=${targetTs}: ${e.message}`);
-      }
-    }
-
-    res.json({ inserted, skipped, errors, from, to });
-  } catch (err) {
-    console.error('Error filling history gaps', err);
-    res.status(500).json({ error: 'Failed to fill history gaps' });
   }
 });
 
@@ -210,8 +149,12 @@ historyRouter.delete('/:id', async (req: Request, res: Response) => {
 // with no confirmation and no way back, and a restore from a backup is now a
 // true replace, which is the same operation done deliberately.
 //
-// `POST /api/history/fill-gaps` is deliberately still here even though its
-// button is gone: it is idempotent, it only inserts, and production currently
-// receives 22.5 snapshots a day against the worker's 48, with whole days
-// missing. It is a repair for the worker being down, not for bad data, so it
-// belongs to whoever notices rather than to a dashboard button.
+// `POST /api/history/fill-gaps` went with it. It recomputed the snapshots the
+// early history never received, which sounds like a permanent feature and is
+// not: the first 30 days of records have no day reaching 40 snapshots because
+// the worker was not running then, and it is healthy now (48/day across the
+// last fortnight). The worker only appends, so nothing would ever fill that
+// period on its own - but the 128 rows it did produce carry
+// `note = 'gap-fill'`, and the thin past was not worth a permanent endpoint.
+// `recomputeHistoryAt` in `services/historyManager.ts` is what made it
+// possible. It stays exported and tested, and now has no caller in the app.

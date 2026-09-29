@@ -614,63 +614,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/history/fill-gaps": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Recompute history points across gaps */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @default 1d
-                         * @enum {string}
-                         */
-                        interval?: "1h" | "1d";
-                        /** @description Start timestamp in milliseconds; defaults to the first trade */
-                        from?: number;
-                        /** @description End timestamp in milliseconds; defaults to now */
-                        to?: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Counts of inserted and skipped points */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["HistoryFillGapsResult"];
-                    };
-                };
-                /** @description interval must be 1h or 1d */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/history/{id}": {
         parameters: {
             query?: never;
@@ -1794,13 +1737,6 @@ export interface components {
             high?: number;
             low?: number;
             close?: number;
-        };
-        HistoryFillGapsResult: {
-            inserted?: number;
-            skipped?: number;
-            errors?: number;
-            from?: number;
-            to?: number;
         };
         /** @description Totals are in USD. `rows` covers every open position plus the two cash rows; each row says which currency its amounts are in, and `plCurrency` differs from `valueCurrency` for the BRL cash row because interest on a BRL balance is a BRL amount. */
         PortfolioValuation: {
