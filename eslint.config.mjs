@@ -121,6 +121,25 @@ export default tseslint.config(
     files: ['**/*.mjs'],
     languageOptions: { sourceType: 'module' },
   },
+  {
+    // The browser-driving scripts: Node at the top level, and browser globals
+    // inside the `page.evaluate` callbacks, which are serialised and run in the
+    // page. One file legitimately needs both, so it gets both.
+    files: ['e2e/**/*.mjs', 'scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        document: 'readonly',
+        window: 'readonly',
+      },
+    },
+  },
 
   // The k6 script runs in k6's own runtime, not Node's and not a browser's.
   {
