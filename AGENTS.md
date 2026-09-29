@@ -310,6 +310,30 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
 - **`POST /api/history/fill-gaps` is gone, and the history it would have filled is staying thin.** It recomputed the snapshots the early record never received: the first 30 days have no day reaching 40 snapshots, because the worker was not running then, while the last fortnight sit at 48/day. The worker only appends, so nothing would ever repair that period on its own - which is exactly why the endpoint looked permanent when it was not. It is a one-time repair of a past that is not worth a permanent route, and the 128 rows it did produce carry `note = 'gap-fill'`. `recomputeHistoryAt` in `services/historyManager.ts` is what made it possible; it stays exported and tested with no caller in the app, so delete it together with `historyManager.test.ts`'s four `recomputeHistoryAt` blocks if the capability is not wanted either.
 - **Bond symbols (`type: 'bond'`) are absent from `price_ticks` history** before the migration date — the Yahoo backfill script skips them. `recomputeHistoryAt(ts)` will throw if asked to recompute a timestamp before the first non-bond price tick exists.
 - **`history_points.brlusd_rate` is `NULL` for rows inserted before the migration** — the column was added via `ALTER TABLE`; old rows were not backfilled, and with `fill-gaps` gone nothing rewrites them, so treat a `NULL` rate as permanent for existing rows. A restore is not a way to lose it either: the export sends the column and the import writes it, which it briefly did not — that nulled the rate on every snapshot and left the analytics converting BRL interest at today's rate, while the chart looked perfect because candles only read `v` and `p`.
+- **Scripts must not shell out through a platform shell.** `scripts/scan-secrets.cjs`
+  used `execSync(cmd, { shell: 'powershell.exe' })`, which worked on the author's
+  Windows machine and failed on the `ubuntu-latest` runner with `spawnSync
+powershell.exe ENOENT` - a security gate that could not run on the platform
+  that matters. It now calls `execFileSync('git', [...args])` with an argv array
+  and no shell, which is also immune to the two quoting hazards a shell
+  introduced: `%(refname)` would have been mangled by cmd.exe's `%` expansion,
+  and the forbidden-path globs were being re-parsed by a shell. `scripts/build-demo-gif.mjs`
+  already did this correctly and is the model to copy. Never pass a path or a glob
+  through a shell to reach `git`.
+- **The secret scan's credential regex must not carry the `g` flag.** It runs
+  `.exec` once per line, and a `g` regex advances `lastIndex` across calls, so a
+  match on one line made the _next_ line's search begin partway through it - any
+  secret sitting earlier in its line than the previous line's match was silently
+  skipped while the script still printed `CLEAN`. Verified: two consecutive lines,
+  first secret found, second missed. A scan that can miss a secret is worse than
+  none, because it reports CLEAN.
+- **The secret scan needs the full history to mean anything.** Its central check
+  is whether a path like `*.db` or `.env` was _ever_ committed, which means
+  walking every commit reachable from every ref. The `lint` job checks out with
+  `fetch-depth: 0` for that reason; at the default shallow clone the runner holds
+  one commit, the check inspects nothing, and all fourteen patterns report "never
+  committed" - a pass that proves nothing. Verified locally against the whole
+  history: 376 commits across 8 refs, zero forbidden paths.
 - The `apps/api/data/` directory is created at runtime. Do not commit database files.
 - Price fetching uses multiple external APIs — tests that exercise `priceFetcher.ts` should mock network calls.
 - Coverage thresholds are enforced at 80%; new code in `src/` should include tests or the build will fail.

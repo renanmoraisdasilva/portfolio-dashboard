@@ -20,10 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Phase 8: the secret scan needs the full history and the local-only
-          # tag. The repository has no remote, so the scan is informational here;
-          # a fork with a remote can drop `fetch-depth: 0` into place.
-          fetch-depth: 1
+          # Phase 8: the secret scan's most important check is whether a path
+          # like `*.db` or `.env` was EVER committed, which means walking every
+          # commit reachable from every ref. At the default shallow clone the
+          # runner has one commit, so that check silently inspected nothing and
+          # reported "never committed" for all fourteen patterns. The repository
+          # has a remote now, so the full history is available; it was pinned
+          # shallow back when there was not one. Local verification: 376 commits
+          # across 8 refs, zero forbidden paths, so this cannot turn the job red.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -4,10 +4,18 @@
 // that used to live here. This checks the working tree, every commit reachable
 // from every ref, and the contents of the tracked files for the shapes that
 // leaked before.
-const { execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 
-const sh = (cmd) => execSync(cmd, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, shell: 'powershell.exe' });
+// `git` is invoked with an argv array and no shell. It used to go through
+// `execSync` with `shell: 'powershell.exe'`, which worked on the author's
+// Windows machine and died on the ubuntu-latest CI runner with
+// `spawnSync powershell.exe ENOENT` - a security gate that could not run where
+// it mattered most. Dropping the shell also drops two quoting hazards: the
+// `%(refname)` format would have been mangled by cmd.exe's `%` expansion, and
+// the forbidden-path globs were being re-parsed by a shell that had no business
+// seeing them.
+const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 let failures = 0;
 const ok = (label, detail = '') => console.log(`  PASS  ${label}${detail ? ` - ${detail}` : ''}`);
 const bad = (label, detail) => {
@@ -16,7 +24,7 @@ const bad = (label, detail) => {
 };
 
 console.log('refs:');
-const refs = sh('git for-each-ref --format="%(refname)"').trim();
+const refs = git('for-each-ref', '--format=%(refname)').trim();
 console.log(
   refs
     .split('\n')
@@ -43,15 +51,20 @@ const forbidden = [
   '*.pfx',
 ];
 for (const pattern of forbidden) {
-  const found = sh(`git log --all --name-only --pretty=format: -- "${pattern}"`).split('\n').filter(Boolean);
+  const found = git('log', '--all', '--name-only', '--pretty=format:', '--', pattern).split('\n').filter(Boolean);
   const unique = [...new Set(found)];
   if (unique.length === 0) ok(pattern, 'never committed');
   else bad(pattern, unique.slice(0, 5).join(', '));
 }
 
 console.log('\ncredential-shaped assignments in tracked files:');
-const tracked = sh('git ls-files').split('\n').filter(Boolean);
-const secretish = /((?:password|passwd|secret|api[_-]?key|access[_-]?token|bearer)\s*[:=]\s*)(['"])([^'"\n]{6,})\2/gi;
+const tracked = git('ls-files').split('\n').filter(Boolean);
+// No `g` flag, deliberately. This is a global regex run with `.exec` once per
+// line, so a match on one line advanced `lastIndex` and the *next* line's search
+// began partway through it - any secret whose match sat earlier in its line than
+// the previous line's match was silently skipped. A secret scan that can miss a
+// secret is worse than no scan, because it reports CLEAN.
+const secretish = /((?:password|passwd|secret|api[_-]?key|access[_-]?token|bearer)\s*[:=]\s*)(['"])([^'"\n]{6,})\2/i;
 const placeholders =
   /^(x{3,}|\*{3,}|<.*>|\$\{.*\}|process\.env|your|changeme|placeholder|example|redacted|dummy|test|fake|abc123)/i;
 let inspected = 0;
@@ -74,7 +87,6 @@ for (const file of tracked) {
     if (/(allowlist|placeholder|example|sample|dummy|redact|never commit|do not)/i.test(line)) continue;
     bad(`${file}`, line.trim().slice(0, 90));
   }
-  secretish.lastIndex = 0;
 }
 if (failures === 0) ok('no unredacted secrets', `${inspected} files inspected`);
 
