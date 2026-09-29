@@ -30,7 +30,7 @@ if (enabled) {
       exporter: new OTLPMetricExporter({ url: metricsEndpoint }),
       exportIntervalMillis: 60000,
     }),
-    logRecordProcessors: [new BatchLogRecordProcessor(new OTLPLogExporter({ url: logsEndpoint }))],
+    logRecordProcessors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: logsEndpoint }) })],
     instrumentations: [
       getNodeAutoInstrumentations({
         '@opentelemetry/instrumentation-fs': { enabled: false },

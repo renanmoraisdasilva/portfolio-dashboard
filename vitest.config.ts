@@ -32,23 +32,32 @@ export default defineConfig({
     },
   },
   test: {
-    globals: true,
-    environment: 'node',
-    include: [
-      'apps/api/src/**/*.test.ts',
-      'apps/web/src/**/*.test.ts',
-      'packages/shared/src/**/*.test.ts',
-      'static/js/__tests__/**/*.test.js',
+    // Vitest 4 removed `environmentMatchGlobs` in favour of projects, so the
+    // node/jsdom split is expressed here rather than as a path glob. Two
+    // projects also means the web project's setup file applies only to the web
+    // suites, rather than loading `openapi-fetch`'s replacement into the API's.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: ['apps/api/src/**/*.test.ts', 'packages/shared/src/**/*.test.ts', 'static/js/__tests__/**/*.test.js'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'web',
+          environment: 'jsdom',
+          include: ['apps/web/src/**/*.test.ts'],
+          // Replaces `openapi-fetch`, so a store test can describe what the
+          // server answers without stubbing the transport underneath it.
+          setupFiles: ['./apps/web/src/test/networkHarness.ts'],
+        },
+      },
     ],
-    // Replaces `openapi-fetch` for every suite, so a store test can describe
-    // what the server answers without stubbing the transport underneath it.
-    setupFiles: ['./apps/web/src/test/networkHarness.ts'],
-    // Component and store tests need a DOM; the rest are pure and faster in
-    // node. Per-file overrides use a `// @vitest-environment jsdom` docblock.
-    environmentMatchGlobs: [['apps/web/**', 'jsdom']],
-    // `vi` and the Jest aliases are global so the migrated suites read the same
-    // as before. `vi.mock` is hoisted above the imports it replaces, exactly
-    // like `jest.mock`, so the existing suite order keeps working.
+    globals: true,
     coverage: {
       provider: 'v8',
       // Still narrow by design, and for the same reason as under Jest: a file

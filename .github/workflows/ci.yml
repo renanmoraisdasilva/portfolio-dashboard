@@ -33,6 +33,11 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run scan:secrets
+      # Fails on high or critical only. One moderate advisory is accepted on
+      # purpose and documented in AGENTS.md; a gate that has to be ignored is a
+      # gate nobody reads, so the bar is high/critical and the exception is
+      # written down rather than left as a shrug.
+      - run: npm run audit
 
   build:
     name: Typecheck and build

@@ -1,6 +1,7 @@
-'use strict';
-
-const { formatMoney, parseMoney, brlToUSD, usdToBRL, createSymbolClassifier } = require('@portfolio-dashboard/shared');
+// ESM, not CommonJS: under Vitest 5 a require() of a workspace package is
+// externalised, so this suite still passed while its coverage landed on
+// packages/shared/dist instead of the source and money.ts read as untested.
+import { formatMoney, parseMoney, brlToUSD, usdToBRL, createSymbolClassifier } from '@portfolio-dashboard/shared';
 
 const KNOWN_SYMBOLS = {
   detailed: {

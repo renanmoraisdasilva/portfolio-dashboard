@@ -26,6 +26,7 @@ npm run api:types      # regenerate packages/shared/src/generated/api.ts from op
 npm start              # run compiled apps/api/dist/web.js
 npm test               # Vitest suite across apps/api, apps/web, packages/shared and static/js
 npm run test:watch     # the same, in watch mode
+npm run audit          # dependency audit; fails on high/critical, one moderate is accepted (see pitfalls)
 npm run test:e2e       # Playwright smoke tests (needs a build first; see e2e/README)
 npm run test:coverage  # coverage report; thresholds: 80% on all metrics
 npm run check          # build + test in one command (what CI runs)
@@ -86,7 +87,7 @@ packages/shared/
 ```
 static/js/
   (no page scripts left — every user-facing page is Vue; `static/js/__tests__`
-   holds the two suites that exercise `packages/shared`)
+   holds the two ESM suites that exercise `packages/shared`)
 static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics, explorer
 ```
 
@@ -212,9 +213,27 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
   doubled every interest month. Both routes now `DELETE` the row before
   inserting it, inside a transaction. A `uniqueIndex` on `(month, currency)` in
   `schema.ts` would make the invariant hold at the storage layer too, but that
-  migration has to de-duplicate existing rows first - a decision about real
+  migration has to de-duplicate existing rows first — a decision about real
   financial data, not a refactor's to take. Listed in
   ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
+- **One moderate `npm audit` finding is accepted on purpose.** `drizzle-kit`
+  pulls `@esbuild-kit/core-utils`, which pins `esbuild ~0.18.20`
+  (GHSA-67mh-4wv8-2f99, moderate: esbuild's _dev server_ can be reached by any
+  website). `drizzle-kit` uses esbuild to bundle its TypeScript config and never
+  calls `serve()`, so there is no dev server and no reachable path — but the code
+  is installed. The fixes npm suggests are both worse than the finding: downgrade
+  `drizzle-kit` to 0.18.1 (a 2023 release) or take `1.0.0-rc`, which fails
+  against the pinned `drizzle-orm` with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+  `npm run audit` therefore fails on **high and critical only**. Do not "fix"
+  this with `npm audit fix --force`: it moves dev tools into
+  `apps/api/dependencies` (shipping Vitest, Playwright and sharp in the runtime
+  image), pins versions without carets, and forces the test runner through two
+  majors.
+- **Upgrade with `npm install <pkg>@<range>`, never with `audit fix`.** Then run
+  `npm run check` and the e2e suite. A `git checkout -- package.json` after an
+  install also silently reverts the _declared_ version while `node_modules`
+  keeps the new one, and the next `npm install` puts the old one back — which is
+  how a Playwright upgrade can appear to have worked and then vanish.
 - **`trades.profit` does not exist.** The column was dropped in migration
   `0003_cheerful_rocket_raccoon.sql`, so realized P/L from sales is zero
   everywhere: in the dashboard's "Realized P/L" card, in `historyManager`'s
@@ -236,4 +255,7 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
 - **Coverage collection is narrow by design** - `vitest.config.ts` `coverage.include` lists exactly the files that are genuinely test-covered: `apps/api/src/config/`, `apps/api/src/schema.ts`, `apps/api/src/routes/health.ts`, `apps/api/src/routes/portfolio.ts`, `apps/api/src/services/cashBackfill.ts`, `apps/api/src/services/portfolioCalculator.ts` and `packages/shared/src/domain/`. Widen that list only _after_ adding tests - the gate is 80% on all four metrics, globally.
 - **Store tests replace `openapi-fetch`, not `fetch`** - `apps/web/src/test/networkHarness.ts` is a `setupFiles` entry that mocks the module. The reason is mechanical: `openapi-fetch` constructs a `Request` _before_ calling `fetch`, and jsdom's `Request` rejects a relative URL, which `baseUrl: '/api'` always is. Stubbing `fetch` alone fails inside the client. The mock keeps the real contract (`{ data, error, response }`), so `request()`, the stores and all error handling are the real code; a test declares what the server answers with `stubNetwork([...])` and can flip `network.offline` for the no-response case.
 - **`apps/api` imports `@portfolio-dashboard/shared`**, which compiles to `packages/shared/dist`. The root `build`, `typecheck` and `dev` scripts build it first, and the Docker image copies `packages/shared` into the runtime stage — running `tsc` inside `apps/api` on its own fails on the missing declarations.
-- **Vitest reads the same source the app bundles.** `vitest.config.ts` aliases `@portfolio-dashboard/shared` to `packages/shared/src/index.ts`, so a test never needs `npm run build` first, and the two remaining `static/js/__tests__` suites (plain CommonJS, not ES modules) are included by the same runner. `apps/api/tsconfig.json` lists `"types": ["node", "vitest/globals"]` so `vi` type-checks; the two `tsconfig.*.json` files that existed only for ts-jest are gone.
+- **Vitest reads the same source the app bundles.** `vitest.config.ts` aliases `@portfolio-dashboard/shared` to `packages/shared/src/index.ts`, so a test never needs `npm run build` first. `apps/api/tsconfig.json` lists `"types": ["node", "vitest/globals"]` so `vi` type-checks; the two `tsconfig.*.json` files that existed only for ts-jest are gone, and so are `jest`, `ts-jest` and `@types/jest`.
+- **Two Vitest projects, not a path glob.** Vitest 4 removed `environmentMatchGlobs`, so the config declares a `node` project (API, shared, the legacy suites) and a `web` project (jsdom, plus the network harness as its `setupFiles`). The split matters: the harness replaces `openapi-fetch` and must not be loaded into the API's suites.
+- **`static/js/__tests__` is ESM now.** Those two suites were the last CommonJS files, and under Vitest 5 a `require()` of a workspace package is externalised - the tests kept passing while their coverage landed on `packages/shared/dist` and `money.ts` read as untested. They import the shared package with `import` now; do the same in anything you add there, or its coverage lands on the build output without a word.
+- **Frontend pages are Vue; `static/js` holds only styles and the two test suites.** No page scripts remain.
