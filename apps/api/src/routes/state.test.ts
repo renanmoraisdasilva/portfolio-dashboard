@@ -18,10 +18,16 @@ const mockedRun = run as unknown as ReturnType<typeof vi.fn>;
 /** Rows the mocked database holds, so a restore can be inspected afterwards. */
 let snapshots: Record<string, unknown>[];
 let trades: Record<string, unknown>[];
+let priceCache: Record<string, unknown>[];
+let assetChartCache: Record<string, unknown>[];
+let analyticsSnapshots: Record<string, unknown>[];
 
 beforeEach(() => {
   snapshots = [];
   trades = [];
+  priceCache = [];
+  assetChartCache = [];
+  analyticsSnapshots = [];
   mockedRun.mockReset();
   mockedGet.mockReset();
   mockedAll.mockReset();
@@ -34,7 +40,15 @@ beforeEach(() => {
     if (/^INSERT OR REPLACE INTO trades/.test(sql)) {
       trades.push({ id: p[0], symbol: p[1], side: p[2], qty: p[3], price: p[4], time: p[5], cash_entry_id: p[6] });
     }
-    if (/^DELETE FROM (cash|interest|trades)/.test(sql)) return Promise.resolve({ changes: 0 });
+    if (/^INSERT OR REPLACE INTO price_cache/.test(sql)) {
+      priceCache.push({ symbol: p[0], price: p[1], ts: p[2], meta: p[3] });
+    }
+    if (/^INSERT OR REPLACE INTO asset_chart_cache/.test(sql)) {
+      assetChartCache.push({ symbol: p[0], days: p[1], interval: p[2], ts: p[3], data: p[4] });
+    }
+    if (/^INSERT OR REPLACE INTO analytics_snapshots/.test(sql)) {
+      analyticsSnapshots.push({ id: p[0], computed_at: p[1], period: p[2], return_pct: p[3], sharpe_ratio: p[7] });
+    }
     return Promise.resolve({ changes: 0 });
   });
   mockedGet.mockResolvedValue({ cashReais: 0, cashDollars: 0 });
@@ -108,6 +122,73 @@ describe('POST /api/state/import — history', () => {
       manual: 1,
       note: 'manual-entry',
     });
+  });
+});
+
+describe('POST /api/state/import — replace, not merge', () => {
+  test('clears trades and history before writing, so a restore can remove a row', async () => {
+    // It used to insert row by row without clearing, so anything in the
+    // database that the backup did not contain survived - a tool labelled
+    // "restore" that could not undo a mistake. `cash` and `interest` were
+    // already cleared, which is what made the behaviour inconsistent.
+    mockedRun.mockClear();
+    await restore({
+      trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }],
+      history: [historyRow()],
+    });
+
+    const deletes = mockedRun.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
+    expect(deletes).toContain('DELETE FROM trades');
+    expect(deletes).toContain('DELETE FROM portfolio_snapshots');
+  });
+
+  test('an absent key leaves its table alone, so a partial payload cannot empty it', async () => {
+    mockedRun.mockClear();
+    await restore({ history: [historyRow()] });
+
+    const deletes = mockedRun.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
+    expect(deletes).toContain('DELETE FROM portfolio_snapshots');
+    expect(deletes).not.toContain('DELETE FROM trades');
+    expect(deletes).not.toContain('DELETE FROM cash');
+  });
+
+  test('an empty array does clear the table - that is what replacing with nothing means', async () => {
+    mockedRun.mockClear();
+    await restore({ trades: [] });
+
+    expect(mockedRun.mock.calls.map((c) => String(c[0]))).toContain('DELETE FROM trades');
+  });
+});
+
+describe('POST /api/state/import — the tables added to the export in version 2', () => {
+  test('restores price_cache, so a restore does not value every position at zero', async () => {
+    await restore({ priceCache: [{ symbol: 'BTC', price: 60_000, ts: 1, meta: null }] });
+
+    expect(priceCache).toEqual([{ symbol: 'BTC', price: 60_000, ts: 1, meta: null }]);
+  });
+
+  test('restores asset_chart_cache, so the charts are not empty until the next refetch', async () => {
+    await restore({ assetChartCache: [{ symbol: 'BTC', days: 1825, interval: '1d', ts: 2, data: '[{"t":1}]' }] });
+
+    expect(assetChartCache).toHaveLength(1);
+    expect(assetChartCache[0]).toMatchObject({ symbol: 'BTC', days: 1825, interval: '1d' });
+  });
+
+  test('restores analytics_snapshots, so the analytics page is not blank until the daily job', async () => {
+    await restore({ analyticsSnapshots: [{ id: 'a-1', computed_at: 5, period: '1M', return_pct: 0.1, sharpe_ratio: 2 }] });
+
+    expect(analyticsSnapshots).toHaveLength(1);
+    expect(analyticsSnapshots[0]).toMatchObject({ period: '1M', return_pct: 0.1, sharpe_ratio: 2 });
+  });
+
+  test('a version 1 backup without those keys leaves the tables untouched', async () => {
+    mockedRun.mockClear();
+    await restore({ trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }] });
+
+    const deletes = mockedRun.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
+    expect(deletes).not.toContain('DELETE FROM price_cache');
+    expect(deletes).not.toContain('DELETE FROM asset_chart_cache');
+    expect(deletes).not.toContain('DELETE FROM analytics_snapshots');
   });
 });
 

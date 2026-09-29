@@ -30,11 +30,11 @@ API notes:
 - `GET /api/asset/{symbol}/history` returns cached/sourced asset history.
 - `GET /api/cash` and `PUT /api/cash` to manage cash positions, plus `GET/POST /api/cash/entries` and `DELETE /api/cash/entries/:id` for individual entries.
 - `GET /api/interest/months`, `POST /api/interest/months`, and `DELETE /api/interest/months/:month` to manage interest entries. The `interest` table has no key of its own, so `POST` deletes `(month, currency)` before inserting — without that, editing an amount appended a second row and counted the month twice.
-- `GET /api/state/export` and `POST /api/state/import` to export/import whole state. The import replaces each section rather than merging: a restored backup must not accumulate interest months or leave stale cash entries behind.
+- `GET /api/state/export` and `POST /api/state/import` — the application's only backup mechanism. The export carries every table that cannot be re-derived: trades, portfolio snapshots, interest, cash, alerts, scenarios, `price_cache`, `asset_chart_cache` and `analytics_snapshots`. It excludes `price_ticks`, which is refetched from Yahoo and would exceed the 10 MB body limit the import accepts, and `__drizzle_migrations`, so a restore cannot claim a migration history it does not have. The import **replaces** every table the payload carries rather than merging, so a row absent from the backup is removed; a key that is absent leaves its table untouched. All of it runs in one transaction.
 - `GET /api/alerts`, `POST /api/alerts`, `PUT/DELETE /api/alerts/:id`, plus `GET /api/alerts/triggered` and `POST /api/alerts/dismiss/:alertId`.
 - `GET/POST/PUT/DELETE /api/scenarios` — saved simulation scenarios.
 - `GET /api/config/symbols` — the symbol registry that populates every select and chart.
-- `POST /api/migrations/backfill-prices` and `POST /api/migrations/backfill-cash` — maintenance migrations (see `AGENTS.md`).
+- `POST /api/history/fill-gaps` — inserts the snapshots the worker missed. It has no button in the UI (see `AGENTS.md`), is idempotent, and only inserts.
 - `GET /api/sql/tables`, `GET /api/sql/schema`, `POST /api/sql/query` — the SQL Explorer, **with no authentication**. Gated behind `ENABLE_SQL_EXPLORER=true` since Phase 3: the routes answer `403` unless the flag is set, and it is off by default — including in the Docker image.
 
 Static content is served by the same app, split by the Phase 4 strangler seam:

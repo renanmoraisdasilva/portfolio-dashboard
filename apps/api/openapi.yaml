@@ -32,27 +32,21 @@ tags:
     description: Analytics snapshot endpoints
   - name: Portfolio
     description: Server-computed portfolio values
-  - name: Migrations
-    description: Maintenance backfill migrations
   - name: SQL Explorer
     description: Read-only SQL console endpoints
 paths:
-  /state:
-    delete:
-      tags: [State]
-      summary: Erase all app state data
-      description: |
-        Wipes trades, history, interest and cash in one go. Backup, restore and
-        this erase are whole-database operations with no granular equivalent, so
-        they keep the /api/state prefix; the former GET aggregation is gone —
-        read /trades, /cash and /interest/months instead.
-      responses:
-        '204':
-          description: State erased
   /state/export:
     get:
       tags: [State]
       summary: Export full app state as JSON
+      description: |
+        The application\'s only backup. Carries every table that cannot be
+        re-derived: trades, portfolio_snapshots (including brlusd_rate), interest,
+        cash, alerts, scenarios, price_cache, asset_chart_cache and
+        analytics_snapshots. Excludes price_ticks, which is refetched from Yahoo
+        and is 28 MB of the file - including it would exceed the body limit the
+        import imposes. __drizzle_migrations is excluded so a restore cannot
+        claim a migration history it does not have.
       responses:
         '200':
           description: Exported app state
@@ -63,7 +57,13 @@ paths:
   /state/import:
     post:
       tags: [State]
-      summary: Import app state JSON payload
+      summary: Restore app state from a JSON backup
+      description: |
+        Replaces, it does not merge. Every table the payload carries is cleared
+        before it is written, so a row absent from the backup is removed - which
+        is what makes restoring an older backup able to undo a later mistake. A
+        key that is absent or not an array leaves its table untouched, so a
+        partial payload cannot empty a table. All of it runs in one transaction.
       requestBody:
         required: true
         content:
@@ -308,12 +308,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/HistoryPoint'
-    delete:
-      tags: [History]
-      summary: Clear all history points
-      responses:
-        '204':
-          description: All history points cleared
   /history/point:
     post:
       tags: [History]
@@ -772,67 +766,6 @@ paths:
       responses:
         '204':
           description: Deleted
-  /migrations/backfill-prices:
-    post:
-      tags: [Migrations]
-      summary: Backfill about two years of daily closes into price_ticks
-      description: >
-        Calls Yahoo Finance for every configured symbol with an 800 ms pause
-        between symbols, so the request takes roughly 30 seconds.
-      responses:
-        '200':
-          description: Per-symbol insert counts
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  totalInserted:
-                    type: integer
-                  results:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        symbol:
-                          type: string
-                        inserted:
-                          type: integer
-                        fetched:
-                          type: integer
-                        status:
-                          type: string
-        '500':
-          description: Backfill failed
-  /migrations/backfill-cash:
-    post:
-      tags: [Migrations]
-      summary: Rebuild the cash ledger from portfolio snapshots
-      description: >
-        Clears every existing cash entry before inserting the derived deltas.
-        Run backfill-prices first, otherwise there are no prices to subtract.
-      responses:
-        '200':
-          description: Counts for the backfill, or an explanatory error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  snapshotsTotal:
-                    type: integer
-                  sampled:
-                    type: integer
-                  estimated:
-                    type: integer
-                  inserted:
-                    type: integer
-                  error:
-                    type: string
   /sql/tables:
     get:
       tags: [SQL Explorer]
@@ -987,7 +920,14 @@ components:
           description: Which ledger the row belongs to; present when both are listed at once
     StateExport:
       type: object
+      description: |
+        The application\'s only backup. Every table that cannot be re-derived,
+        except price_ticks, which is refetched from Yahoo and would push the
+        payload past the 10 MB body limit the import accepts.
       properties:
+        formatVersion:
+          type: integer
+          description: Payload shape version. Absent in backups taken before the caches were added.
         trades:
           type: array
           items:
@@ -1025,9 +965,33 @@ components:
           items:
             type: object
             additionalProperties: true
+        priceCache:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          description: Current prices, so a restore does not value every position at zero.
+        assetChartCache:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          description: Cached chart series per symbol and window.
+        analyticsSnapshots:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          description: Precomputed analytics, so the page is not blank until the daily job.
     StateImportPayload:
       type: object
+      description: |
+        A backup produced by /state/export. Every array present is treated as the
+        complete contents of its table and replaces what is there; a key that is
+        absent leaves its table untouched.
       properties:
+        formatVersion:
+          type: integer
         trades:
           type: array
           items:
@@ -1040,6 +1004,38 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/InterestMonth'
+        interestDollarsMonths:
+          type: array
+          items:
+            $ref: '#/components/schemas/InterestMonth'
+        cashEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashEntry'
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        scenarios:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        priceCache:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        assetChartCache:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        analyticsSnapshots:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
         cashReais:
           type: number
         cashDollars:

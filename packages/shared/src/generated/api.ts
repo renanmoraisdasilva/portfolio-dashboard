@@ -4,46 +4,6 @@
  */
 
 export interface paths {
-    "/state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Erase all app state data
-         * @description Wipes trades, history, interest and cash in one go. Backup, restore and
-         *     this erase are whole-database operations with no granular equivalent, so
-         *     they keep the /api/state prefix; the former GET aggregation is gone —
-         *     read /trades, /cash and /interest/months instead.
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description State erased */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/state/export": {
         parameters: {
             query?: never;
@@ -51,7 +11,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Export full app state as JSON */
+        /**
+         * Export full app state as JSON
+         * @description The application\'s only backup. Carries every table that cannot be
+         *     re-derived: trades, portfolio_snapshots (including brlusd_rate), interest,
+         *     cash, alerts, scenarios, price_cache, asset_chart_cache and
+         *     analytics_snapshots. Excludes price_ticks, which is refetched from Yahoo
+         *     and is 28 MB of the file - including it would exceed the body limit the
+         *     import imposes. __drizzle_migrations is excluded so a restore cannot
+         *     claim a migration history it does not have.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -89,7 +58,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Import app state JSON payload */
+        /**
+         * Restore app state from a JSON backup
+         * @description Replaces, it does not merge. Every table the payload carries is cleared
+         *     before it is written, so a row absent from the backup is removed - which
+         *     is what makes restoring an older backup able to undo a later mistake. A
+         *     key that is absent or not an array leaves its table untouched, so a
+         *     partial payload cannot empty a table. All of it runs in one transaction.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -553,25 +529,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Clear all history points */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description All history points cleared */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1456,107 +1414,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/migrations/backfill-prices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Backfill about two years of daily closes into price_ticks
-         * @description Calls Yahoo Finance for every configured symbol with an 800 ms pause between symbols, so the request takes roughly 30 seconds.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Per-symbol insert counts */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            ok?: boolean;
-                            totalInserted?: number;
-                            results?: {
-                                symbol?: string;
-                                inserted?: number;
-                                fetched?: number;
-                                status?: string;
-                            }[];
-                        };
-                    };
-                };
-                /** @description Backfill failed */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/migrations/backfill-cash": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Rebuild the cash ledger from portfolio snapshots
-         * @description Clears every existing cash entry before inserting the derived deltas. Run backfill-prices first, otherwise there are no prices to subtract.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Counts for the backfill, or an explanatory error */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            ok?: boolean;
-                            snapshotsTotal?: number;
-                            sampled?: number;
-                            estimated?: number;
-                            inserted?: number;
-                            error?: string;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/sql/tables": {
         parameters: {
             query?: never;
@@ -1745,7 +1602,14 @@ export interface components {
              */
             currency?: "BRL" | "USD";
         };
+        /**
+         * @description The application\'s only backup. Every table that cannot be re-derived,
+         *     except price_ticks, which is refetched from Yahoo and would push the
+         *     payload past the 10 MB body limit the import accepts.
+         */
         StateExport: {
+            /** @description Payload shape version. Absent in backups taken before the caches were added. */
+            formatVersion?: number;
             trades?: components["schemas"]["Trade"][];
             history?: components["schemas"]["HistoryPoint"][];
             cashEntries?: components["schemas"]["CashEntry"][];
@@ -1759,11 +1623,44 @@ export interface components {
             scenarios?: {
                 [key: string]: unknown;
             }[];
+            /** @description Current prices, so a restore does not value every position at zero. */
+            priceCache?: {
+                [key: string]: unknown;
+            }[];
+            /** @description Cached chart series per symbol and window. */
+            assetChartCache?: {
+                [key: string]: unknown;
+            }[];
+            /** @description Precomputed analytics, so the page is not blank until the daily job. */
+            analyticsSnapshots?: {
+                [key: string]: unknown;
+            }[];
         };
+        /**
+         * @description A backup produced by /state/export. Every array present is treated as the
+         *     complete contents of its table and replaces what is there; a key that is
+         *     absent leaves its table untouched.
+         */
         StateImportPayload: {
+            formatVersion?: number;
             trades?: components["schemas"]["Trade"][];
             history?: components["schemas"]["HistoryPoint"][];
             interestReaisMonths?: components["schemas"]["InterestMonth"][];
+            interestDollarsMonths?: components["schemas"]["InterestMonth"][];
+            cashEntries?: components["schemas"]["CashEntry"][];
+            alerts?: components["schemas"]["Alert"][];
+            scenarios?: {
+                [key: string]: unknown;
+            }[];
+            priceCache?: {
+                [key: string]: unknown;
+            }[];
+            assetChartCache?: {
+                [key: string]: unknown;
+            }[];
+            analyticsSnapshots?: {
+                [key: string]: unknown;
+            }[];
             cashReais?: number;
             cashDollars?: number;
             interestReais?: number;

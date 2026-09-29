@@ -206,12 +206,12 @@ historyRouter.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-historyRouter.delete('/', async (req: Request, res: Response) => {
-  try {
-    await run('DELETE FROM portfolio_snapshots');
-    res.status(204).send();
-  } catch (err) {
-    console.error('Error clearing history', err);
-    res.status(500).json({ error: 'Failed to clear history' });
-  }
-});
+// `DELETE /api/history` - "Clear History" - is gone. It deleted every snapshot
+// with no confirmation and no way back, and a restore from a backup is now a
+// true replace, which is the same operation done deliberately.
+//
+// `POST /api/history/fill-gaps` is deliberately still here even though its
+// button is gone: it is idempotent, it only inserts, and production currently
+// receives 22.5 snapshots a day against the worker's 48, with whole days
+// missing. It is a repair for the worker being down, not for bad data, so it
+// belongs to whoever notices rather than to a dashboard button.

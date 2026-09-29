@@ -147,10 +147,7 @@ export const useDashboardStore = defineStore(
     const priceError = ref<string | null>(null);
     const staleWarning = ref<string | null>(null);
     const settingsOpen = ref(false);
-    const eraseOpen = ref(false);
     const deleteTradeIndex = ref<number | null>(null);
-    const maintenanceLog = ref<Record<string, string>>({});
-    const busyMigration = ref<string | null>(null);
     const loading = ref(false);
 
     // --- Trade form ------------------------------------------------------------
@@ -849,26 +846,6 @@ export const useDashboardStore = defineStore(
 
     // --- Settings and maintenance ---------------------------------------------
 
-    async function clearHistory(): Promise<void> {
-      await request(api.DELETE('/history'), 'DELETE', '/history');
-      history.value = [];
-      historyOHLC.value = [];
-      pnlOHLC.value = [];
-    }
-
-    async function eraseAll(): Promise<void> {
-      await request(api.DELETE('/state'), 'DELETE', '/state');
-      trades.value = [];
-      history.value = [];
-      cashReais.value = 0;
-      cashDollars.value = 0;
-      interestReais.value = 0;
-      interestDollars.value = 0;
-      interestReaisMonths.value = [];
-      interestMonthsCollapsed.value = false;
-      eraseOpen.value = false;
-    }
-
     /**
      * Downloads a backup.
      *
@@ -923,22 +900,6 @@ export const useDashboardStore = defineStore(
       }
       await reloadState();
       return 'Data imported to server!';
-    }
-
-    async function runMaintenance(key: string, path: string): Promise<void> {
-      busyMigration.value = key;
-      maintenanceLog.value[key] = `Calling ${path}…`;
-      try {
-        // Maintenance endpoints answer with a progress report whose shape is
-        // route-specific, so this one stays on `fetch` rather than pretending
-        // the typed client knows it.
-        const res = await fetch(path, { method: 'POST' });
-        maintenanceLog.value[key] = JSON.stringify(await res.json(), null, 2);
-      } catch (err) {
-        maintenanceLog.value[key] = `Error: ${err instanceof Error ? err.message : String(err)}`;
-      } finally {
-        busyMigration.value = null;
-      }
     }
 
     async function testNotify(message: string): Promise<string | null> {
@@ -1169,10 +1130,7 @@ export const useDashboardStore = defineStore(
       priceError,
       staleWarning,
       settingsOpen,
-      eraseOpen,
       deleteTradeIndex,
-      maintenanceLog,
-      busyMigration,
       loading,
       // form
       formSide,
@@ -1227,11 +1185,8 @@ export const useDashboardStore = defineStore(
       createAlert,
       deleteAlert,
       dismissAlert,
-      clearHistory,
-      eraseAll,
       exportData,
       importData,
-      runMaintenance,
       testNotify,
       setTab,
       setAllocationMode,

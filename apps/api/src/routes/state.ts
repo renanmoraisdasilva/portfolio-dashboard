@@ -3,16 +3,31 @@ import { all, get, run } from '../db';
 import { randomUUID } from 'node:crypto';
 
 /**
- * Backup, restore and erase for `portfolio.db`.
+ * Backup and restore for `portfolio.db`.
  *
  * Phase 5 retired `GET /api/state`: the Vue views read `/trades`, `/cash` and
  * `/interest/months`, so the aggregation duplicated endpoints that already
  * existed and needed its own 10-second cache to hide the cost. What is left
- * cannot be expressed granularly — an export spans seven tables and an import
+ * cannot be expressed granularly — an export spans nine tables and an import
  * replaces them inside one transaction — so it keeps its `/api/state/*` paths
  * rather than pretending to be per-resource endpoints.
+ *
+ * This is the app's only backup mechanism, so "all of my data" means all of it
+ * that cannot be re-derived: everything except `price_ticks`, which is fetched
+ * from Yahoo and Coinbase and is 28 MB of the 30 MB file. Excluding it is not
+ * only principle - including it would exceed the 10 MB body limit that
+ * `express.json` imposes on the import, so the app could no longer restore its
+ * own backup.
+ *
+ * `__drizzle_migrations` is deliberately not exported. It records which schema
+ * migrations have run, and restoring it would make the database claim a
+ * migration history it does not have; a restore into a fresh database gets the
+ * real one when the app boots.
  */
 export const stateRouter = Router();
+
+/** Bumped when the payload shape changes, so an old file is recognisable. */
+const EXPORT_FORMAT_VERSION = 2;
 
 const CASH_SUM_SQL = `
   SELECT
@@ -43,8 +58,17 @@ stateRouter.get('/export', async (req, res) => {
     const cashEntries = await all('SELECT * FROM cash ORDER BY ts ASC');
     const alertsData = await all('SELECT * FROM alerts ORDER BY created_at ASC');
     const scenariosData = await all('SELECT * FROM scenarios ORDER BY created_at ASC');
+    // The three tables an earlier export left out. Without them a restore came
+    // back with no current prices (every position valued zero until the worker
+    // refetched), no cached chart series, and no analytics until the next daily
+    // job. They are small next to `history` and cannot be re-derived without
+    // re-fetching, so they belong in the backup.
+    const priceCacheData = await all('SELECT * FROM price_cache ORDER BY symbol ASC');
+    const assetChartCacheData = await all('SELECT * FROM asset_chart_cache ORDER BY symbol ASC');
+    const analyticsData = await all('SELECT * FROM analytics_snapshots ORDER BY computed_at ASC');
     res.setHeader('Content-Disposition', 'attachment; filename="portfolio_data.json"');
     res.json({
+      formatVersion: EXPORT_FORMAT_VERSION,
       trades,
       history,
       interestReaisMonths: interestBRLMonths,
@@ -56,6 +80,9 @@ stateRouter.get('/export', async (req, res) => {
       interestDollars: usdInterest?.total ?? 0,
       alerts: alertsData,
       scenarios: scenariosData,
+      priceCache: priceCacheData,
+      assetChartCache: assetChartCacheData,
+      analyticsSnapshots: analyticsData,
     });
   } catch (err) {
     console.error('Error exporting state:', err);
@@ -68,8 +95,22 @@ stateRouter.post('/import', async (req, res) => {
     const payload = req.body;
     await run('BEGIN TRANSACTION');
     try {
-      // Very simple validation and insertion (non-idempotent). For large imports prefer migration script.
-      if (payload.trades && Array.isArray(payload.trades)) {
+      // Every table the export carries is *replaced*, not merged. It used to be a
+      // mixture: `cash` and `interest` were cleared first while `trades` and
+      // `history` were inserted row by row, so anything in the database that the
+      // backup did not contain survived. A tool labelled "restore" that cannot
+      // remove a trade or a snapshot is a merge wearing a restore's name, and
+      // restoring an older backup after a mistake left the mistake in place.
+      //
+      // A key that is absent or not an array leaves its table untouched, so a
+      // partial payload cannot silently empty a table.
+      const replace = async (table: string, key: string, insert: () => Promise<void>) => {
+        if (!Array.isArray(payload[key])) return;
+        await run(`DELETE FROM ${table}`);
+        await insert();
+      };
+
+      await replace('trades', 'trades', async () => {
         for (const t of payload.trades) {
           // No `profit` column: it was dropped in migration 0003, and writing it
           // made every restore fail with "table trades has no column named
@@ -84,17 +125,17 @@ stateRouter.post('/import', async (req, res) => {
             [t.id ?? null, t.symbol, t.side, t.qty, t.price ?? null, t.time, t.cash_entry_id ?? t.cashEntryId ?? null],
           );
         }
-      }
-      if (payload.history && Array.isArray(payload.history)) {
+      });
+
+      await replace('portfolio_snapshots', 'history', async () => {
         // `brlusd_rate` was missing from this column list while the export sent
         // it (`SELECT *`), so a restore silently nulled the exchange rate on
         // every snapshot: 0% null before a restore, 100% after. `analyticsService`
         // reads that column to convert BRL interest at the rate of the following
         // snapshot and falls back to today's rate when it is null, so the
-        // analytics came out of a restore converted at the wrong rate until
-        // Fill History Gaps re-derived it. The candles are unaffected - the
-        // high/low of each one comes from `v` and `p` - which is why this hid.
-        // `?? null` keeps backups taken before the column existed importable.
+        // analytics came out of a restore converted at the wrong rate. The
+        // candles are unaffected - the high/low of each one comes from `v` and
+        // `p` - which is why this hid. `?? null` keeps older backups importable.
         for (const h of payload.history) {
           await run(
             'INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note, brlusd_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -111,7 +152,7 @@ stateRouter.post('/import', async (req, res) => {
             ],
           );
         }
-      }
+      });
       if (payload.interestReaisMonths && Array.isArray(payload.interestReaisMonths)) {
         // `interest` has no unique key, so OR REPLACE would append a second row
         // per month and every restore would inflate the interest income. The
@@ -138,7 +179,7 @@ stateRouter.post('/import', async (req, res) => {
           ]);
         }
       }
-      if (payload.alerts && Array.isArray(payload.alerts)) {
+      await replace('alerts', 'alerts', async () => {
         for (const a of payload.alerts) {
           await run(
             'INSERT OR REPLACE INTO alerts (id, symbol, alert_type, threshold, condition, reference_price, is_active, created_at, current_price, previous_price, percentage_change, triggered_at, dismissed_at, is_dismissed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -160,8 +201,9 @@ stateRouter.post('/import', async (req, res) => {
             ],
           );
         }
-      }
-      if (payload.scenarios && Array.isArray(payload.scenarios)) {
+      });
+
+      await replace('scenarios', 'scenarios', async () => {
         for (const s of payload.scenarios) {
           await run('INSERT OR REPLACE INTO scenarios (id, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
             s.id ?? randomUUID(),
@@ -171,7 +213,52 @@ stateRouter.post('/import', async (req, res) => {
             s.updated_at ?? null,
           ]);
         }
-      }
+      });
+
+      // The three tables added to the export in version 2. Absent from a
+      // version 1 backup, in which case `replace` leaves the table alone.
+      await replace('price_cache', 'priceCache', async () => {
+        for (const p of payload.priceCache) {
+          await run('INSERT OR REPLACE INTO price_cache (symbol, price, ts, meta) VALUES (?, ?, ?, ?)', [
+            p.symbol,
+            p.price,
+            p.ts ?? null,
+            p.meta ?? null,
+          ]);
+        }
+      });
+
+      await replace('asset_chart_cache', 'assetChartCache', async () => {
+        for (const c of payload.assetChartCache) {
+          await run('INSERT OR REPLACE INTO asset_chart_cache (symbol, days, interval, ts, data) VALUES (?, ?, ?, ?, ?)', [
+            c.symbol,
+            c.days,
+            c.interval,
+            c.ts ?? null,
+            c.data ?? null,
+          ]);
+        }
+      });
+
+      await replace('analytics_snapshots', 'analyticsSnapshots', async () => {
+        for (const a of payload.analyticsSnapshots) {
+          await run(
+            'INSERT OR REPLACE INTO analytics_snapshots (id, computed_at, period, return_pct, max_drawdown_pct, max_drawdown_start, max_drawdown_end, sharpe_ratio, allocation_json, cost_vs_market_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              a.id ?? randomUUID(),
+              a.computed_at ?? Date.now(),
+              a.period,
+              a.return_pct ?? null,
+              a.max_drawdown_pct ?? null,
+              a.max_drawdown_start ?? null,
+              a.max_drawdown_end ?? null,
+              a.sharpe_ratio ?? null,
+              a.allocation_json ?? null,
+              a.cost_vs_market_json ?? null,
+            ],
+          );
+        }
+      });
       if (payload.cashEntries && Array.isArray(payload.cashEntries)) {
         await run('DELETE FROM cash');
         for (const e of payload.cashEntries) {
@@ -219,15 +306,8 @@ stateRouter.post('/import', async (req, res) => {
   }
 });
 
-stateRouter.delete('/', async (req, res) => {
-  try {
-    await run('DELETE FROM trades');
-    await run('DELETE FROM portfolio_snapshots');
-    await run('DELETE FROM interest');
-    await run('DELETE FROM cash');
-    res.status(204).send();
-  } catch (err) {
-    console.error('Error erasing state:', err);
-    res.status(500).json({ error: 'Failed to erase state' });
-  }
-});
+// `DELETE /api/state` - "Erase All" - is gone. It deleted trades, snapshots,
+// interest and cash while leaving `price_ticks`, alerts, scenarios and
+// analytics_snapshots behind, so it was a misnomer as well as a total loss with
+// no way back. Restoring a backup is now a true replace, which covers the
+// "start from a known state" case the button was there for.

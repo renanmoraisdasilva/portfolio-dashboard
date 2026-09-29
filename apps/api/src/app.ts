@@ -15,7 +15,6 @@ import { assetRouter } from './routes/asset';
 import { alertsRouter } from './routes/alerts';
 import { configRouter } from './routes/config';
 import { scenariosRouter } from './routes/scenarios';
-import { migrationsRouter } from './routes/migrations';
 import analyticsRouter from './routes/analytics';
 import { portfolioRouter } from './routes/portfolio';
 import { sqlExplorerRouter } from './routes/sqlExplorer';
@@ -85,7 +84,6 @@ export function mountWebRoutes(app: Express): void {
   app.use('/api/asset', assetRouter);
   app.use('/api/alerts', alertsRouter);
   app.use('/api/config', configRouter);
-  app.use('/api/migrations', migrationsRouter);
   // The SQL Explorer is an arbitrary-SQL console over HTTP with no
   // authentication, so it stays closed unless explicitly enabled. Off by
   // default, including in the Docker image — Phase 3 of
