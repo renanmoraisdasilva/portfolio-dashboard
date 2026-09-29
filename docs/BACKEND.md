@@ -34,7 +34,7 @@ API notes:
 - `GET /api/alerts`, `POST /api/alerts`, `PUT/DELETE /api/alerts/:id`, plus `GET /api/alerts/triggered` and `POST /api/alerts/dismiss/:alertId`.
 - `GET/POST/PUT/DELETE /api/scenarios` — saved simulation scenarios.
 - `GET /api/config/symbols` — the symbol registry that populates every select and chart.
-- `POST /api/history/fill-gaps` — inserts the snapshots the worker missed. It has no button in the UI (see `AGENTS.md`), is idempotent, and only inserts.
+- `POST /api/history/fill-gaps` — inserts the snapshots the early history is missing. It has no button in the UI, is idempotent, and only inserts. It is a one-time repair of a past period, not an ongoing need: the worker appends every 30 minutes and is currently keeping 48/day.
 - `GET /api/sql/tables`, `GET /api/sql/schema`, `POST /api/sql/query` — the SQL Explorer, **with no authentication**. Gated behind `ENABLE_SQL_EXPLORER=true` since Phase 3: the routes answer `403` unless the flag is set, and it is off by default — including in the Docker image.
 
 Static content is served by the same app, split by the Phase 4 strangler seam:
