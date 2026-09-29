@@ -66,12 +66,27 @@ export const assetChartCache = sqliteTable(
   ],
 );
 
-export const interestMonths = sqliteTable('interest', {
-  month: text('month').notNull(),
-  currency: text('currency').notNull().default('BRL'),
-  amount: real('amount'),
-  created_at: integer('created_at'),
-});
+export const interestMonths = sqliteTable(
+  'interest',
+  {
+    month: text('month').notNull(),
+    currency: text('currency').notNull().default('BRL'),
+    amount: real('amount'),
+    created_at: integer('created_at'),
+  },
+  // A month is identified by (month, currency), and until this index existed the
+  // table enforced that only by convention. `INSERT OR REPLACE` therefore
+  // *appended* a second row instead of replacing one, so editing a month's
+  // amount listed it twice and counted it twice, and restoring a backup doubled
+  // every month. Both routes now delete before inserting, so nothing creates
+  // duplicates - but convention is not an invariant, and the index is.
+  //
+  // The failure mode is the point: a duplicate insert now fails loudly with a
+  // UNIQUE constraint error instead of quietly double-counting income. There
+  // were no duplicates to clear when this was added (14 rows, 14 distinct
+  // pairs), so the migration is a bare CREATE UNIQUE INDEX and deletes nothing.
+  (t) => [uniqueIndex('idx_interest_month_currency').on(t.month, t.currency)],
+);
 
 export const cashEntries = sqliteTable(
   'cash',

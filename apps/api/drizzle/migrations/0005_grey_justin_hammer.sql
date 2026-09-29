@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `idx_interest_month_currency` ON `interest` (`month`,`currency`);

@@ -208,16 +208,34 @@ Fetch from `/api/*` with JSON content type. State is stored in the DOM and re-fe
 
 ## Known pitfalls
 
-- **The `interest` table has no primary key and no unique index.** A month is
-  identified by `(month, currency)` only by convention, so `INSERT OR REPLACE`
-  appends a second row instead of replacing one: editing a month's amount used
-  to list it twice and count it twice in the totals, and restoring a backup
-  doubled every interest month. Both routes now `DELETE` the row before
-  inserting it, inside a transaction. A `uniqueIndex` on `(month, currency)` in
-  `schema.ts` would make the invariant hold at the storage layer too, but that
-  migration has to de-duplicate existing rows first — a decision about real
-  financial data, not a refactor's to take. Listed in
-  ["Open decisions for the owner"](docs/MODERNIZATION-PLAN.md#open-decisions-for-the-owner).
+- **A month is `interest`'s key, and a unique index now enforces it.**
+  `idx_interest_month_currency` (migration `0005`) makes `(month, currency)`
+  unique at the storage layer, so a duplicate insert fails with
+  `SQLITE_CONSTRAINT_UNIQUE` instead of quietly double-counting income. The
+  routes already `DELETE` before inserting, so the index is a second line of
+  defence rather than the mechanism. Three things to know:
+  - **The index cannot be created while a duplicate exists.** `CREATE UNIQUE
+INDEX` fails and the server refuses to boot, so a restore that reintroduces
+    a duplicate has to be cleared before the next start.
+  - `services/migration.ts` uses `INSERT OR REPLACE INTO interest`, which
+    _appended_ a second row before this index and now genuinely replaces.
+  - **Let the migration create it, never by hand.** Creating it manually leaves
+    the database and the Drizzle journal disagreeing, and boot then fails trying
+    to apply a migration that is already present.
+- **The database runs in WAL mode, so copy the whole thing or use the API.**
+  `db.ts` sets `journal_mode = WAL`, so recent writes live in
+  `apps/api/data/portfolio.db-wal` until a checkpoint folds them into the main
+  file — and that can be weeks. Copying `portfolio.db` on its own captured a
+  7-week-old state during this work, complete with a row deleted hours earlier.
+  For a backup use `GET /api/state/export` (which reads through the WAL) or
+  SQLite's own `backup()` API. A checkpoint happens when the last connection
+  closes cleanly, so the main file's mtime is not a reliable "last written"
+  signal either.
+- **Never start a server against `apps/api/data` while testing.** Set
+  `PORTFOLIO_DATA_DIR` to a throwaway directory. `e2e/start-server.mjs` and
+  `scripts/build-demo-gif.mjs` both do this; a hand-started
+  `node apps/api/dist/web.js` without it opens the real database, and
+  `npm run demo:build` will not save you.
 - **The `esbuild` override needs `npm dedupe`, and the override must be at the
   repo root.** `drizzle-kit` pulls `@esbuild-kit/core-utils`, which pins
   `esbuild ~0.18.20` (GHSA-67mh-4wv8-2f99: esbuild's _dev server_ can be
