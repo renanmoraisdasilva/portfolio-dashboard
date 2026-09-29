@@ -310,6 +310,22 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
 - **`POST /api/history/fill-gaps` is gone, and the history it would have filled is staying thin.** It recomputed the snapshots the early record never received: the first 30 days have no day reaching 40 snapshots, because the worker was not running then, while the last fortnight sit at 48/day. The worker only appends, so nothing would ever repair that period on its own - which is exactly why the endpoint looked permanent when it was not. It is a one-time repair of a past that is not worth a permanent route, and the 128 rows it did produce carry `note = 'gap-fill'`. `recomputeHistoryAt` in `services/historyManager.ts` is what made it possible; it stays exported and tested with no caller in the app, so delete it together with `historyManager.test.ts`'s four `recomputeHistoryAt` blocks if the capability is not wanted either.
 - **Bond symbols (`type: 'bond'`) are absent from `price_ticks` history** before the migration date — the Yahoo backfill script skips them. `recomputeHistoryAt(ts)` will throw if asked to recompute a timestamp before the first non-bond price tick exists.
 - **`history_points.brlusd_rate` is `NULL` for rows inserted before the migration** — the column was added via `ALTER TABLE`; old rows were not backfilled, and with `fill-gaps` gone nothing rewrites them, so treat a `NULL` rate as permanent for existing rows. A restore is not a way to lose it either: the export sends the column and the import writes it, which it briefly did not — that nulled the rate on every snapshot and left the analytics converting BRL interest at today's rate, while the chart looked perfect because candles only read `v` and `p`.
+- **Documentation has a shape.** The root `README.md` is the showcase: what the
+  project is, what it does, screenshots, the domain diagrams, and a link out. It
+  deliberately does **not** carry the command table, the tech stack, the API
+  notes or the setup steps - those live in `docs/GETTING-STARTED.md`, which is
+  the operating manual. When you add a command, a route or a setup step, it goes
+  in `GETTING-STARTED.md`; when you add something that helps a visitor decide
+  whether to care, it goes in the README. Do not let the two merge back.
+- **The README media is generated, never hand-drawn.** `docs/dashboard-demo.gif`
+  comes from `npm run demo:build` and the four PNGs in `docs/images/` from
+  `npm run demo:stills`; both run `scripts/build-demo-gif.mjs`, which boots the
+  built server against a temporary seeded database, synthesises a deterministic
+  price cache, and drives the real pages with Playwright. A mock-up that drifts
+  from the product is worse than no demo. The synthesised prices are a fixed
+  per-symbol drift from the fixture's own buy prices, so a regeneration produces
+  the same numbers and a reviewer can check the arithmetic. They are committed,
+  not built in CI, because a binary diff in every commit is worse.
 - **Scripts must not shell out through a platform shell.** `scripts/scan-secrets.cjs`
   used `execSync(cmd, { shell: 'powershell.exe' })`, which worked on the author's
   Windows machine and failed on the `ubuntu-latest` runner with `spawnSync

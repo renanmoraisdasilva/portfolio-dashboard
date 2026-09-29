@@ -36,6 +36,7 @@
     "test:e2e:ui": "playwright test --ui",
     "scan:secrets": "node scripts/scan-secrets.cjs",
     "demo:build": "npm run build && node scripts/build-demo-gif.mjs",
+    "demo:stills": "npm run build && node scripts/build-demo-gif.mjs --stills",
     "audit": "npm audit"
   },
   "allowScripts": {

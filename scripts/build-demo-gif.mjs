@@ -1,4 +1,5 @@
-// Builds `docs/dashboard-demo.gif` from the real app.
+// Builds `docs/dashboard-demo.gif` from the real app, or - with `--stills` - the
+// individual screenshots in `docs/images/` that the README shows.
 //
 // Phase 8 asked for a 10-second GIF, and the honest way to make one is to drive
 // the app and screenshot it rather than hand-drawing a mock-up: a demo that
@@ -7,9 +8,13 @@
 // pages, and stitches the frames with `sharp` (no ffmpeg or ImageMagick on the
 // machine, and none in the Docker image either).
 //
-// Regenerate with: npm run demo:build
-// It is committed, not built in CI: the GIF is documentation, and rebuilding it
-// on every push would put a binary diff in every commit.
+// Regenerate the GIF with:   npm run demo:build
+// Regenerate the stills with: npm run demo:stills
+//
+// They are committed, not built in CI: the media is documentation, and
+// rebuilding it on every push would put a binary diff in every commit. The two
+// modes share this harness deliberately - a still and a GIF frame that
+// disagreed would mean one of them was showing a product that does not exist.
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -23,8 +28,10 @@ import gifenc from 'gifenc';
 
 const { GIFEncoder, applyPalette, quantize } = gifenc;
 
+const STILLS = process.argv.includes('--stills');
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = path.join(repoRoot, 'docs');
+const imgDir = path.join(outDir, 'images');
 const frameDir = mkdtempSync(path.join(tmpdir(), 'demo-frames-'));
 const dataDir = mkdtempSync(path.join(tmpdir(), 'demo-data-'));
 
@@ -151,6 +158,31 @@ async function waitForServer() {
   throw new Error('server did not start');
 }
 
+/**
+ * Capture one still for the README.
+ *
+ * A still is a viewport shot, not a full-page one, because the README lays four
+ * of them out in a 2x2 grid and a full-page capture of the dashboard is four
+ * times the height of its neighbour, which reads as a broken layout rather than
+ * a screenshot. `anchor` puts the interesting band at the top of the frame for
+ * the same reason the GIF uses it: the stale-price banner is always present in
+ * this environment and it pushes the portfolio below the fold.
+ */
+async function shootStill(page, name, anchor) {
+  if (!STILLS) return;
+  if (anchor) {
+    await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 16 });
+    }, anchor);
+    await page.waitForTimeout(400);
+  }
+  mkdirSync(imgDir, { recursive: true });
+  const file = path.join(imgDir, `${name}.png`);
+  await page.screenshot({ path: file });
+  console.log(`[demo] still ${path.relative(repoRoot, file)}`);
+}
+
 const frames = [];
 let index = 0;
 
@@ -203,15 +235,17 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/`);
   await waitForContent(page, '.alloc-row');
   await hold(page, 3400, '.metrics-grid');
+  await shootStill(page, 'dashboard', '.metrics-grid');
 
-  // The valuation endpoint is the Phase 6 story: the toggle proves the browser
-  // is not doing the arithmetic, it asks the server which split it wants.
-  console.log('[demo] allocation toggle');
+  // The allocation split is the clearest evidence that the browser is not doing
+  // the arithmetic: the toggle asks the server which valuation it wants, and the
+  // whole panel changes. `Investments` is the interesting half of that pair.
   const investments = page.locator('.alloc-seg button', { hasText: 'Investments' });
   if (await investments.count()) {
     await investments.first().click();
     await page.waitForTimeout(900);
     await hold(page, 1800, '.metrics-grid');
+    await shootStill(page, 'allocation-investments', '.alloc-wrap');
     await page.locator('.alloc-seg button', { hasText: 'With Cash' }).first().click();
     await page.waitForTimeout(600);
   }
@@ -220,18 +254,31 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/simulation`);
   await waitForContent(page, '.alloc-row');
   await hold(page, 2600, '.metrics-grid');
+  await shootStill(page, 'simulator', '.metrics-grid');
 
   console.log('[demo] analytics');
   await page.goto(`http://127.0.0.1:${PORT}/analytics`);
   await waitForContent(page, '.metrics-grid .metric-card .metric-value');
   await hold(page, 2800);
+  await shootStill(page, 'analytics', '.metrics-grid');
 
   await browser.close();
 
+  if (STILLS) {
+    console.log(`[demo] wrote stills to ${path.relative(repoRoot, imgDir)} (no GIF in --stills mode)`);
+  } else {
+    await stitchGif();
+  }
+} finally {
+  await stop();
+}
+
+/** Encode the captured frames into the animated GIF. */
+async function stitchGif() {
   console.log(`[demo] stitching ${frames.length} frames at ${FPS}fps`);
   // One palette for the whole animation, taken from the first frame: the app's
   // palette is stable across all of them, and sharing it lets the encoder store
-  // only the pixels that changed — which is most of the size saving, since the
+  // only the pixels that changed - which is most of the size saving, since the
   // holds are near-identical frames. `sharp` cannot write a multi-page GIF from a
   // stacked buffer (`pageHeight` applies to input, not output), so the frames are
   // encoded with `gifenc`, a pure-JS encoder with no native dependency.
@@ -264,6 +311,4 @@ try {
     `[demo] wrote ${path.relative(repoRoot, target)} (${(animated.length / 1024).toFixed(0)} kB, ` +
       `${frames.length} frames, ${(frames.length / FPS).toFixed(1)}s)`,
   );
-} finally {
-  await stop();
 }
