@@ -29,7 +29,11 @@ jobs:
           context: .
           file: ./apps/api/Dockerfile
           push: true
-          build-args: |
-            HOME_ASSISTANT_WEBHOOK_URL=${{ secrets.HOME_ASSISTANT_WEBHOOK_URL }}
+          # No build-args. `HOME_ASSISTANT_WEBHOOK_URL` used to be passed here,
+          # which persisted the real webhook into the published image config:
+          # `docker history` and `docker inspect` both print it, and the image is
+          # pushed on every commit. The app reads the variable from its runtime
+          # environment, so the deployment supplies it instead - nothing is lost
+          # and nothing is published. See apps/api/Dockerfile.
           tags: |
             ghcr.io/${{ github.repository_owner }}/portfolio-dashboard:${{ github.sha }}

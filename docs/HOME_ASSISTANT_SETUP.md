@@ -40,12 +40,20 @@ Which file it goes in depends on where the app runs:
 
 ### Production (Docker)
 
-The webhook URL is **baked into the image at build time** — it is not read from
-a `.env` file at runtime. Store it as the `HOME_ASSISTANT_WEBHOOK_URL` secret in
-the GitHub Actions repository settings; `docker-image.yml` passes it to the
-`Dockerfile` as `ARG HOME_ASSISTANT_WEBHOOK_URL`, which sets the matching `ENV`.
-The production `docker-compose.yml` therefore has no `environment:` entry for
-it — redeploy after changing the secret. See `docs/SERVER-SETUP.md` §4.
+The webhook URL is a **runtime environment variable**, not a build argument. Set
+`HOME_ASSISTANT_WEBHOOK_URL` in the deployment platform's environment — Dokploy
+for the production host — and `docker-compose.yml` forwards it into the
+container. Changing it means redeploying, and nothing else: no rebuild, and no
+GitHub Actions secret involved.
+
+It used to work the other way round, and the reason matters. The workflow passed
+it as a build argument and the `Dockerfile` set the matching `ENV`, which Docker
+persists into the image config — so every image ever pushed to GHCR carried the
+real webhook in plain text, readable with `docker history` or `docker inspect` by
+anyone who could pull it. A Home Assistant webhook is a bearer secret: the URL is
+the credential, and there is no second factor. Injecting it at runtime is
+equivalent, because `homeAssistantService.ts` only ever reads
+`process.env.HOME_ASSISTANT_WEBHOOK_URL`.
 
 ### Local development
 

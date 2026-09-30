@@ -18,6 +18,9 @@ services:
       <<: *telemetry-environment
       PORT: 3000
       OTEL_SERVICE_NAME: '${OTEL_SERVICE_NAME_WEB:-portfolio-web}'
+      # Runtime, never a build argument: a Docker `ENV` is baked into the image
+      # config and readable by anyone who can pull it. See the Dockerfile.
+      HOME_ASSISTANT_WEBHOOK_URL: '${HOME_ASSISTANT_WEBHOOK_URL:-}'
     command: node apps/api/dist/web.js
     extra_hosts: *telemetry-hosts
     volumes:

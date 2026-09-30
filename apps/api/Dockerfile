@@ -45,11 +45,22 @@ RUN npm prune --omit=dev
 # Final stage (runtime)
 FROM node:22-alpine AS runtime
 
-# Accept build argument for Home Assistant webhook URL
-ARG HOME_ASSISTANT_WEBHOOK_URL
-ENV HOME_ASSISTANT_WEBHOOK_URL=${HOME_ASSISTANT_WEBHOOK_URL}
-
-# ENABLE_SQL_EXPLORER is deliberately NOT set: /api/sql/* answers 403 unless a
+# `HOME_ASSISTANT_WEBHOOK_URL` is deliberately NOT set here.
+#
+# It used to be, via `ARG` + `ENV` in this stage, and the CI workflow passed the
+# real webhook as a build argument. An `ENV` is persisted into the image config,
+# so every image ever pushed carries the value in plain text - `docker history`
+# and `docker inspect` both print it, and anyone who can pull the image can read
+# a Home Assistant webhook, which is a bearer secret. The image is published to
+# GHCR on every push, so this shipped the secret to a registry rather than
+# keeping it in the deployment.
+#
+# `homeAssistantService.ts` reads `process.env.HOME_ASSISTANT_WEBHOOK_URL` at
+# startup, so passing it as a runtime environment variable is exactly equivalent
+# and leaks nothing. `docker-compose.yml` forwards it; Dokploy sets it in the
+# application's environment.
+#
+# ENABLE_SQL_EXPLORER is also NOT set: /api/sql/* answers 403 unless a
 # deployment opts in (Phase 3 of docs/MODERNIZATION-PLAN.md).
 
 WORKDIR /app

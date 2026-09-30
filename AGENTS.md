@@ -343,6 +343,19 @@ powershell.exe ENOENT` - a security gate that could not run on the platform
   skipped while the script still printed `CLEAN`. Verified: two consecutive lines,
   first secret found, second missed. A scan that can miss a secret is worse than
   none, because it reports CLEAN.
+- **Never pass a secret as a Docker build argument.** `docker-image.yml` used to
+  pass `HOME_ASSISTANT_WEBHOOK_URL` as a build arg, and the `Dockerfile` set the
+  matching `ENV` in the runtime stage. Docker persists an `ENV` into the image
+  config, so every image pushed to GHCR carried the real Home Assistant webhook in
+  plain text - `docker history` and `docker inspect` both print it, and the image
+  is published on every commit. A webhook URL _is_ the credential: anyone holding
+  it can post to the automation, and it names the internal Home Assistant host. It
+  is now a runtime environment variable, which is equivalent because
+  `homeAssistantService.ts` only reads `process.env`. The general rule: an `ARG`
+  belongs in a build for things that change the _artifact_ (a version, a base
+  image, a public URL). Anything secret belongs in the deployment's environment,
+  and if a build genuinely cannot avoid a secret, build it in a later stage from
+  a `RUN --mount=type=secret` rather than an `ENV`.
 - **The secret scan needs the full history to mean anything.** Its central check
   is whether a path like `*.db` or `.env` was _ever_ committed, which means
   walking every commit reachable from every ref. The `lint` job checks out with
