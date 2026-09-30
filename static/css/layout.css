@@ -100,11 +100,13 @@ h2 {
   flex-wrap: wrap;
 }
 
+/* Inside `.page-actions` since the tabs moved into the header, so the
+   `margin-bottom: 20px` that spaced them as their own row is now just spacing
+   between the switcher and the gear. */
 .view-tabs {
   display: flex;
   gap: 8px;
   max-width: 100%;
-  margin-bottom: 20px;
 }
 .view-tab {
   padding: 8px 14px;
@@ -133,12 +135,18 @@ h2 {
   body {
     padding: 16px;
   }
+  /* `.view-tabs` keeps `overflow-x: auto` here, but no longer gets
+     `padding-bottom: 4px` - that was for the hidden scrollbar it used to show
+     when it was a full-width row of its own, and it now reads as a stray gap
+     between the tabs and the gear. */
   .app-nav,
   .view-tabs {
     overflow-x: auto;
     flex-wrap: nowrap;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+  }
+  .app-nav {
     padding-bottom: 4px;
   }
   .app-nav::-webkit-scrollbar,

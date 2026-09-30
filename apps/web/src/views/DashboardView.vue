@@ -41,8 +41,23 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!--
+    One header row: the two views, then the settings gear last on the right.
+    The tabs used to be a second row of their own below the header, which put the
+    view switcher below the fold on a laptop and left the gear stranded on its
+    own. `Overview` was also a redundant tab - the page is the overview, so
+    selecting it was the same as doing nothing, and it read as a third view.
+  -->
   <PageHeader icon="₿" title="Portfolio Dashboard" subtitle="Holdings, cash, trades and alerts in one view">
     <template #actions>
+      <div class="view-tabs">
+        <button class="view-tab" :class="{ 'is-active': store.tab === 'dashboard' }" @click="store.setTab('dashboard')">
+          Dashboard
+        </button>
+        <button class="view-tab" :class="{ 'is-active': store.tab === 'assetCharts' }" @click="store.setTab('assetCharts')">
+          Asset Charts
+        </button>
+      </div>
       <button
         class="btn"
         title="Settings & Tools"
@@ -54,20 +69,9 @@ onBeforeUnmount(() => {
     </template>
   </PageHeader>
 
-  <div class="view-tabs">
-    <button class="view-tab" :class="{ 'is-active': store.tab === 'dashboard' }" @click="store.setTab('dashboard')">
-      Overview
-    </button>
-    <button class="view-tab" :class="{ 'is-active': store.tab === 'assetCharts' }" @click="store.setTab('assetCharts')">
-      Asset Charts
-    </button>
-  </div>
-
   <template v-if="store.tab === 'dashboard'">
     <div v-if="store.staleWarning" class="banner-warning">⚠️ {{ store.staleWarning }}</div>
     <div v-if="store.priceError" class="banner-error">🚫 {{ store.priceError }}</div>
-
-    <AlertsPanel />
 
     <MetricCards />
 
@@ -164,6 +168,14 @@ onBeforeUnmount(() => {
       </div>
       <TradeHistoryTable />
     </div>
+
+    <!--
+      Alerts last. It used to sit above the metric cards, where it pushed the
+      numbers a visitor came for below the fold and made a configuration panel
+      look like the most important thing on the page. The alert form and the
+      triggered list belong after the portfolio they are watching.
+    -->
+    <AlertsPanel />
   </template>
 
   <div v-show="store.tab === 'assetCharts'" class="card">
