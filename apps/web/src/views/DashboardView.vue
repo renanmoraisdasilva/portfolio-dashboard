@@ -65,130 +65,136 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!--
-    Content only. The header row - Dashboard, Asset Charts, Simulation, Analytics,
-    SQL Explorer and the settings gear - is the shell's, in `App.vue`, because it
-    is the same on every page and this view used to render a second row of its own.
-    Which of the two dashboard views is showing comes from `?tab=` in the URL, so
-    a reload and a shared link both land on the right one.
-  -->
-  <PageHeader title="Holdings" subtitle="Cash, positions, trades and alerts in one view" />
-
-  <template v-if="store.tab === 'dashboard'">
-    <div v-if="store.staleWarning" class="banner-warning">⚠️ {{ store.staleWarning }}</div>
-    <div v-if="store.priceError" class="banner-error">🚫 {{ store.priceError }}</div>
-
-    <MetricCards />
-
-    <div class="content-grid">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-icon">📈</span>Portfolio Value Over Time</div>
-          <div class="chart-controls">
-            <div class="chart-group chart-series-group">
-              <button class="chip" :class="{ active: store.activeSeries === 'all' }" @click="store.setMetric('all')">All</button>
-              <button class="chip" :class="{ active: store.activeSeries === 'value' }" @click="store.setMetric('value')">
-                Value
-              </button>
-              <button class="chip" :class="{ active: store.activeSeries === 'pnl' }" @click="store.setMetric('pnl')">P/L</button>
-            </div>
-            <div class="chart-group chart-projection-group">
-              <button
-                class="chip"
-                title="Toggle trend projection"
-                :class="{ active: store.projectionEnabled }"
-                @click="store.toggleProjection()"
-              >
-                Projection
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="chart-container chart-container-large">
-          <ValueChart />
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-icon">🥧</span>Asset Allocation</div>
-          <div style="margin-left: auto; display: flex; gap: 6px; align-items: center">
-            <div class="alloc-seg" role="tablist" aria-label="Allocation view">
-              <button
-                class="alloc-seg-btn"
-                :class="{ active: store.allocationShowCash }"
-                role="tab"
-                @click="store.setAllocationMode('withCash')"
-              >
-                With Cash
-              </button>
-              <button
-                class="alloc-seg-btn"
-                :class="{ active: !store.allocationShowCash }"
-                role="tab"
-                @click="store.setAllocationMode('investments')"
-              >
-                Investments
-              </button>
-            </div>
-          </div>
-        </div>
-        <AllocationPanel />
-      </div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-icon">💰</span>Profit/Loss by Asset</div>
-        </div>
-        <PlByAssetChart />
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="card-icon">➕</span>Add New Trade</div>
-      </div>
-      <AddTradeForm />
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="card-icon">💵</span>Cash Positions</div>
-      </div>
-      <CashPanel />
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="card-icon">💼</span>Current Positions</div>
-      </div>
-      <PositionsTable />
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="card-icon">📜</span>Trade History</div>
-      </div>
-      <TradeHistoryTable />
-    </div>
-
+  <div class="dashboard-page">
     <!--
-      Alerts last. It used to sit above the metric cards, where it pushed the
-      numbers a visitor came for below the fold and made a configuration panel
-      look like the most important thing on the page. The alert form and the
-      triggered list belong after the portfolio they are watching.
+      Content only. The header row - Dashboard, Asset Charts, Simulation, Analytics,
+      SQL Explorer and the settings gear - is the shell's, in `App.vue`, because it
+      is the same on every page and this view used to render a second row of its own.
+      Which of the two dashboard views is showing comes from `?tab=` in the URL, so
+      a reload and a shared link both land on the right one.
     -->
-    <AlertsPanel />
-  </template>
+    <PageHeader title="Holdings" subtitle="Cash, positions, trades and alerts in one view" />
 
-  <div v-show="store.tab === 'assetCharts'" class="card">
-    <AssetChartsSection />
-  </div>
+    <template v-if="store.tab === 'dashboard'">
+      <div v-if="store.staleWarning" class="banner-warning">⚠️ {{ store.staleWarning }}</div>
+      <div v-if="store.priceError" class="banner-error">🚫 {{ store.priceError }}</div>
 
-  <div class="toast-host">
-    <div v-for="toast in toasts" :key="toast.id" class="toast" :class="toast.kind">{{ toast.text }}</div>
+      <MetricCards />
+
+      <div class="content-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">📈</span>Portfolio Value Over Time</div>
+            <div class="chart-controls">
+              <div class="chart-group chart-series-group">
+                <button class="chip" :class="{ active: store.activeSeries === 'all' }" @click="store.setMetric('all')">
+                  All
+                </button>
+                <button class="chip" :class="{ active: store.activeSeries === 'value' }" @click="store.setMetric('value')">
+                  Value
+                </button>
+                <button class="chip" :class="{ active: store.activeSeries === 'pnl' }" @click="store.setMetric('pnl')">
+                  P/L
+                </button>
+              </div>
+              <div class="chart-group chart-projection-group">
+                <button
+                  class="chip"
+                  title="Toggle trend projection"
+                  :class="{ active: store.projectionEnabled }"
+                  @click="store.toggleProjection()"
+                >
+                  Projection
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container chart-container-large">
+            <ValueChart />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">🥧</span>Asset Allocation</div>
+            <div style="margin-left: auto; display: flex; gap: 6px; align-items: center">
+              <div class="alloc-seg" role="tablist" aria-label="Allocation view">
+                <button
+                  class="alloc-seg-btn"
+                  :class="{ active: store.allocationShowCash }"
+                  role="tab"
+                  @click="store.setAllocationMode('withCash')"
+                >
+                  With Cash
+                </button>
+                <button
+                  class="alloc-seg-btn"
+                  :class="{ active: !store.allocationShowCash }"
+                  role="tab"
+                  @click="store.setAllocationMode('investments')"
+                >
+                  Investments
+                </button>
+              </div>
+            </div>
+          </div>
+          <AllocationPanel />
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-icon">💰</span>Profit/Loss by Asset</div>
+          </div>
+          <PlByAssetChart />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-icon">➕</span>Add New Trade</div>
+        </div>
+        <AddTradeForm />
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-icon">💵</span>Cash Positions</div>
+        </div>
+        <CashPanel />
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-icon">💼</span>Current Positions</div>
+        </div>
+        <PositionsTable />
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-icon">📜</span>Trade History</div>
+        </div>
+        <TradeHistoryTable />
+      </div>
+
+      <!--
+        Alerts last. It used to sit above the metric cards, where it pushed the
+        numbers a visitor came for below the fold and made a configuration panel
+        look like the most important thing on the page. The alert form and the
+        triggered list belong after the portfolio they are watching.
+      -->
+      <AlertsPanel />
+    </template>
+
+    <div v-show="store.tab === 'assetCharts'" class="card">
+      <AssetChartsSection />
+    </div>
+
+    <div class="toast-host">
+      <div v-for="toast in toasts" :key="toast.id" class="toast" :class="toast.kind">{{ toast.text }}</div>
+    </div>
   </div>
 </template>
 

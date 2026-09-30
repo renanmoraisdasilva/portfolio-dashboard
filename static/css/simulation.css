@@ -1,19 +1,17 @@
-/* Page shell, primary navigation and page header live in layout.css. */
-
-.metrics-grid {
+.simulation-page .metrics-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: var(--card-gap);
 }
-.metric-card {
+.simulation-page .metric-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
   position: relative;
 }
-.metric-card::before {
+.simulation-page .metric-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -23,37 +21,37 @@
   border-radius: 14px 14px 0 0;
   background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
 }
-.metric-label {
+.simulation-page .metric-label {
   font-size: 0.8rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.metric-value {
+.simulation-page .metric-value {
   font-size: 1.9rem;
   font-weight: 700;
   margin: 6px 0;
 }
-.metric-sub {
+.simulation-page .metric-sub {
   font-size: 0.6rem;
   color: var(--text-muted);
   margin-top: 3px;
   display: block;
 }
-.metric-change {
+.simulation-page .metric-change {
   font-size: 0.85rem;
   color: var(--text-muted);
   display: flex;
   gap: 6px;
   align-items: center;
 }
-.metric-change.positive {
+.simulation-page .metric-change.positive {
   color: var(--accent-success);
 }
-.metric-change.negative {
+.simulation-page .metric-change.negative {
   color: var(--accent-danger);
 }
-.metric-change.neutral {
+.simulation-page .metric-change.neutral {
   color: var(--text-muted);
 }
 
@@ -63,30 +61,30 @@
   gap: 16px;
 }
 .layout > *,
-.form-grid > *,
+.simulation-page .form-grid > *,
 .asset-row > *,
 .asset-rows > *,
-.metrics-grid > * {
+.simulation-page .metrics-grid > * {
   min-width: 0;
 }
-.card {
+.simulation-page .card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
 }
-.card-header {
+.simulation-page .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
-.form-grid {
+.simulation-page .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
-select.chip {
+select.simulation-page .chip {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -124,14 +122,14 @@ select.chip {
   color: var(--text-muted);
   margin-left: 8px;
 }
-.chart-container {
+.simulation-page .chart-container {
   height: 260px;
   min-width: 0;
 }
-.chart-container canvas {
+.simulation-page .chart-container canvas {
   max-width: 100%;
 }
-.chart-container.alloc {
+.simulation-page .chart-container.alloc {
   height: 340px;
 }
 .sim-metrics {
@@ -166,20 +164,20 @@ select.chip {
   padding: 8px 10px;
   border-radius: 8px;
 }
-.stepper {
+.simulation-page .stepper {
   display: inline-flex;
   gap: 6px;
   align-items: center;
   min-width: 0;
   flex-wrap: wrap;
 }
-.stepper input {
+.simulation-page .stepper input {
   flex: 1;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
 }
-.stepper button {
+.simulation-page .stepper button {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-primary);
@@ -187,11 +185,11 @@ select.chip {
   border-radius: 6px;
   cursor: pointer;
 }
-.table-container {
+.simulation-page .table-container {
   overflow-x: auto;
 }
 
-.sim-slider {
+.simulation-page .sim-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
@@ -202,15 +200,15 @@ select.chip {
   outline: none;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
-.sim-slider:focus {
+.simulation-page .sim-slider:focus {
   box-shadow: 0 0 0 4px rgba(0, 217, 255, 0.06);
 }
-.sim-slider::-webkit-slider-runnable-track {
+.simulation-page .sim-slider::-webkit-slider-runnable-track {
   height: 12px;
   border-radius: 999px;
   background: transparent;
 }
-.sim-slider::-webkit-slider-thumb {
+.simulation-page .sim-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
@@ -222,12 +220,12 @@ select.chip {
   border: 2px solid #0a0e1a;
   cursor: pointer;
 }
-.sim-slider::-moz-range-track {
+.simulation-page .sim-slider::-moz-range-track {
   height: 12px;
   border-radius: 999px;
   background: transparent;
 }
-.sim-slider::-moz-range-thumb {
+.simulation-page .sim-slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -237,15 +235,15 @@ select.chip {
   cursor: pointer;
 }
 
-.alloc-wrap {
+.simulation-page .alloc-wrap {
   display: flex;
   gap: 16px;
   align-items: center;
 }
-.alloc-chart {
+.simulation-page .alloc-chart {
   flex: 1;
 }
-.alloc-summary {
+.simulation-page .alloc-summary {
   width: 260px;
   display: flex;
   flex-direction: column;
@@ -253,21 +251,21 @@ select.chip {
   justify-content: flex-start;
   padding: 8px;
 }
-.alloc-summary .summary-label {
+.simulation-page .alloc-summary .simulation-page .summary-label {
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
-.alloc-summary .summary-value {
+.simulation-page .alloc-summary .simulation-page .summary-value {
   font-size: 1.4rem;
   font-weight: 700;
 }
-.alloc-summary .summary-sub {
+.simulation-page .alloc-summary .simulation-page .summary-sub {
   font-size: 0.9rem;
   color: var(--text-muted);
   margin-top: 14px;
 }
-.alloc-summary #simAllocList {
+.simulation-page .alloc-summary #simAllocList {
   width: 100%;
   max-height: 220px;
   overflow: auto;
@@ -275,35 +273,35 @@ select.chip {
   flex-direction: column;
   gap: 6px;
 }
-.alloc-summary .alloc-row {
+.simulation-page .alloc-summary .simulation-page .alloc-row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   justify-content: space-between;
 }
-.alloc-summary .alloc-row .left {
+.simulation-page .alloc-summary .simulation-page .alloc-row .simulation-page .left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.alloc-summary .swatch {
+.simulation-page .alloc-summary .simulation-page .swatch {
   width: 12px;
   height: 12px;
   border-radius: 3px;
   flex: 0 0 12px;
 }
-.alloc-summary .asset-label {
+.simulation-page .alloc-summary .simulation-page .asset-label {
   font-weight: 600;
 }
-.alloc-summary .asset-value {
+.simulation-page .alloc-summary .simulation-page .asset-value {
   font-weight: 700;
 }
-.alloc-summary .currency-toggle {
+.simulation-page .alloc-summary .simulation-page .currency-toggle {
   display: flex;
   gap: 6px;
 }
-.chip[data-currency] {
+.simulation-page .chip[data-currency] {
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -312,16 +310,16 @@ select.chip {
   font-size: 0.8rem;
   cursor: pointer;
 }
-.chip[data-currency].active {
+.simulation-page .chip[data-currency].active {
   border-color: var(--accent-primary);
   box-shadow: 0 0 10px var(--glow);
 }
 @media (max-width: 900px) {
-  .alloc-wrap {
+  .simulation-page .alloc-wrap {
     flex-direction: column;
     align-items: stretch;
   }
-  .alloc-summary {
+  .simulation-page .alloc-summary {
     width: 100%;
     align-items: flex-start;
     margin-top: 8px;
@@ -349,7 +347,7 @@ td {
 td .currency {
   font-weight: 600;
 }
-.small {
+.simulation-page .small {
   font-size: 0.85rem;
   color: var(--text-muted);
 }
@@ -362,7 +360,7 @@ td .currency {
   font-weight: 700;
 }
 
-.modal {
+.simulation-page .modal {
   position: fixed;
   inset: 0;
   background: #000a;
@@ -371,7 +369,7 @@ td .currency {
   justify-content: center;
   z-index: 1000;
 }
-.modal-content {
+.simulation-page .modal-content {
   background: var(--bg-secondary);
   padding: 22px 18px;
   border-radius: 10px;
@@ -379,38 +377,38 @@ td .currency {
   max-width: 90vw;
   border: 1px solid var(--border);
 }
-.modal-content h2 {
+.simulation-page .modal-content h2 {
   margin-top: 0;
   margin-bottom: 10px;
 }
-.modal .row {
+.simulation-page .modal .simulation-page .row {
   display: flex;
   gap: 8px;
   align-items: center;
   margin-bottom: 10px;
 }
-.modal .actions {
+.simulation-page .modal .actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
-.modal table {
+.simulation-page .modal table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 8px;
 }
-.modal th,
-.modal td {
+.simulation-page .modal th,
+.simulation-page .modal td {
   padding: 8px;
   border-bottom: 1px solid var(--border);
 }
-.modal .small {
+.simulation-page .modal .simulation-page .small {
   font-size: 0.85rem;
   color: var(--text-muted);
 }
 
 @media (max-width: 1200px) {
-  .metrics-grid {
+  .simulation-page .metrics-grid {
     grid-template-columns: repeat(4, minmax(160px, 1fr));
   }
 }
@@ -418,10 +416,10 @@ td .currency {
   .layout {
     grid-template-columns: 1fr;
   }
-  .metrics-grid {
+  .simulation-page .metrics-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  .form-grid {
+  .simulation-page .form-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .asset-row {
@@ -434,15 +432,15 @@ td .currency {
   .asset-current {
     font-size: 0.75rem;
   }
-  .sim-slider {
+  .simulation-page .sim-slider {
     height: 10px;
   }
 }
 @media (max-width: 600px) {
-  .metrics-grid {
+  .simulation-page .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .form-grid {
+  .simulation-page .form-grid {
     grid-template-columns: 1fr;
   }
   .shell > * {
@@ -457,23 +455,23 @@ td .currency {
     width: 80px;
     padding: 6px;
   }
-  .sim-slider {
+  .simulation-page .sim-slider {
     height: 8px;
   }
-  .metric-value {
+  .simulation-page .metric-value {
     font-size: 1.5rem;
   }
 }
 
 @media (max-width: 430px) {
-  .card {
+  .simulation-page .card {
     padding: 10px;
     border-radius: 10px;
   }
-  .card-header {
+  .simulation-page .card-header {
     margin-bottom: 8px;
   }
-  .card .small {
+  .simulation-page .card .simulation-page .small {
     font-size: 0.72rem;
   }
   .sim-input {
@@ -492,16 +490,16 @@ td .currency {
   .asset-current {
     font-size: 0.72rem;
   }
-  .metrics-grid {
+  .simulation-page .metrics-grid {
     gap: 10px;
   }
-  .metric-value {
+  .simulation-page .metric-value {
     font-size: 1.4rem;
   }
-  .sim-slider {
+  .simulation-page .sim-slider {
     height: 8px;
   }
-  .chart-container {
+  .simulation-page .chart-container {
     height: 200px;
   }
   table th,
@@ -509,19 +507,19 @@ td .currency {
     padding: 8px;
     font-size: 0.88rem;
   }
-  .form-grid {
+  .simulation-page .form-grid {
     grid-template-columns: 1fr;
     gap: 8px;
   }
 }
 
-.compact-sim .card {
+.compact-sim .simulation-page .card {
   padding: 6px !important;
 }
-.compact-sim .card-header {
+.compact-sim .simulation-page .card-header {
   margin-bottom: 6px;
 }
-.compact-sim .card .small {
+.compact-sim .simulation-page .card .simulation-page .small {
   font-size: 0.66rem;
 }
 .compact-sim .sim-input {
@@ -544,13 +542,13 @@ td .currency {
   text-overflow: ellipsis;
   max-width: 64px;
 }
-.compact-sim .metric-value {
+.compact-sim .simulation-page .metric-value {
   font-size: 1.2rem;
 }
-.compact-sim .chart-container {
+.compact-sim .simulation-page .chart-container {
   height: 160px;
 }
-.compact-sim .sim-slider {
+.compact-sim .simulation-page .sim-slider {
   height: 7px;
 }
 .compact-sim table th,
@@ -558,21 +556,21 @@ td .currency {
   padding: 6px;
   font-size: 0.82rem;
 }
-.compact-sim .form-grid {
+.compact-sim .simulation-page .form-grid {
   grid-template-columns: 1fr;
 }
-.compact-sim .allocation-legend {
+.compact-sim .simulation-page .allocation-legend {
   display: none;
 }
 .compact-sim .asset-current {
   justify-self: end;
 }
-.compact-sim .metrics-grid {
+.compact-sim .simulation-page .metrics-grid {
   gap: 8px;
 }
-.compact-sim .metric-label {
+.compact-sim .simulation-page .metric-label {
   font-size: 0.72rem;
 }
-.compact-sim .metric-sub {
+.compact-sim .simulation-page .metric-sub {
   font-size: 0.56rem;
 }

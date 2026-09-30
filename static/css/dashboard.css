@@ -1,19 +1,17 @@
-/* Page shell, primary navigation and page header live in layout.css. */
-
-.metrics-grid {
+.dashboard-page .metrics-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: var(--card-gap);
 }
-.metric-card {
+.dashboard-page .metric-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
   position: relative;
 }
-.metric-card::before {
+.dashboard-page .metric-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -23,31 +21,31 @@
   border-radius: 14px 14px 0 0;
   background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
 }
-.metric-label {
+.dashboard-page .metric-label {
   font-size: 0.8rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.metric-value {
+.dashboard-page .metric-value {
   font-size: 1.9rem;
   font-weight: 700;
   margin: 6px 0;
 }
-.metric-change {
+.dashboard-page .metric-change {
   font-size: 0.85rem;
   color: var(--text-muted);
   display: flex;
   gap: 6px;
   align-items: center;
 }
-.metric-change.positive {
+.dashboard-page .metric-change.positive {
   color: var(--accent-success);
 }
-.metric-change.negative {
+.dashboard-page .metric-change.negative {
   color: var(--accent-danger);
 }
-.metric-change.neutral {
+.dashboard-page .metric-change.neutral {
   color: var(--text-muted);
 }
 
@@ -64,14 +62,14 @@
   margin-bottom: var(--card-gap);
 }
 
-.card {
+.dashboard-page .card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 20px;
   margin-bottom: 16px;
 }
-.card-header {
+.dashboard-page .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -97,11 +95,11 @@
   font-size: 16px;
 }
 
-.chart-container {
+.dashboard-page .chart-container {
   position: relative;
   height: 260px;
 }
-.chart-container.alloc {
+.dashboard-page .chart-container.alloc {
   height: 400px;
 }
 .chart-container-large {
@@ -174,7 +172,7 @@
 }
 
 @media (max-width: 900px) {
-  .card-header {
+  .dashboard-page .card-header {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
@@ -248,26 +246,26 @@
   }
 }
 
-.side-seg .chip {
+.side-seg .dashboard-page .chip {
   padding: 6px 8px;
   font-size: 0.85rem;
 }
-.side-seg .chip.active {
+.side-seg .dashboard-page .chip.active {
   box-shadow: 0 0 8px var(--glow);
   border-color: var(--accent-primary);
 }
 
-.allocation-legend {
+.dashboard-page .allocation-legend {
   display: none;
 }
 
-.chart-container.alloc .alloc-wrap {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-wrap {
   display: flex;
   gap: 16px;
   align-items: center;
   height: 100%;
 }
-.chart-container.alloc .alloc-chart {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-chart {
   flex: 1;
   display: flex;
   align-items: center;
@@ -275,7 +273,7 @@
   height: 100%;
   position: relative;
 }
-.chart-container.alloc .alloc-chart .currency-toggle.top {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-chart .dashboard-page .currency-toggle.top {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -283,11 +281,11 @@
   display: flex;
   gap: 6px;
 }
-.chart-container.alloc .alloc-chart .currency-toggle .chip {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-chart .dashboard-page .currency-toggle .dashboard-page .chip {
   padding: 6px 8px;
   font-size: 0.78rem;
 }
-.chart-container.alloc .alloc-summary {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary {
   width: 260px;
   display: flex;
   flex-direction: column;
@@ -296,21 +294,21 @@
   padding: 8px;
   height: 100%;
 }
-.chart-container.alloc .alloc-summary .summary-label {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary .dashboard-page .summary-label {
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
-.chart-container.alloc .alloc-summary .summary-value {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary .dashboard-page .summary-value {
   font-size: 1.4rem;
   font-weight: 700;
 }
-.chart-container.alloc .alloc-summary .summary-sub {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary .dashboard-page .summary-sub {
   font-size: 0.9rem;
   color: var(--text-muted);
   margin-top: 14px;
 }
-.chart-container.alloc #allocList {
+.dashboard-page .chart-container.alloc #allocList {
   width: 100%;
   max-height: calc(100% - 24px);
   overflow: auto;
@@ -319,35 +317,35 @@
   gap: 6px;
   margin-top: 8px;
 }
-.chart-container.alloc .alloc-row {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   justify-content: space-between;
 }
-.chart-container.alloc .alloc-row .left {
+.dashboard-page .chart-container.alloc .dashboard-page .alloc-row .dashboard-page .left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.chart-container.alloc .swatch {
+.dashboard-page .chart-container.alloc .dashboard-page .swatch {
   width: 12px;
   height: 12px;
   border-radius: 3px;
   flex: 0 0 12px;
 }
-.chart-container.alloc .asset-label {
+.dashboard-page .chart-container.alloc .dashboard-page .asset-label {
   font-weight: 600;
 }
-.chart-container.alloc .asset-value {
+.dashboard-page .chart-container.alloc .dashboard-page .asset-value {
   font-weight: 700;
 }
-.chart-container.alloc .currency-toggle {
+.dashboard-page .chart-container.alloc .dashboard-page .currency-toggle {
   display: flex;
   gap: 6px;
 }
-.chart-container.alloc .chip[data-currency] {
+.dashboard-page .chart-container.alloc .dashboard-page .chip[data-currency] {
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -356,30 +354,30 @@
   font-size: 0.8rem;
   cursor: pointer;
 }
-.chart-container.alloc .chip[data-currency].active {
+.dashboard-page .chart-container.alloc .dashboard-page .chip[data-currency].active {
   border-color: var(--accent-primary);
   box-shadow: 0 0 10px var(--glow);
 }
 
 @media (max-width: 900px) {
-  .chart-container.alloc .alloc-wrap {
+  .dashboard-page .chart-container.alloc .dashboard-page .alloc-wrap {
     flex-direction: column;
     align-items: stretch;
   }
-  .chart-container.alloc .alloc-summary {
+  .dashboard-page .chart-container.alloc .dashboard-page .alloc-summary {
     width: 100%;
     align-items: flex-start;
     margin-top: 8px;
   }
-  .chart-container.alloc {
+  .dashboard-page .chart-container.alloc {
     height: auto;
   }
-  .chart-container.alloc .alloc-chart {
+  .dashboard-page .chart-container.alloc .dashboard-page .alloc-chart {
     height: 260px;
   }
 }
 
-.form-grid {
+.dashboard-page .form-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
@@ -398,13 +396,13 @@
   gap: 8px;
   padding-right: 6px;
 }
-.trade-left .row {
+.trade-left .dashboard-page .row {
   display: flex;
   gap: 12px;
   align-items: flex-start;
   flex-wrap: wrap;
 }
-.trade-left .row > div {
+.trade-left .dashboard-page .row > div {
   flex: 1;
   min-width: 0;
 }
@@ -424,15 +422,15 @@
   align-items: center;
   gap: 12px;
 }
-.trade-left .sim-slider {
+.trade-left .dashboard-page .sim-slider {
   flex: 1;
   height: 10px;
 }
-.slider-row .small#qtyPctLabel {
+.slider-row .dashboard-page .small#qtyPctLabel {
   min-width: 36px;
   text-align: right;
 }
-.trade-left .row.inline-row {
+.trade-left .dashboard-page .row.inline-row {
   align-items: flex-end;
 }
 .trade-slider-wrap {
@@ -460,7 +458,7 @@
   white-space: nowrap;
   height: 39px;
 }
-#maxQtyBtn.small {
+#maxQtyBtn.dashboard-page .small {
   padding: 6px 10px;
   height: 36px;
 }
@@ -468,10 +466,10 @@
   margin-top: 8px;
   text-align: right;
 }
-.trade-left .row > .total-row {
+.trade-left .dashboard-page .row > .total-row {
   margin-top: 12px;
 }
-.trade-left .row > div label {
+.trade-left .dashboard-page .row > div label {
   display: block;
   margin-bottom: 6px;
   color: var(--text-secondary);
@@ -490,7 +488,7 @@
   font-weight: 600;
 }
 @media (max-width: 900px) {
-  .trade-left .row {
+  .trade-left .dashboard-page .row {
     flex-direction: column;
     gap: 10px;
   }
@@ -502,7 +500,7 @@
   padding-left: 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.04);
 }
-.trade-right .chip.active {
+.trade-right .dashboard-page .chip.active {
   box-shadow: 0 0 12px var(--glow);
   border-color: var(--accent-primary);
 }
@@ -516,7 +514,7 @@
   padding: 6px 0;
 }
 
-.sim-slider {
+.dashboard-page .sim-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
@@ -527,15 +525,15 @@
   outline: none;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
-.sim-slider:focus {
+.dashboard-page .sim-slider:focus {
   box-shadow: 0 0 0 4px rgba(0, 217, 255, 0.06);
 }
-.sim-slider::-webkit-slider-runnable-track {
+.dashboard-page .sim-slider::-webkit-slider-runnable-track {
   height: 12px;
   border-radius: 999px;
   background: transparent;
 }
-.sim-slider::-webkit-slider-thumb {
+.dashboard-page .sim-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
@@ -547,12 +545,12 @@
   border: 2px solid #0a0e1a;
   cursor: pointer;
 }
-.sim-slider::-moz-range-track {
+.dashboard-page .sim-slider::-moz-range-track {
   height: 12px;
   border-radius: 999px;
   background: transparent;
 }
-.sim-slider::-moz-range-thumb {
+.dashboard-page .sim-slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -562,29 +560,29 @@
   cursor: pointer;
 }
 @media (max-width: 1200px) {
-  .sim-slider {
+  .dashboard-page .sim-slider {
     height: 10px;
   }
 }
 @media (max-width: 800px) {
-  .sim-slider {
+  .dashboard-page .sim-slider {
     height: 8px;
   }
 }
 
-.stepper {
+.dashboard-page .stepper {
   display: inline-flex;
   gap: 6px;
   align-items: center;
   min-width: 0;
 }
-.stepper input {
+.dashboard-page .stepper input {
   flex: 1;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
 }
-.stepper button {
+.dashboard-page .stepper button {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-primary);
@@ -599,11 +597,11 @@
 .trade-left {
   min-width: 0;
 }
-.trade-left .row {
+.trade-left .dashboard-page .row {
   min-width: 0;
 }
-.trade-left .row > div:nth-child(3),
-.trade-left .row > div:nth-child(4) {
+.trade-left .dashboard-page .row > div:nth-child(3),
+.trade-left .dashboard-page .row > div:nth-child(4) {
   flex: 1 1 160px;
   min-width: 120px;
 }
@@ -619,7 +617,7 @@
   .trade-left .side-seg {
     gap: 6px;
   }
-  .trade-left .side-seg .chip {
+  .trade-left .side-seg .dashboard-page .chip {
     padding: 4px 6px;
     font-size: 0.8rem;
     height: 34px;
@@ -629,17 +627,17 @@
     padding: 6px 8px;
     font-size: 0.95rem;
   }
-  .trade-left .row > div label {
+  .trade-left .dashboard-page .row > div label {
     margin-bottom: 4px;
     font-size: 0.78rem;
   }
 
-  .trade-left .row:not(.inline-row) {
+  .trade-left .dashboard-page .row:not(.inline-row) {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
-  .trade-left .row:not(.inline-row) > div:nth-child(5) {
+  .trade-left .dashboard-page .row:not(.inline-row) > div:nth-child(5) {
     grid-column: 1 / -1;
   }
   .trade-left .col-side,
@@ -648,7 +646,7 @@
     min-width: unset;
   }
 
-  .trade-left .row.inline-row {
+  .trade-left .dashboard-page .row.inline-row {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
@@ -797,7 +795,7 @@ select:focus {
   box-shadow: 0 0 0 3px var(--glow);
 }
 
-.table-container {
+.dashboard-page .table-container {
   overflow-x: auto;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -844,6 +842,11 @@ tr:hover {
   border: 1px solid var(--accent-danger);
 }
 
+/* `.modal` and `.modal-content` are deliberately NOT scoped to
+   `.dashboard-page`. The settings modal is mounted by the shell (`App.vue`), so
+   it sits inside no page wrapper - scoping these two left it rendering as
+   unstyled static block content the moment the gear was clicked. Anything used
+   only by this page can be scoped; anything the shell renders cannot. */
 .modal {
   position: fixed;
   inset: 0;
@@ -945,21 +948,21 @@ tr:hover {
   }
 }
 @media (max-width: 900px) {
-  .metrics-grid {
+  .dashboard-page .metrics-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  .form-grid {
+  .dashboard-page .form-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 @media (max-width: 600px) {
-  .metrics-grid {
+  .dashboard-page .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .form-grid {
+  .dashboard-page .form-grid {
     grid-template-columns: 1fr;
   }
-  .metric-value {
+  .dashboard-page .metric-value {
     font-size: 1.5rem;
   }
   .alerts-inner-pad {

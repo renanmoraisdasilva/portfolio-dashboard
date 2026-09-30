@@ -326,6 +326,26 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
   per-symbol drift from the fixture's own buy prices, so a regeneration produces
   the same numbers and a reviewer can check the arithmetic. They are committed,
   not built in CI, because a binary diff in every commit is worse.
+- **Each view owns its stylesheet, so each stylesheet must be scoped to its view.**
+  `DashboardView`, `AnalyticsView` and `SimulationView` import `dashboard.css`,
+  `analytics.css` and `simulation.css` as module side effects, which means Vite
+  injects all of them into `<head>` on first visit and **never removes one**. Any
+  class name two of those files define is therefore a collision whose winner
+  depends on load order, and visiting a second page silently restyles the first.
+  It shipped as exactly that: `.metric-value` is `1.9rem` in `dashboard.css` and
+  `2rem` in `analytics.css`, so opening Analytics and coming back rendered the
+  dashboard's numbers 24px -> 32px.
+  - Each view is wrapped in a page root - `.dashboard-page`, `.analytics-page`,
+    `.simulation-page` - and every selector for a **colliding** name is prefixed
+    with it. A name only one file defines is left alone; it cannot collide.
+  - **The shell renders outside every page root.** `App.vue` mounts `AppNav` and
+    `SettingsModal`, so anything they style must not be scoped. `.modal` and
+    `.modal-content` are deliberately left unscoped in `dashboard.css` for exactly
+    this reason - scoping them left the settings dialog rendering as unstyled
+    static block content. Check this before moving a component into `App.vue`.
+  - To find collisions, intersect the class names the page stylesheets define; do
+    not eyeball it. `explorer.css` is excluded - it belongs to the standalone
+    vanilla page, which never loads the Vue app's stylesheets.
 - **Scripts must not shell out through a platform shell.** `scripts/scan-secrets.cjs`
   used `execSync(cmd, { shell: 'powershell.exe' })`, which worked on the author's
   Windows machine and failed on the `ubuntu-latest` runner with `spawnSync
