@@ -15,9 +15,6 @@ worth looking at even if the app itself is not your use case.
 
 ![The dashboard, simulator and analytics pages](docs/dashboard-demo.gif)
 
-_The demo is the real application, screenshotted by `npm run demo:build` driving
-the built bundle against the committed fixture. Nothing in it is drawn by hand._
-
 ---
 
 ## What actually happens to a trade
