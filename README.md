@@ -180,38 +180,7 @@ This was a migration of a working application, not a rewrite, and the plan is
 | 5     | Migrate page by page, never breaking the app                  | done |
 | 6     | Push valuation logic out of the browser                       | done |
 | 7     | Quality gates — lint, contract test, CI matrix                | done |
-| 8     | Showcase polish — demo media, synthetic fixtures, secret scan | done |
-
----
-
-## What I'd do differently
-
-The seams show, and in rough order of what they cost:
-
-- **The strangler pattern was right and I would do it again**, but the redirect
-  map in `app.ts` and the `LegacyHandoff` card existed for two phases and are now
-  nearly dead code. For four pages a rewrite would have been faster overall; the
-  pattern earns its keep when the legacy surface is bigger than this one was.
-- **The test suite arrived too late.** For phase after phase, "does it still
-  work?" meant opening the page and reading the numbers. The suite immediately
-  found a live bug — `request()` swallowed network failures — that several
-  careful manual passes had missed. The Pinia store tests should have been
-  written alongside the first component, not after the last one.
-- **Two database defects sat in the import endpoint for the whole life of the
-  app.** It wrote a column dropped years earlier, so every restore failed; and
-  `interest` had no unique key, so restoring a backup _doubled_ every interest
-  month. Neither was a design error. They were code nobody ran, and both fixes
-  were two lines, found only by testing the restore path against itself.
-- **SQLite is both the right call and the ceiling.** One file, one writer is
-  exactly right for one person's portfolio and it removes an entire class of
-  operational work. It also means the snapshot job cannot overlap a heavy export
-  and the write path is serialised. If this ever served more than one user,
-  Postgres is the first change — the Drizzle schema carries over unchanged, which
-  is the main reason to use an ORM here.
-- **Alerting by webhook was under-designed.** The engine evaluates thresholds
-  and posts to Home Assistant, but nothing records _why_ an alert fired beyond
-  the previous price. A small `alert_events` table would make the history of the
-  portfolio much easier to explain.
+| 8     | Showcase polish - demo media, synthetic fixtures, secret scan | done |
 
 ---
 
@@ -229,18 +198,6 @@ decision was reached**.
 - [Home Assistant](docs/HOME_ASSISTANT_SETUP.md) — alert notifications
 - [e2e tests](e2e/README.md) — how to run them, and what not to assert
 - [Scripts](scripts/README.md) — benchmarks and the k6 load test
-
----
-
-## A note on the data
-
-Everything in `fixtures/` is synthetic: 14 invented trades, invented cash
-balances, invented snapshots. The real portfolio data that lived in this
-repository was removed from **every commit** before it was made public, and
-`npm run scan:secrets` checks that on every run — the database, the old backup
-directory, the exported JSON, and any credential-shaped string in a tracked file.
-If that script ever fails, the answer is not to delete the file. It is to rewrite
-the history, because the secret is already in the clone.
 
 ---
 
