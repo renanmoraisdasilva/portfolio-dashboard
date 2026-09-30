@@ -25,7 +25,7 @@ apps/api/data/*.db-shm
 apps/api/data/*.db-wal
 apps/api/data/*.db.bak
 
-# Phase 0 baseline artifacts — screenshots contain real portfolio values
+# Baseline artifacts - screenshots contain real portfolio values
 .baseline/
 
 # Editor directories

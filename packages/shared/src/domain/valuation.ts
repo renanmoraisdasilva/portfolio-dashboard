@@ -2,7 +2,7 @@
  * Portfolio valuation: totals, invested cost, BRL conversion, per-position P/L
  * and the allocation split.
  *
- * Phase 6 pulled this out of the two Vue stores, which had each grown their own
+ * This was pulled out of the two Vue stores, which had each grown their own
  * copy with subtly different rules — the dashboard counts interest as realized
  * P/L, the simulator derives realized P/L from the FIFO walk and has no interest
  * at all. Both call this, and so does `GET /api/portfolio/valuation`, so the

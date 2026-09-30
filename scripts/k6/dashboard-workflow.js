@@ -33,7 +33,7 @@ function get(path) {
 export default function () {
   const startedAt = Date.now();
 
-  // Mirrors what DashboardView.load() asks for on first paint. Phase 5 retired
+  // Mirrors what DashboardView.load() asks for on first paint.
   // the GET /api/state blob, so the workflow walks the same granular calls the
   // page does now.
   get('/api/trades');

@@ -6,7 +6,7 @@ import type { paths } from '@portfolio-dashboard/shared';
  *
  * This replaces the old `lib/api.js` wrapper, which returned `null` on failure
  * and could not distinguish "the server said no" from "the server never
- * answered" from "the payload was empty". Phase 2 deleted that file; this is the
+ * answered" from "the payload was empty". This is the
  * replacement the plan asked for.
  */
 export class ApiError extends Error {

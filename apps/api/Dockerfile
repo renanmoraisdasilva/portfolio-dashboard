@@ -61,7 +61,7 @@ FROM node:22-alpine AS runtime
 # application's environment.
 #
 # ENABLE_SQL_EXPLORER is also NOT set: /api/sql/* answers 403 unless a
-# deployment opts in (Phase 3 of docs/MODERNIZATION-PLAN.md).
+# deployment opts in.
 
 WORKDIR /app
 
@@ -77,7 +77,7 @@ COPY --from=pruned /app/static ./static
 COPY --from=pruned /app/icon.png ./icon.png
 
 # Fail the image build early if a required page is missing. Every user-facing
-# page migrated to Vue in Phase 5; only the gated SQL Explorer is still vanilla.
+# page has been migrated to Vue; only the gated SQL Explorer is still vanilla.
 RUN test -f /app/pages/sql-explorer.html \
 	&& test -f /app/apps/web/dist/index.html
 

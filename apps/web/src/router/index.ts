@@ -6,9 +6,9 @@ import LegacyHandoff from '../views/LegacyHandoff.vue';
  * Every route is lazy, `/` included: the dashboard pulls in lightweight-charts,
  * which would otherwise weigh 400 kB on the shell's first paint.
  *
- * `/` is the dashboard — the last page of Phase 5, so the Vue app now owns the
+ * `/` is the dashboard, and the Vue app now owns the
  * whole thing. `legacyEntries()` only carries what is left: the SQL Explorer,
- * which Phase 3 gates behind ENABLE_SQL_EXPLORER and never migrated.
+ * which is gated behind ENABLE_SQL_EXPLORER and is never migrated.
  */
 export const router = createRouter({
   history: createWebHistory(),

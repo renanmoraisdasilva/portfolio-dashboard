@@ -1,4 +1,4 @@
-// Phase 8 secret / data scan.
+// Secret / data scan.
 //
 // A public showcase repo has to be provably free of the real financial data
 // that used to live here. This checks the working tree, every commit reachable

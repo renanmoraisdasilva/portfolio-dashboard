@@ -90,7 +90,7 @@ static/js/
 static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics, explorer
 ```
 
-`pages/` keeps only `sql-explorer.html`: it is gated behind `ENABLE_SQL_EXPLORER` (Phase 3) and never migrated. The three user-facing pages live in `apps/web/src/views/`; their page stylesheets are still imported from `static/css/` by each view, so that tree goes away only when the Explorer does.
+`pages/` keeps only `sql-explorer.html`: it is gated behind `ENABLE_SQL_EXPLORER` and never migrated. The three user-facing pages live in `apps/web/src/views/`; their page stylesheets are still imported from `static/css/` by each view, so that tree goes away only when the Explorer does.
 
 ### Vue app (`apps/web`)
 
@@ -121,7 +121,7 @@ The simulator's allocation currency lives in the store as `simAllocCurrency`, an
 
 **Every API call goes through `request()`.** `openapi-fetch` never throws — it resolves to `{ data, error }`, which is how the old `lib/api.js` wrapper could turn a 500 into an `undefined` the page then rendered as zero. `request(api.GET('/trades'), 'GET', '/trades')` returns the typed payload or throws `ApiError`, which carries `status`, `method`, `path`, `details` and `isNotFound` / `isConflict` / `isValidation`. Catch it where a failure is expected (a rejected trade shows the server's own message) and let it propagate where it is not. The one deliberate exception is the Settings modal's maintenance buttons: those endpoints return route-specific progress reports the spec does not describe, so they stay on `fetch`.
 
-`npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (Phase 4 strangler seam, in `mountWebRoutes`):
+`npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (strangler seam, in `mountWebRoutes`):
 
 | Path                          | Served by                                                                                                             |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -137,7 +137,7 @@ The simulator's allocation currency lives in the store as `simAllocCurrency`, an
 
 **The e2e suite runs the built bundle against a temporary database.** `e2e/start-server.mjs` sets `PORTFOLIO_DATA_DIR` (an opt-in override in `db.ts`, unset in every normal run) to a fresh temp directory, seeds it from `fixtures/portfolio_data.json`, and deletes it afterwards — so a test can add a trade without any possibility of touching the real `portfolio.db`. See [e2e/README.md](e2e/README.md) before adding a test, in particular: **do not assert market prices**, because the worker is not running and `price_cache` is empty.
 
-To migrate a page (Phase 5): build the view under `src/views/` (and its store/composables), flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, add the old name to `migratedPages` in `apps/api/src/app.ts` so bookmarks follow the page, then delete the vanilla file from `pages/` and its `<script>` tag. `pages/` now holds only the SQL Explorer, so the Dockerfile's page assertion covers that one file.
+To migrate a page: build the view under `src/views/` (and its store/composables), flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, add the old name to `migratedPages` in `apps/api/src/app.ts` so bookmarks follow the page, then delete the vanilla file from `pages/` and its `<script>` tag. `pages/` now holds only the SQL Explorer, so the Dockerfile's page assertion covers that one file.
 
 ## Key conventions
 

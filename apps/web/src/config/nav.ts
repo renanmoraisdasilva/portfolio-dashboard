@@ -1,7 +1,7 @@
 /**
  * The migration table.
  *
- * Each page moves from `legacy` to `migrated` as Phase 5 rewrites it in Vue.
+ * Each page moves from `legacy` to `migrated` when it is rewritten in Vue.
  * The nav renders from this list, and a `migrated` entry is the one that gets
  * a real router route instead of a hand-off to `/legacy/` — so this table *is*
  * the progress display.

@@ -2,7 +2,7 @@
 
 The `apps/api` workspace: TypeScript + Express + SQLite (Drizzle ORM) serving
 the portfolio API and the built Vue SPA. Renamed from `README-backend.md` in
-Phase 8 so the only file called a README is the root one; the Quickstart table in
+so the only file called a README is the root one; the Quickstart table in
 [the root README](../README.md) is the entry point, and this is the detail.
 
 Getting started (dev):
@@ -20,7 +20,7 @@ worker (`src/worker.ts`), which runs the price, history and analytics jobs.
 
 API notes:
 
-- The Vue views read granular endpoints: `/api/trades` for the ledger, `/api/cash` for both balances _and_ both interest totals, `/api/interest/months?currency=BRL|USD` for the month lists, and `/api/history` or `/api/history/ohlc` for snapshots. There is no aggregated state blob any more — Phase 5 removed `GET /api/state`, which only duplicated these and needed its own cache to hide the cost.
+- The Vue views read granular endpoints: `/api/trades` for the ledger, `/api/cash` for both balances _and_ both interest totals, `/api/interest/months?currency=BRL|USD` for the month lists, and `/api/history` or `/api/history/ohlc` for snapshots. There is no aggregated state blob any more - `GET /api/state` was removed, which only duplicated these and needed its own cache to hide the cost.
 - `GET /api/analytics` returns analytics snapshots and uses a 30-second process-local LRU cache with single-flight regeneration for concurrent misses.
 - `GET /api/portfolio/valuation?cash=with-cash|investments` returns the portfolio's _derived_ values — total, invested cost, realized and unrealized P/L, one row per position and per cash balance, the allocation split, and the sale count — computed by `computeValuation` in `packages/shared`. Every amount is a plain number and each row states the currency it is in, because deciding that (a BRL quote, a bond stored in USD but shown in BRL, a BRL balance earning BRL interest) is domain knowledge. `?cash` picks whether the allocation percentages include the cash balances; the dashboard refetches when the toggle flips. The simulator does not use this endpoint — its prices are hypothetical — and calls the same function instead.
 - `GET /api/health` returns uptime plus the last price/asset-cache timestamps, and answers `503` with `{ ok: false, error }` when the database read fails — so the container healthcheck (`r.ok ? 0 : 1`) actually fails on a broken database.
@@ -35,9 +35,9 @@ API notes:
 - `GET/POST/PUT/DELETE /api/scenarios` — saved simulation scenarios.
 - `GET /api/config/symbols` — the symbol registry that populates every select and chart.
 - `GET /api/history` (with an optional `range`), `POST /api/history/point`, `DELETE /api/history/:id` and `GET /api/history/ohlc` (candles derived from the snapshots). `POST /api/history/fill-gaps` and `DELETE /api/history` have both been removed — the first was a one-time repair of the early record, the second had no confirmation or way back, and a restore from a backup now covers that case.
-- `GET /api/sql/tables`, `GET /api/sql/schema`, `POST /api/sql/query` — the SQL Explorer, **with no authentication**. Gated behind `ENABLE_SQL_EXPLORER=true` since Phase 3: the routes answer `403` unless the flag is set, and it is off by default — including in the Docker image.
+- `GET /api/sql/tables`, `GET /api/sql/schema`, `POST /api/sql/query` — the SQL Explorer, **with no authentication**. Gated behind `ENABLE_SQL_EXPLORER=true`: the routes answer `403` unless the flag is set, and it is off by default — including in the Docker image.
 
-Static content is served by the same app, split by the Phase 4 strangler seam:
+Static content is served by the same app, split by the strangler seam:
 
 - `GET /` — the Vue app (`apps/web/dist`), with a SPA fallback for client-side routes.
 - `GET /legacy/<page>.html` — the not-yet-migrated vanilla pages from `pages/`.
@@ -87,4 +87,3 @@ Notes:
 
 - The server persists data in `apps/api/data/portfolio.db` (SQLite). Use `npm run migrate:init` to import `fixtures/portfolio_data.json` into the DB.
 - For a production setup, run the server in Docker (see `apps/api/Dockerfile`) and use the GitHub Actions workflow to build images — see `docs/SERVER-SETUP.md`.
-- Roadmap work (Vue migration, API gating, coverage) lives in `docs/MODERNIZATION-PLAN.md`.

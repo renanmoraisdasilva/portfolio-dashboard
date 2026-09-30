@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Phase 8: the secret scan's most important check is whether a path
+          # The secret scan's most important check is whether a path
           # like `*.db` or `.env` was EVER committed, which means walking every
           # commit reachable from every ref. At the default shallow clone the
           # runner has one commit, so that check silently inspected nothing and
@@ -34,7 +34,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Phase 7: a PR cannot merge with an unused import or a stray semicolon.
+      # A PR cannot merge with an unused import or a stray semicolon.
       - run: npm run lint
       - run: npm run format:check
       - run: npm run scan:secrets

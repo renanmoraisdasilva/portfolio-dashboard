@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
  * The three smoke tests the plan asked for, against the seeded fixture.
  *
  * Before Playwright, "the dashboard still works" was established by opening it
- * and reading the numbers off the screen — which is how the Phase 5 and 6
+ * and reading the numbers off the screen - which is how the page migrations
  * migrations were verified. That is not repeatable and not reviewable. These
  * three tests assert the same things a person was checking by hand:
  *
@@ -114,7 +114,7 @@ test.describe('portfolio dashboard', () => {
 });
 
 test('the SQL Explorer stays closed unless it is explicitly enabled', async ({ request }) => {
-  // Phase 3 gates it, and a gate that nobody tests is a gate that eventually
+  // It is gated, and a gate that nobody tests is a gate that eventually
   // gets refactored away.
   const response = await request.get('/api/sql/tables');
   expect(response.status()).toBe(403);
@@ -122,7 +122,7 @@ test('the SQL Explorer stays closed unless it is explicitly enabled', async ({ r
 });
 
 test('the retired GET /api/state aggregation is really gone', async ({ request }) => {
-  // Phase 5 removed it; a 404 here is the contract the Vue views depend on,
+  // It was removed; a 404 here is the contract the Vue views depend on,
   // since they read /trades, /cash and /interest/months instead.
   expect((await request.get('/api/state')).status()).toBe(404);
   expect((await request.get('/api/trades')).status()).toBe(200);

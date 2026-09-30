@@ -1,13 +1,13 @@
 /**
  * Portfolio valuation and FIFO lot replay, shared by `apps/api` and (from
- * Phase 4) `apps/web`.
+ * `apps/web`.
  *
  * Pure: no DOM, no database, no I/O. The symbol registry is injected through
  * `createPortfolioCalculator`, so the API binds `src/config/symbols.ts` and
  * the frontend binds whatever `/api/config/symbols` returned — one
  * implementation, two registries.
  *
- * Phase 2 of docs/MODERNIZATION-PLAN.md.
+
  */
 import { brlToUSD, createSymbolClassifier, SymbolMap } from './money';
 

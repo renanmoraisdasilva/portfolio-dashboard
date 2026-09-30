@@ -6,7 +6,7 @@ import { portfolioRouter } from './portfolio';
  * `GET /api/portfolio/valuation` — the endpoint every number on the dashboard
  * comes from.
  *
- * Phase 6 added the route and Phase 7 added this file's module to the coverage
+ * This file's module is in the coverage
  * list. What was missing until now was the test itself, which is why the route
  * read as 11% covered. The gap matters because the currency rules are the whole
  * point of the endpoint: a BRL position, a bond stored in USD but quoted in

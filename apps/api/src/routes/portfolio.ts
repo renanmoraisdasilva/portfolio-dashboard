@@ -2,7 +2,7 @@
  * `GET /api/portfolio/valuation` — the portfolio's derived values, computed
  * server-side.
  *
- * Phase 6 of docs/MODERNIZATION-PLAN.md. Until then the dashboard recomputed
+ * The dashboard used to recompute
  * invested cost, totals, BRL conversion, per-position P/L and the allocation
  * split in the browser, from a second copy of the rules that `historyManager`
  * and `analyticsService` already apply when they write snapshots. Two copies of
@@ -79,8 +79,7 @@ portfolioRouter.get('/valuation', async (req: Request, res: Response) => {
     // Realized P/L from sales, derived once here and used by the two snapshot
     // paths in `historyManager` the same way. The `trades.profit` column that
     // used to carry it was dropped in migration 0003, so for a while this was a
-    // hardcoded 0 and the figure was interest only — see decision #1 in
-    // docs/MODERNIZATION-PLAN.md.
+    // hardcoded 0 and the figure was interest only.
     const realizedFromSales = computeRealizedFromSales(trades ?? [], SYMBOLS, brlUsdRate);
     const input: ValuationInput = {
       trades: trades ?? [],

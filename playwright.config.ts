@@ -3,13 +3,13 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Smoke tests for the three pages, in a real browser.
  *
- * Phase 7 of docs/MODERNIZATION-PLAN.md. Until now, "the page still works" was
+ * Until now, "the page still works" was
  * established by opening it and looking: three phases of migrations were verified
  * that way, and the numbers were compared by hand. That is not repeatable and it
  * is not reviewable, so the manual step is becoming three tests.
  *
  * The server runs from the real `dist/` build against a database seeded from
- * `fixtures/portfolio_data.json` — synthetic data, committed since Phase 1. The
+ * `fixtures/portfolio_data.json` - synthetic data. The
  * trade the suite adds lands in that throwaway database, so the assertion on the
  * totals afterwards is the same arithmetic a person was doing by hand.
  */

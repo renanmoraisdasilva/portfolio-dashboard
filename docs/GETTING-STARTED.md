@@ -219,6 +219,4 @@ easy to reintroduce.
 - [ARCHITECTURE-OVERVIEW.md](ARCHITECTURE-OVERVIEW.md) — schema, caching, the
   two processes, and the scaling path.
 - [BACKEND.md](BACKEND.md) — every route and the reasoning behind the data model.
-- [MODERNIZATION-PLAN.md](MODERNIZATION-PLAN.md) — the eight-phase migration, what
-  was decided and why.
 - [e2e/README.md](../e2e/README.md) — browser tests, and what not to assert.

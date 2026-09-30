@@ -1,7 +1,7 @@
 /**
  * Least-squares trend of the portfolio history, extended forward.
  *
- * Phase 6 moved this out of the dashboard store: it is domain maths, it was the
+ * This was moved out of the dashboard store: it is domain maths, it was the
  * one place where the browser derived a value no other surface could check, and
  * it is now covered by tests instead of only being reachable through a toggle.
  *

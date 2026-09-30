@@ -1,5 +1,5 @@
 /**
- * Money helpers shared by `apps/api` and (from Phase 4) `apps/web`.
+ * Money helpers shared by `apps/api` and `apps/web`.
  *
  * Everything here is pure: no DOM, no `Intl` locale side effects beyond
  * formatting, no database. The symbol-dependent predicates take their symbol
@@ -7,7 +7,7 @@
  * `src/config/symbols.ts` and the frontend binds whatever `/api/config/symbols`
  * returned — one implementation, two registries.
  *
- * Phase 2 of docs/MODERNIZATION-PLAN.md.
+
  */
 
 export type Currency = 'BRL' | 'USD';

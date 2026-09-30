@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 /**
  * One test runner for the whole workspace.
  *
- * Phase 7 of docs/MODERNIZATION-PLAN.md replaced Jest. The reasons, in order of
+ * Vitest replaced Jest. The reasons, in order of
  * how much they mattered day to day:
  *
  * 1. Jest's `rootDir` had to be the repository root, because its coverage

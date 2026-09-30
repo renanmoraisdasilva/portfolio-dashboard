@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 /**
  * Backup and restore for `portfolio.db`.
  *
- * Phase 5 retired `GET /api/state`: the Vue views read `/trades`, `/cash` and
+ * `GET /api/state` was retired: the Vue views read `/trades`, `/cash` and
  * `/interest/months`, so the aggregation duplicated endpoints that already
  * existed and needed its own 10-second cache to hide the cost. What is left
  * cannot be expressed granularly — an export spans nine tables and an import

@@ -1,7 +1,7 @@
 // Builds `docs/dashboard-demo.gif` from the real app, or - with `--stills` - the
 // individual screenshots in `docs/images/` that the README shows.
 //
-// Phase 8 asked for a 10-second GIF, and the honest way to make one is to drive
+// A 10-second GIF is asked for, and the honest way to make one is to drive
 // the app and screenshot it rather than hand-drawing a mock-up: a demo that
 // does not match the product is worse than no demo. So this boots the built
 // server against a temporary database seeded from the fixture, walks the three

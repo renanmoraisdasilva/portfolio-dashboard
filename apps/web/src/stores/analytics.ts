@@ -101,7 +101,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     error.value = null;
 
     // `/cash` returns both balances and both interest totals in one query; the
-    // month lists are not needed here. Phase 5 retired the `/api/state` blob.
+    // month lists are not needed here. `/api/state` was retired.
     try {
       const [snapshotsPayload, state, prices, entries] = await Promise.all([
         request(api.GET('/analytics'), 'GET', '/analytics'),

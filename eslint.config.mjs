@@ -1,6 +1,6 @@
 // ESLint flat config for the whole workspace.
 //
-// Phase 7 of docs/MODERNIZATION-PLAN.md. There was no linter before this, so
+// There was no linter before this, so
 // the rule set is the recommended one for each language rather than a house
 // style nobody agreed to: it catches the mistakes that matter (unused code,
 // floating promises, `any` creeping in) and leaves style to Prettier.

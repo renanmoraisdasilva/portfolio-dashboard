@@ -2,7 +2,7 @@
 
 Six Playwright tests that drive the **built** app in Chromium, the same way a
 person used to: open the page, look at the numbers. Until these existed, "the
-dashboard still works" was a manual step — which is how the Phase 5 and 6
+dashboard still works" was a manual step - which is how the page migrations
 migrations were verified, and which nobody could repeat or review.
 
 ## Running them

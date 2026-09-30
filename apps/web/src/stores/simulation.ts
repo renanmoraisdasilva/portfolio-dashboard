@@ -673,7 +673,7 @@ export const useSimulationStore = defineStore(
     async function load(): Promise<void> {
       loading.value = true;
 
-      // Trades come from `/trades` and the balances from `/cash`; Phase 5
+      // Trades come from `/trades` and the balances from `/cash`;
       // retired the `/api/state` aggregation that used to bundle both.
       try {
         const [tradeRows, cashPositions, priceMap, symbolsPayload] = await Promise.all([

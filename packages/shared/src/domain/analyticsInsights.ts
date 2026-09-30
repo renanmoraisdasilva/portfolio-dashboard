@@ -2,7 +2,7 @@
  * Analytics Lab math.
  *
  * Lifted verbatim out of `static/js/lib/analytics-insights.js` when the page
- * moved to Vue (Phase 5) — same thresholds, same rounding, same order of
+ * moved to Vue - same thresholds, same rounding, same order of
  * operations, so the numbers on screen are unchanged. Only the module format
  * and the types are new.
  *

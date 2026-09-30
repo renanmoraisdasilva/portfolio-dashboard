@@ -201,7 +201,7 @@ export const useDashboardStore = defineStore(
      * Totals, invested cost, per-position P/L and the allocation split, as
      * `GET /api/portfolio/valuation` computed them.
      *
-     * Phase 6 moved this out of the browser. It used to be ~180 lines of
+     * This is computed by the server, not the browser. It used to be ~180 lines of
      * `metrics`, `positionRows`, `cashPositionRows`, `allocation` and
      * `plByAsset` computeds in this file, a second copy of the rules that
      * `historyManager` applies when it writes snapshots. The page now renders
@@ -986,7 +986,7 @@ export const useDashboardStore = defineStore(
     /**
      * Trades, cash and interest, read from the granular endpoints.
      *
-     * Phase 5 retired the `GET /api/state` aggregation: `/trades` carries the
+     * `GET /api/state` was retired: `/trades` carries the
      * ledger, `/cash` already sums both balances *and* both interest totals,
      * and the two `/interest/months` calls carry the month lists. Four small
      * queries instead of one cached blob, and no endpoint that duplicates what
