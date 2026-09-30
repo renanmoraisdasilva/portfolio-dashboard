@@ -11,10 +11,11 @@ import { useToast } from '../../composables/useToast';
  *
  * *Some were one-time repairs for bad data that no longer exists.* Backfill Cash
  * History in particular ran `DELETE FROM cash` and rebuilt the balance from
- * estimates - a single click with no confirmation turned a $25,175 USD balance
- * into $0 and destroyed every cash entry belonging to a trade. It had already
- * done its job; leaving it on the screen was leaving a loaded gun next to the
- * backup button.
+ * estimates - a single click with no confirmation zeroed the entire USD balance
+ * and destroyed every cash entry belonging to a trade. It had already done its
+ * job; leaving it on the screen was leaving a loaded gun next to the backup
+ * button. (The figure is deliberately not quoted here: this comment ships to
+ * every visitor, and a real balance is not a showcase detail.)
  *
  * *The rest belong to the application, not to a person.* Clearing history and
  * erasing everything are maintenance operations with no legitimate everyday use,
