@@ -163,23 +163,6 @@ and how to regenerate the demo media, are in
 
 ---
 
-## How it got here
-
-This was a migration of a working application, not a rewrite, and it was done in
-small reversible steps rather than one large cut.
-
-| What changed                                            | Why                                                                                                                                                      |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| npm-workspaces monorepo                                 | One install, one lockfile, three deployable units instead of a `server/` folder with its own `node_modules`                                              |
-| The personal finance half was removed                   | Income, expenses and credit cards were never part of the portfolio. Splitting them out is what made the rest publishable                                 |
-| `packages/shared` holds the domain logic                | The money helpers, the FIFO lot walk and the valuation existed in three files, then two. A simulator that disagrees with history is a bug you cannot see |
-| The Vue app was built alongside the old one             | Every page was rewritten before the old file was deleted, so the app was never in a broken state mid-move                                                |
-| Valuation logic moved to the server                     | The browser was computing totals the server already computed. Now it asks which split it wants                                                           |
-| The SQL Explorer is closed by default                   | Arbitrary SQL over HTTP with no authentication is not something to ship open                                                                             |
-| Tests arrived last, and immediately paid for themselves | Vitest found a swallowed network failure on the first run that several careful manual passes had missed                                                  |
-
----
-
 ## Documentation
 
 The repository separates **what this is**, **how it is built**, and **how each
@@ -192,7 +175,7 @@ decision was reached**.
 - [Server setup](docs/SERVER-SETUP.md) — Ubuntu, Docker and Dokploy deployment
 - [Home Assistant](docs/HOME_ASSISTANT_SETUP.md) — alert notifications
 - [e2e tests](e2e/README.md) — how to run them, and what not to assert
-- [Scripts](scripts/README.md) — benchmarks and the k6 load test
+- [Scripts](scripts/README.md) - benchmarks and the k6 load test
 
 ---
 
