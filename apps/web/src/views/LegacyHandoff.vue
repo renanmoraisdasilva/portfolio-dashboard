@@ -8,7 +8,7 @@ useDocumentTitle(props.label);
 </script>
 
 <template>
-  <PageHeader icon="dYs" :title="label" subtitle="Served from the legacy static pages" />
+  <PageHeader :title="label" subtitle="Served from the legacy static pages" />
 
   <section class="card">
     <h2>{{ label }} is not part of the Vue app</h2>

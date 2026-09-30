@@ -99,9 +99,9 @@ apps/web/
   index.html            # Vite entry; links base/components/layout.css from /static so the shell and pages/ match
   vite.config.ts        # vue plugin, dist/ output, dev proxy /api + /static → API_URL (default :3000)
   src/main.ts           # createApp().use(createPinia()).use(router).mount('#app')
-  src/App.vue           # shell chrome: .shell > .app-nav, then <RouterView/> (views render their own PageHeader)
+  src/App.vue           # the shell, and the ONLY renderer of the header row: .shell > .app-header (brand, .app-nav, gear) > .app-nav + <RouterView/> + <SettingsModal/>
   src/router/index.ts   # one route per page; unmigrated ones render LegacyHandoff
-  src/config/nav.ts     # the migration table — mark a page `migrated` and give it a real route
+  src/config/nav.ts     # the nav table - one entry per header link, `tab` for the dashboard's sub-view, mark a page `migrated` to give it a real route
   src/composables/useApi.ts # openapi-fetch client (baseUrl /api) + ApiError and request()
   src/composables/useMoney.ts # display helpers; currency math comes from packages/shared
   src/composables/useAnalyticsCharts.ts # the three Chart.js configurations, as computed refs
@@ -109,7 +109,7 @@ apps/web/
   src/composables/useDocumentTitle.ts # per-page <title> (client-side navigation does not reload)
   src/stores/persistPlugin.ts   # Pinia plugin: mirrors opted-in state keys into localStorage
   src/stores/           # Pinia stores, one per migrated page (analytics, simulation, dashboard)
-  src/components/       # ChartCanvas.vue (Chart.js lifecycle), MetricCard.vue, PageHeader.vue, AllocationTable.vue, analysis/, simulation/, dashboard/
+  src/components/       # ChartCanvas.vue (Chart.js lifecycle), MetricCard.vue, PageHeader.vue (a page's TITLE only - no navigation), AllocationTable.vue, analysis/, simulation/, dashboard/
   src/views/            # DashboardView.vue (at `/`), AnalyticsView.vue, SimulationView.vue, LegacyHandoff.vue
 ```
 
@@ -137,7 +137,7 @@ The simulator's allocation currency lives in the store as `simAllocCurrency`, an
 
 **The e2e suite runs the built bundle against a temporary database.** `e2e/start-server.mjs` sets `PORTFOLIO_DATA_DIR` (an opt-in override in `db.ts`, unset in every normal run) to a fresh temp directory, seeds it from `fixtures/portfolio_data.json`, and deletes it afterwards — so a test can add a trade without any possibility of touching the real `portfolio.db`. See [e2e/README.md](e2e/README.md) before adding a test, in particular: **do not assert market prices**, because the worker is not running and `price_cache` is empty.
 
-To migrate a page: build the view under `src/views/` (and its store/composables), flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, add the old name to `migratedPages` in `apps/api/src/app.ts` so bookmarks follow the page, then delete the vanilla file from `pages/` and its `<script>` tag. `pages/` now holds only the SQL Explorer, so the Dockerfile's page assertion covers that one file.
+To migrate a page: build the view under `src/views/` (and its store/composables), flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, add the old name to `migratedPages` in `apps/api/src/app.ts` so bookmarks follow the page, then delete the vanilla file from `pages/` and its `<script>` tag. `pages/` now holds only the SQL Explorer, so the Dockerfile's page assertion covers that one file. **A view never renders navigation.** The header row is the shell's; a page contributes content and, optionally, a `PageHeader` for its own title plus `page-actions` for controls that mean nothing outside it (the simulator's three buttons). Adding a second row of buttons to a view is the failure this replaced.
 
 ## Key conventions
 

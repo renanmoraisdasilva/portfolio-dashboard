@@ -59,7 +59,7 @@ const muted = { color: 'var(--text-muted)' } as Record<string, string>;
 </script>
 
 <template>
-  <PageHeader icon="📊" title="Analytics Lab" subtitle="Performance metrics & portfolio analytics" />
+  <PageHeader title="Analytics Lab" subtitle="Performance metrics & portfolio analytics" />
 
   <div class="status-bar">
     <div class="status-dot" :class="store.online ? 'online' : 'offline'"></div>

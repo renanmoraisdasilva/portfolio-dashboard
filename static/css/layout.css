@@ -25,12 +25,15 @@ h2 {
   margin: 0 auto;
 }
 
+/* No `margin-bottom` here any more. It spaced the nav when it was a row of its
+   own above the page; inside the header the gap between the links and the gear
+   is `.app-header-actions`'s `gap`, and a bottom margin here made the header
+   22px taller than the row it contains. */
 .app-nav {
   display: flex;
   align-items: center;
   gap: 6px;
   max-width: 100%;
-  margin-bottom: 22px;
 }
 .app-nav .nav-link {
   padding: 8px 14px;
@@ -55,22 +58,25 @@ h2 {
   box-shadow: 0 0 14px var(--glow);
 }
 
-.page-header {
+/* The one header row, rendered by the shell (`App.vue`) for every page.
+   `.page-header`, `.page-brand` and `.logo` used to style this per page, which
+   is why each view had to build its own — two implementations of one bar. */
+.app-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
 }
-.page-brand {
+.app-brand {
   display: flex;
   align-items: center;
   gap: 14px;
   min-width: 0;
 }
-.logo {
+.app-logo {
   width: 44px;
   height: 44px;
   flex-shrink: 0;
@@ -83,6 +89,39 @@ h2 {
   font-size: 22px;
   box-shadow: 0 0 20px var(--glow);
 }
+.app-brand-name {
+  font-size: clamp(1.05rem, 0.9rem + 0.5vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Never wraps. This is the thing the header exists to prevent: the gear ending
+     up on a second line below the links. When there is not enough room the nav
+     scrolls sideways instead, which keeps the row one row. */
+  flex-wrap: nowrap;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.app-header .app-nav {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.app-header .app-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* A page's own title, below the header. */
+.page-titlebar {
+  margin-bottom: 20px;
+}
 .page-title {
   font-size: clamp(1.35rem, 1rem + 1vw, 1.9rem);
   font-weight: 800;
@@ -93,67 +132,37 @@ h2 {
   color: var(--text-muted);
   margin-top: 3px;
 }
+
+/* Page-level controls (the simulator's three buttons). Navigation is the
+   header's job and does not belong here. */
 .page-actions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-/* Inside `.page-actions` since the tabs moved into the header, so the
-   `margin-bottom: 20px` that spaced them as their own row is now just spacing
-   between the switcher and the gear. */
-.view-tabs {
-  display: flex;
-  gap: 8px;
-  max-width: 100%;
-}
-.view-tab {
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.view-tab:hover {
-  color: var(--text-primary);
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 10px var(--glow);
-}
-.view-tab.is-active {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  border-color: transparent;
-  color: #fff;
+  margin-bottom: 18px;
 }
 
 @media (max-width: 900px) {
   body {
     padding: 16px;
   }
-  /* `.view-tabs` keeps `overflow-x: auto` here, but no longer gets
-     `padding-bottom: 4px` - that was for the hidden scrollbar it used to show
-     when it was a full-width row of its own, and it now reads as a stray gap
-     between the tabs and the gear. */
-  .app-nav,
-  .view-tabs {
+  /* The nav scrolls rather than wrapping on a narrow screen: it is one row by
+     definition, and wrapping it back into a second row is what this header
+     replaced. `.app-header .app-nav` above already does this at every width, so
+     this block only tightens the row itself. The `padding-bottom: 4px` that used
+     to be here reserved space for a hidden scrollbar; the scrollbar is already
+     suppressed, so it was just a gap under the links. */
+  .app-nav {
     overflow-x: auto;
     flex-wrap: nowrap;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
-  .app-nav {
-    padding-bottom: 4px;
-  }
-  .app-nav::-webkit-scrollbar,
-  .view-tabs::-webkit-scrollbar {
+  .app-nav::-webkit-scrollbar {
     display: none;
   }
-  .page-header {
+  .app-header {
     align-items: flex-start;
     gap: 12px;
   }
@@ -163,7 +172,7 @@ h2 {
   body {
     padding: 20px 20px 16px;
   }
-  .page-header {
+  .app-header {
     flex-direction: column;
     align-items: stretch;
     gap: 14px;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import PageHeader from '../components/PageHeader.vue';
 import { useDashboardStore } from '../stores/dashboard';
 import { useDocumentTitle } from '../composables/useDocumentTitle';
@@ -12,7 +13,6 @@ import CashPanel from '../components/dashboard/CashPanel.vue';
 import MetricCards from '../components/dashboard/MetricCards.vue';
 import PlByAssetChart from '../components/dashboard/PlByAssetChart.vue';
 import PositionsTable from '../components/dashboard/PositionsTable.vue';
-import SettingsModal from '../components/dashboard/SettingsModal.vue';
 import TradeHistoryTable from '../components/dashboard/TradeHistoryTable.vue';
 import ValueChart from '../components/dashboard/ValueChart.vue';
 
@@ -20,8 +20,32 @@ import '../../../../static/css/dashboard.css';
 
 const store = useDashboardStore();
 const { toasts } = useToast();
+const route = useRoute();
 
 useDocumentTitle('Portfolio Dashboard');
+
+/**
+ * Which of the two dashboard views is showing, from `?tab=`.
+ *
+ * This is the only page with two views, and the header row reaches both of them
+ * from any page, so the selection has to live in the URL rather than in the
+ * store. Anything else cannot be linked to and does not survive a reload — and
+ * the header is shared, so it cannot know which one you arrived from.
+ *
+ * An absent or unrecognised `tab` means the overview, which is also what a bare
+ * `/` means.
+ */
+function tabFromUrl(): 'dashboard' | 'assetCharts' {
+  return route.query.tab === 'assetCharts' ? 'assetCharts' : 'dashboard';
+}
+
+watch(
+  tabFromUrl,
+  (tab) => {
+    if (store.tab !== tab) store.setTab(tab);
+  },
+  { immediate: true },
+);
 
 /** The legacy page polled every 60s; so does this one. */
 const REFRESH_MS = 60_000;
@@ -42,32 +66,13 @@ onBeforeUnmount(() => {
 
 <template>
   <!--
-    One header row: the two views, then the settings gear last on the right.
-    The tabs used to be a second row of their own below the header, which put the
-    view switcher below the fold on a laptop and left the gear stranded on its
-    own. `Overview` was also a redundant tab - the page is the overview, so
-    selecting it was the same as doing nothing, and it read as a third view.
+    Content only. The header row - Dashboard, Asset Charts, Simulation, Analytics,
+    SQL Explorer and the settings gear - is the shell's, in `App.vue`, because it
+    is the same on every page and this view used to render a second row of its own.
+    Which of the two dashboard views is showing comes from `?tab=` in the URL, so
+    a reload and a shared link both land on the right one.
   -->
-  <PageHeader icon="₿" title="Portfolio Dashboard" subtitle="Holdings, cash, trades and alerts in one view">
-    <template #actions>
-      <div class="view-tabs">
-        <button class="view-tab" :class="{ 'is-active': store.tab === 'dashboard' }" @click="store.setTab('dashboard')">
-          Dashboard
-        </button>
-        <button class="view-tab" :class="{ 'is-active': store.tab === 'assetCharts' }" @click="store.setTab('assetCharts')">
-          Asset Charts
-        </button>
-      </div>
-      <button
-        class="btn"
-        title="Settings & Tools"
-        style="font-size: 1.25rem; padding: 7px 13px; line-height: 1"
-        @click="store.settingsOpen = true"
-      >
-        ⚙
-      </button>
-    </template>
-  </PageHeader>
+  <PageHeader title="Holdings" subtitle="Cash, positions, trades and alerts in one view" />
 
   <template v-if="store.tab === 'dashboard'">
     <div v-if="store.staleWarning" class="banner-warning">⚠️ {{ store.staleWarning }}</div>
@@ -181,8 +186,6 @@ onBeforeUnmount(() => {
   <div v-show="store.tab === 'assetCharts'" class="card">
     <AssetChartsSection />
   </div>
-
-  <SettingsModal />
 
   <div class="toast-host">
     <div v-for="toast in toasts" :key="toast.id" class="toast" :class="toast.kind">{{ toast.text }}</div>

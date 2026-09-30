@@ -24,9 +24,8 @@
 }
 
 @media (max-width: 600px) {
-  .page-header,
-  .app-nav,
-  .view-tabs {
+  .app-header,
+  .app-nav {
     position: static !important;
     top: auto !important;
     left: auto !important;

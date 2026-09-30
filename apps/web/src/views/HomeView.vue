@@ -9,7 +9,7 @@ useDocumentTitle('Portfolio Dashboard');
 </script>
 
 <template>
-  <PageHeader icon="₿" title="Portfolio Dashboard" subtitle="Holdings, cash, trades and alerts in one view" />
+  <PageHeader title="Portfolio Dashboard" subtitle="Holdings, cash, trades and alerts in one view" />
 
   <section class="card">
     <h2>Strangler shell</h2>
