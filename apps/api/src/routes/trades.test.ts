@@ -172,6 +172,9 @@ describe('POST /api/trades', () => {
     expect(status).toBe(400);
     expect(tables.trades).toHaveLength(0);
     expect(tables.cash).toHaveLength(1);
+    // Validation runs before BEGIN, so a rejected request must not open one.
+    const statements = mockedRun.mock.calls.map((c) => String(c[0]));
+    expect(statements).not.toContain('BEGIN TRANSACTION');
   });
 
   test('a currency mismatch is a 409, which is what the client is documented to handle', async () => {
@@ -190,6 +193,57 @@ describe('POST /api/trades', () => {
     expect(body.error).toContain('uses BRL');
     expect(tables.trades).toHaveLength(0);
     expect(tables.cash).toHaveLength(1);
+  });
+
+  test('a failing trade INSERT leaves no cash row behind', async () => {
+    // The POST handler had no transaction while DELETE had one, so a throw from
+    // the `trades` INSERT - and every one of its NOT NULL columns can throw -
+    // stranded the cash entry the handler had already written. Same defect class
+    // as the deleted-trade leak, and permanent: nothing reverses it.
+    mockedRun.mockImplementationOnce(() => Promise.reject(new Error('trades table locked')));
+
+    const { status } = await call('post', '/', { symbol: 'BTC', side: 'buy', qty: 0.1, price: 50_000 });
+
+    expect(status).toBe(500);
+    expect(tables.trades).toHaveLength(0);
+    // Only the opening balance is left; the trade's own movement is not.
+    expect(tables.cash).toHaveLength(1);
+    expect(cashTotal('USD')).toBe(5_000);
+  });
+
+  test('both writes sit between one BEGIN and one COMMIT', async () => {
+    // The failure test above proves the rollback happens; this pins *where* the
+    // transaction opens, which is the other half. A BEGIN issued after the cash
+    // INSERT — or a missing one — leaves the same stranded row while still
+    // passing any test that only checks the error path.
+    await call('post', '/', { symbol: 'BTC', side: 'buy', qty: 0.1, price: 50_000 });
+
+    const statements = mockedRun.mock.calls.map((c) => String(c[0]));
+    const begin = statements.indexOf('BEGIN TRANSACTION');
+    const cash = statements.findIndex((s) => /^INSERT INTO cash/.test(s));
+    const trade = statements.findIndex((s) => /^INSERT INTO trades/.test(s));
+    const commit = statements.indexOf('COMMIT');
+
+    expect(begin).toBeGreaterThanOrEqual(0);
+    expect(begin).toBeLessThan(cash);
+    expect(cash).toBeLessThan(trade);
+    expect(trade).toBeLessThan(commit);
+    expect(statements).not.toContain('ROLLBACK');
+  });
+
+  test('a failed trade INSERT rolls back rather than committing', async () => {
+    // Paired with the ordering test: it is not enough for the statements to be
+    // bracketed, the COMMIT must not run when the trade INSERT throws.
+    mockedRun.mockImplementationOnce(() => Promise.resolve({ changes: 1 })); // BEGIN
+    mockedRun.mockImplementationOnce(() => Promise.resolve({ changes: 1 })); // cash INSERT
+    mockedRun.mockImplementationOnce(() => Promise.reject(new Error('trades table locked'))); // trade INSERT
+
+    const { status } = await call('post', '/', { symbol: 'BTC', side: 'buy', qty: 0.1, price: 50_000 });
+
+    expect(status).toBe(500);
+    const statements = mockedRun.mock.calls.map((c) => String(c[0]));
+    expect(statements).toContain('ROLLBACK');
+    expect(statements).not.toContain('COMMIT');
   });
 });
 

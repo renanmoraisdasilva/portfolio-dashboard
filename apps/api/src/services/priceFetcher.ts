@@ -258,6 +258,9 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
 
     const candidates = config.historicalFallbacks || (config.yahooTicker ? [config.yahooTicker] : []);
     if (candidates.length === 0) {
+      // Nothing to fetch from, so the empty series IS the answer and caching it
+      // saves the next request repeating the lookup. This is the one path where
+      // an empty cache entry is legitimate.
       await run('INSERT OR REPLACE INTO asset_chart_cache (symbol, days, interval, ts, data) VALUES (?, ?, ?, ?, ?)', [
         symbol,
         days,
@@ -299,7 +302,20 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
       }
     }
     if (!success) {
-      console.warn(`Yahoo history: no valid data for ${symbol} after trying candidates: ${candidates.join(', ')}`);
+      // Deliberately NOT cached. This write used to run unconditionally, so a
+      // network blip or a Yahoo 429 stored `{labels: [], prices: []}` with a
+      // *fresh* timestamp - and the TTL check above then served that empty
+      // payload as a valid hit for the next 15 minutes (1h) or hour (1d). One
+      // failed fetch produced a blank chart that outlived the outage.
+      //
+      // Leaving the previous row untouched is what makes the next request
+      // retry: its timestamp is older than the TTL, so the cache misses and the
+      // fetch is attempted again. The caller still receives an empty result, so
+      // the response shape is unchanged.
+      console.warn(
+        `Yahoo history: no valid data for ${symbol} after trying candidates: ${candidates.join(', ')}; cache left unchanged`,
+      );
+      return result;
     }
 
     await run('INSERT OR REPLACE INTO asset_chart_cache (symbol, days, interval, ts, data) VALUES (?, ?, ?, ?, ?)', [
@@ -310,6 +326,8 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
       JSON.stringify({ labels: result.labels, prices: result.prices }),
     ]);
   } catch (e) {
+    // Same reasoning: an exception is not a result. The existing cache row, if
+    // any, stays authoritative until it ages out.
     console.warn('Asset history fetch failed for', symbol, e);
   }
   return result;
@@ -340,7 +358,13 @@ export async function checkAndTriggerAlerts() {
         }
       }
 
-      const alreadyTriggered = alert.triggered_at !== null && alert.triggered_at !== undefined && alert.is_dismissed === 0;
+      // Both columns are NOT NULL in the schema (migration 0007), but the `??`
+      // is kept deliberately: this function's whole failure mode is a *silently*
+      // wrong comparison. `null === 0` is false, so a NULL made the alert read as
+      // never-triggered and re-notified on every cycle. Coercing means a row from
+      // a pre-0007 database or a hand-edited file cannot reach that state even if
+      // the constraint is bypassed.
+      const alreadyTriggered = alert.triggered_at !== null && alert.triggered_at !== undefined && (alert.is_dismissed ?? 0) === 0;
 
       if (shouldTrigger && !alreadyTriggered) {
         await run(

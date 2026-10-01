@@ -118,21 +118,38 @@ tradesRouter.post('/', async (req, res) => {
     const id = randomUUID();
     const t = time || new Date().toISOString();
 
-    // The cash entry is created first so its id can be stored on the trade in
-    // the same INSERT. The other order leaves a window where the trade exists
-    // with no link, and a delete in that window would leave the cash behind -
-    // which is the bug this link exists to close.
-    const cashEntry = await createAutoCashEntry(symbol, side, qty, price, t);
+    // One transaction for both writes. The cash entry is created first so its id
+    // can go into the trade's INSERT — the other order leaves a window where the
+    // trade exists with no link, which is what this link exists to close.
+    //
+    // The transaction is the other half of that fix, and this handler had none.
+    // `id`, `symbol`, `side`, `qty` and `time` are all NOT NULL, so the trades
+    // INSERT can throw; without a rollback the cash row it had already written
+    // was stranded permanently — the same defect class as the deleted-trade leak
+    // that `cash_entry_id` was added for, and the reason DELETE wraps its two
+    // statements while POST did not.
+    await run('BEGIN TRANSACTION');
+    let cashEntry: any;
+    try {
+      cashEntry = await createAutoCashEntry(symbol, side, qty, price, t);
 
-    await run('INSERT INTO trades (id, symbol, side, qty, price, time, cash_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-      id,
-      symbol,
-      side,
-      qty,
-      price ?? null,
-      t,
-      cashEntry?.id ?? null,
-    ]);
+      await run('INSERT INTO trades (id, symbol, side, qty, price, time, cash_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?)', [
+        id,
+        symbol,
+        side,
+        qty,
+        price ?? null,
+        t,
+        cashEntry?.id ?? null,
+      ]);
+      await run('COMMIT');
+    } catch (txErr) {
+      await run('ROLLBACK');
+      throw txErr;
+    }
+
+    // Read back after the COMMIT, so this SELECT is not itself part of the
+    // transaction and cannot hold it open on the response path.
     const row = await get('SELECT * FROM trades WHERE id = ?', [id]);
 
     res.status(201).json({ trade: row, cashEntry });

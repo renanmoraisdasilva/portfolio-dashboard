@@ -1,4 +1,4 @@
-import { sqliteTable, text, real, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, real, integer, uniqueIndex, index, primaryKey } from 'drizzle-orm/sqlite-core';
 
 export const trades = sqliteTable(
   'trades',
@@ -52,6 +52,23 @@ export const priceCache = sqliteTable('price_cache', {
   meta: text('meta'),
 });
 
+/**
+ * Rolling-window chart cache: one row per (symbol, days, interval).
+ *
+ * The composite primary key is load-bearing, not documentation. Without it the
+ * table carried no constraint at all, and `INSERT OR REPLACE` - which every write
+ * in `priceFetcher.ts` uses - degrades to a plain `INSERT` when there is nothing
+ * to conflict with.
+ *
+ * Verified against the live database before this key existed: 16 rows across 10
+ * distinct keys, and the reader's `SELECT ... WHERE symbol=? AND days=? AND
+ * interval=?` had no `ORDER BY`, so it returned the *oldest* matching row. The
+ * cache therefore served data it had already replaced, never refreshed, and grew
+ * a row per request once the TTL lapsed - re-hitting Yahoo every time.
+ *
+ * With the key in place `OR REPLACE` replaces, and the lookup is an index hit
+ * against a table whose row count is bounded by symbols x window sizes.
+ */
 export const assetChartCache = sqliteTable(
   'asset_chart_cache',
   {
@@ -61,9 +78,7 @@ export const assetChartCache = sqliteTable(
     ts: integer('ts'),
     data: text('data'),
   },
-  () => [
-    // Composite PK expressed as a unique index (Drizzle handles composite PKs via primaryKey() helper)
-  ],
+  (t) => [primaryKey({ columns: [t.symbol, t.days, t.interval] })],
 );
 
 export const interestMonths = sqliteTable(
@@ -127,14 +142,27 @@ export const alerts = sqliteTable('alerts', {
   threshold: real('threshold').notNull(),
   condition: text('condition').notNull(),
   reference_price: real('reference_price'),
-  is_active: integer('is_active').default(1),
+  /**
+   * Both flags are `NOT NULL DEFAULT 1` / `DEFAULT 0`.
+   *
+   * `priceFetcher.checkAndTriggerAlerts` reads them with `=== 1` and `=== 0`. A
+   * NULL makes both comparisons false, so a row that omitted the column — a
+   * restored backup, or any insert that left it out — read as "not yet
+   * triggered" forever, and the alert re-notified on every 8-minute cycle.
+   *
+   * Same trap as `history_points.brlusd_rate`, where NULL became permanent
+   * because nothing rewrote the old rows. `NOT NULL` makes the shape impossible
+   * rather than merely unlikely; the alerts route and the state importer both
+   * write these columns explicitly.
+   */
+  is_active: integer('is_active').notNull().default(1),
   created_at: integer('created_at').notNull(),
   current_price: real('current_price'),
   previous_price: real('previous_price'),
   percentage_change: real('percentage_change'),
   triggered_at: integer('triggered_at'),
   dismissed_at: integer('dismissed_at'),
-  is_dismissed: integer('is_dismissed').default(0),
+  is_dismissed: integer('is_dismissed').notNull().default(0),
 });
 
 export const analyticsSnapshots = sqliteTable(

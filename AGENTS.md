@@ -315,8 +315,51 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
   a third currency is silently counted at 1:1. The one stray EUR row that did
   exist has been deleted; the _conversion_ is still the fragile part, and a
   `uniqueIndex` or a currency check on `interest` would be the durable fix.
-- **Asset chart cache** is a rolling-window snapshot stored in the `asset_chart_cache` table (previously `asset_history`). It is **not immutable** - rows are overwritten in place, so a backfill rewrites history rather than extending it. The table was renamed by migration, not recreated, and the old name still appears in older SQL comments.
+- **Asset chart cache** is a rolling-window snapshot stored in the `asset_chart_cache` table (previously `asset_history`). It is **not immutable** - rows are overwritten in place, so a backfill rewrites history rather than extending it. The table was renamed by migration, not recreated, and the old name still appears in older SQL comments. (It was also, until migration `0006`, unconstrained - see the primary-key note below.)
 - **`price_ticks` grows indefinitely** — never query it without a WHERE clause on the indexed `(symbol, ts)` columns. Full table scans will be slow once the table contains months of 8-minute ticks across all symbols.
+- **`asset_chart_cache` has a composite primary key `(symbol, days, interval)`,
+  and it is load-bearing.** The table had no constraint at all, and every write
+  in `priceFetcher.ts` is `INSERT OR REPLACE` — which, with nothing to conflict
+  against, is just an `INSERT`. Verified against the live database before the key
+  existed: **16 rows across 10 distinct keys**, and the reader's `SELECT ... WHERE
+symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
+  **oldest** matching row. The cache therefore served data it had already
+  replaced, never refreshed, and appended a row per request once the TTL lapsed —
+  re-hitting Yahoo every time. Migration `0006` adds the key and dedupes
+  **before** the copy (newest `ts` per key wins, `rowid` breaking ties), because
+  copying 16 rows into a keyed table raises `UNIQUE constraint failed` and stops
+  the server booting — the same failure mode as the `interest` index below.
+- **A failed history fetch must not be cached.** `fetchAndCacheAssetHistory`
+  used to write `{labels: [], prices: []}` with a _fresh_ timestamp when every
+  Yahoo candidate failed, so one 429 or network blip produced a blank chart that
+  the TTL then served as a valid hit for 15 minutes (`1h`) or an hour (`1d`).
+  It now returns early on `!success` and leaves the existing row alone, which is
+  what makes the next request retry. Pinned by `priceFetcher.test.ts`
+  ("a total fetch failure caches NOTHING"). The caller still receives an empty
+  result, so the response shape is unchanged.
+- **`POST /api/trades` and `DELETE /api/trades/:id` are both transactional.**
+  POST was not, while DELETE was — and every NOT NULL column on `trades` can
+  throw, so a failed trade INSERT stranded the cash entry the handler had already
+  written: the same permanent, silent leak `trades.cash_entry_id` exists to
+  close. The `trades.test.ts` case "a failing trade INSERT leaves no cash row
+  behind" is the regression guard.
+- **`invalidateResponseCaches()` bumps a generation counter; it does not just
+  `cache.clear()`.** A load in flight when a write committed used to write its
+  pre-write result into the freshly-cleared cache, serving stale data for a
+  further TTL with nothing logged — every step succeeded. `responseCache.ts`
+  captures the generation before loading and only stores if it has not moved. A
+  counter rather than a cleared `inFlight`, because clearing the map would let a
+  second caller start a duplicate load. Coalesced requests now count in
+  `cache_coalesced_total` instead of inflating `cache_hits_total` — they are not
+  cache hits, and folding them in made the hit ratio measure request collapsing.
+  `responseCache.test.ts` is new and covers both.
+- **`alerts.is_active` and `alerts.is_dismissed` are `NOT NULL`.**
+  `checkAndTriggerAlerts` compares `is_dismissed === 0`; a NULL compared `false`,
+  so a row that omitted the column — a restored backup, or any insert leaving it
+  out — read as _never triggered_ and re-notified on every 8-minute cycle.
+  Migration `0007` coalesces both columns during the copy (the generated SQL
+  would abort on a NULL row) and the reader still coerces with `?? 0`, because
+  the failure mode here is a silently wrong comparison rather than an error.
 - **The maintenance backfills are gone: `routes/migrations.ts`, `services/cashBackfill.ts` and both endpoints.** Backfill Cash History ran `DELETE FROM cash` and rebuilt the balance from estimates, so one unconfirmed click in the UI zeroed the entire USD balance and destroyed every cash entry belonging to a trade; it had already done its one-time job. (Do not quote the real balance here, or anywhere else in the tree: this document is published, and a figure from the live account is not a detail a showcase needs. The scale of the loss is the point, not the number.) Backfill Price History was additive and idempotent, but `price_ticks` refills itself from the worker's own fetcher. `DELETE /api/history` ("Clear History") and `DELETE /api/state` ("Erase All") went with them, since a restore is now a true replace. The Settings modal is down to three tools: Export, Import, Test Notify.
 
 - **The SQL Explorer is deleted, not gated.** `routes/sqlExplorer.ts`,

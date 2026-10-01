@@ -33,6 +33,22 @@ export const cacheMissesTotal = new Counter({
   registers: [metricsRegistry],
 });
 
+/**
+ * Requests that joined a load already in flight rather than reading the cache.
+ *
+ * Counted separately from both hits and misses on purpose. These callers did
+ * receive the answer without a second database read, which is worth watching as
+ * its own number, but they did not read the cache — folding them into
+ * `cache_hits_total` made the hit ratio report request collapsing as if it were
+ * cache effectiveness.
+ */
+export const cacheCoalescedTotal = new Counter({
+  name: 'cache_coalesced_total',
+  help: 'Responses served by joining an in-flight load instead of a separate database read.',
+  labelNames: ['cache'] as const,
+  registers: [metricsRegistry],
+});
+
 function routeLabel(req: Request): string {
   return req.route?.path ? `${req.baseUrl}${req.route.path}` : req.path;
 }
