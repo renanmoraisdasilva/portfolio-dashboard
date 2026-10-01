@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
-import { run, init } from '../db';
+import { runSync, init, transaction } from '../db';
 
 export async function migrateFromJson() {
   // __dirname is apps/api/{src,dist}/services, so the repository root is four
@@ -19,13 +19,14 @@ export async function migrateFromJson() {
 
   await init();
 
-  await run('BEGIN TRANSACTION');
-  try {
+  // The counts are derived from the parsed payload rather than read back, so the
+  // transaction's return value is not needed here.
+  transaction(() => {
     // Trades
     if (Array.isArray(json.trades)) {
       for (const t of json.trades) {
         const id = randomUUID();
-        await run('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
+        runSync('INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
           id,
           t.symbol,
           t.side,
@@ -39,17 +40,23 @@ export async function migrateFromJson() {
     if (Array.isArray(json.history)) {
       for (const h of json.history) {
         const id = randomUUID();
-        await run(
-          'INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [id, h.t ?? null, h.ts ?? null, h.v ?? 0, h.i ?? null, h.p ?? null, h.manual ? 1 : 0, h.note ?? null],
-        );
+        runSync('INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
+          id,
+          h.t ?? null,
+          h.ts ?? null,
+          h.v ?? 0,
+          h.i ?? null,
+          h.p ?? null,
+          h.manual ? 1 : 0,
+          h.note ?? null,
+        ]);
       }
     }
 
     // Interest months — interest.currency defaults to BRL, so tag USD explicitly.
     if (Array.isArray(json.interestReaisMonths)) {
       for (const m of json.interestReaisMonths) {
-        await run('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+        runSync('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
           m.month,
           'BRL',
           m.amount,
@@ -59,7 +66,7 @@ export async function migrateFromJson() {
     }
     if (Array.isArray(json.interestDollarsMonths)) {
       for (const m of json.interestDollarsMonths) {
-        await run('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+        runSync('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
           m.month,
           'USD',
           m.amount,
@@ -71,7 +78,7 @@ export async function migrateFromJson() {
     // Cash — append-only ledger; the balance is SUM(amount) per currency. There
     if (Array.isArray(json.cashEntries) && json.cashEntries.length > 0) {
       for (const e of json.cashEntries) {
-        await run('INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+        runSync('INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
           e.id ?? randomUUID(),
           e.currency,
           e.amount,
@@ -83,7 +90,7 @@ export async function migrateFromJson() {
       const cashReais = Number(json.cashReais) || 0;
       const cashDollars = Number(json.cashDollars) || 0;
       if (cashReais !== 0) {
-        await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+        runSync('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
           randomUUID(),
           'BRL',
           cashReais,
@@ -92,7 +99,7 @@ export async function migrateFromJson() {
         ]);
       }
       if (cashDollars !== 0) {
-        await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+        runSync('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
           randomUUID(),
           'USD',
           cashDollars,
@@ -101,14 +108,10 @@ export async function migrateFromJson() {
         ]);
       }
     }
+  });
 
-    await run('COMMIT');
-    return {
-      trades: Array.isArray(json.trades) ? json.trades.length : 0,
-      history: Array.isArray(json.history) ? json.history.length : 0,
-    };
-  } catch (err) {
-    await run('ROLLBACK');
-    throw err;
-  }
+  return {
+    trades: Array.isArray(json.trades) ? json.trades.length : 0,
+    history: Array.isArray(json.history) ? json.history.length : 0,
+  };
 }

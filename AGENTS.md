@@ -235,6 +235,37 @@ INDEX` fails and the server refuses to boot, so a restore that reintroduces
   SQLite's own `backup()` API. A checkpoint happens when the last connection
   closes cleanly, so the main file's mtime is not a reliable "last written"
   signal either.
+- **Transactions go through `transaction()` in `db.ts`, with the `*Sync` helpers
+  inside.** Six sites used to hand-roll `BEGIN` / `try` / `COMMIT` / `catch
+ROLLBACK` as prepared statements. That was the driver's own mechanism spelled out
+  by hand, and it had three failure modes: a failing `ROLLBACK` in the catch
+  block replaced the error that caused it; nothing stopped an unanticipated
+  `throw` from leaving the connection inside a transaction; and each site looked
+  slightly different. `sqlite.transaction()` is the same thing with the rollback,
+  the savepoint nesting and the re-entrancy already correct.
+  - **The body cannot `await`.** The driver commits when the callback returns, so
+    an `await` inside would commit early and run the rest of the body outside the
+    transaction. That is why `runSync`/`getSync`/`allSync` exist alongside
+    `run`/`get`/`all`, and why the single-statement helpers still return promises:
+    the handlers are written as `try { await run(...) } catch { 500 }`, and
+    `better-sqlite3` being synchronous means a throw has to become a rejection for
+    that to work at all.
+  - **Never mix them.** A promise-returning helper inside a `transaction()` body
+    writes after the commit, which is the exact bug the transaction prevents.
+  - `trades.test.ts` and `state.test.ts` implement `transaction` as
+    snapshot-and-restore, so their atomicity assertions are real. The old fakes
+    ignored `ROLLBACK` and undid nothing, which is why "the reversal is atomic"
+    and "a failed row rolls the whole restore back" were not being tested at all.
+  - **Those fakes still do not test the rollback itself** — only that the handler
+    calls `transaction` and writes in the expected order. Mutating the real
+    `transaction()` to a no-op leaves every one of them green.
+    `db.transaction.test.ts` is the tier that closes that, and it is the **only
+    test in the repository that opens a real database**: a temp directory via
+    `PORTFOLIO_DATA_DIR`, a real `better-sqlite3` connection, and direct
+    assertions on rollback, on savepoint nesting, on the original error
+    propagating, and on `sqlite.inTransaction` being false afterwards. If you add
+    a test about transaction _behaviour_ rather than handler _shape_, it belongs
+    there.
 - **Both processes shut down cleanly, and that is what checkpoints the WAL.**
   `web.ts` and `worker.ts` handle `SIGTERM`/`SIGINT`, which is what `docker stop`
   sends: the web process calls `server.close()` so in-flight requests finish

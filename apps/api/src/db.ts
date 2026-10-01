@@ -22,9 +22,18 @@ export const drizzleDb = drizzle(sqlite, { schema });
 
 export const db = sqlite;
 
-// Promisified helpers — backward-compatible with all existing route/service code.
-// better-sqlite3 is synchronous; wrapping in .then() converts thrown errors to
-// rejected Promises, matching the contract the rest of the codebase expects.
+/**
+ * Promisified helpers for the single-statement case.
+ *
+ * `better-sqlite3` is synchronous, and wrapping it in promises buys no
+ * parallelism — there is none to have. What it *does* buy is that a thrown error
+ * becomes a rejected Promise, which is the contract the route handlers are
+ * written against (`try { await run(...) } catch { res.status(500) }`).
+ *
+ * Inside a transaction use `transaction()` with the `*Sync` helpers instead — see
+ * the note there. It cannot await, because the driver commits when the function
+ * returns.
+ */
 export function run(sql: string, params: any[] = []): Promise<void> {
   return Promise.resolve().then(() => {
     sqlite.prepare(sql).run(...params);
@@ -37,6 +46,63 @@ export function get<T = any>(sql: string, params: any[] = []): Promise<T | undef
 
 export function all<T = any>(sql: string, params: any[] = []): Promise<T[]> {
   return Promise.resolve().then(() => sqlite.prepare(sql).all(...params) as T[]);
+}
+
+/* ------------------------------------------------------------------------- *
+ * Transaction scope
+ *
+ * Six call sites used to hand-roll `BEGIN` / `try` / `COMMIT` / `catch ROLLBACK`
+ * as prepared statements, each slightly different. Three problems with that:
+ *
+ * 1. **The rollback could mask the cause.** `await run('ROLLBACK')` sits in the
+ *    catch block, so a failure *of the rollback* replaced the original error —
+ *    the one thing the operator needed — with something about transactions.
+ * 2. **Nothing stopped a commit from being skipped.** A `throw` between `BEGIN`
+ *    and `COMMIT` that was not the kind the author anticipated left the
+ *    connection inside a transaction, and every later write on it rolled back at
+ *    the next `ROLLBACK`.
+ * 3. **It was still the driver's own mechanism, spelled out.** `sqlite.transaction`
+ *    is the same `BEGIN`/`COMMIT` with the rollback, the savepoint handling and
+ *    the re-entrancy rules already correct.
+ *
+ * The body is **synchronous by necessity**: the driver commits the moment the
+ * function returns, so an `await` inside it would commit early and run the rest
+ * of the body outside the transaction. That is why the `*Sync` helpers exist
+ * rather than the promise-returning ones.
+ * ------------------------------------------------------------------------- */
+
+/** A single statement, synchronous. For use inside `transaction()`. */
+export function runSync(sql: string, params: any[] = []): void {
+  sqlite.prepare(sql).run(...params);
+}
+
+/** A single row, synchronous. For use inside `transaction()`. */
+export function getSync<T = any>(sql: string, params: any[] = []): T | undefined {
+  return sqlite.prepare(sql).get(...params) as T | undefined;
+}
+
+/** Every matching row, synchronous. For use inside `transaction()`. */
+export function allSync<T = any>(sql: string, params: any[] = []): T[] {
+  return sqlite.prepare(sql).all(...params) as T[];
+}
+
+/**
+ * Runs `fn` in a transaction, committing when it returns and rolling back when it
+ * throws. The original error propagates — a failing rollback cannot replace it.
+ *
+ * Nested calls become savepoints, so a helper that opens its own transaction is
+ * still safe to call from inside one.
+ *
+ * ```ts
+ * const { trade, cashEntry } = transaction(() => {
+ *   const cashEntry = createAutoCashEntry(...);   // runSync internally
+ *   runSync('INSERT INTO trades ...');
+ *   return { trade, cashEntry };
+ * });
+ * ```
+ */
+export function transaction<T>(fn: () => T): T {
+  return sqlite.transaction(fn)();
 }
 
 // Ensure tables that were added via Drizzle migrations exist in pre-Drizzle

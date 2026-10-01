@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { all, get, run } from '../db';
+import { all, get, runSync, transaction } from '../db';
 import { randomUUID } from 'node:crypto';
 
 /**
@@ -93,8 +93,12 @@ stateRouter.get('/export', async (req, res) => {
 stateRouter.post('/import', async (req, res) => {
   try {
     const payload = req.body;
-    await run('BEGIN TRANSACTION');
-    try {
+
+    // One transaction around the whole restore, so a failure part-way through
+    // leaves the database exactly as it was. The body is synchronous because
+    // `transaction()` cannot await - the driver commits when the callback
+    // returns, so an await inside would commit early and write the rest outside.
+    transaction(() => {
       // Every table the export carries is *replaced*, not merged. It used to be a
       // mixture: `cash` and `interest` were cleared first while `trades` and
       // `history` were inserted row by row, so anything in the database that the
@@ -104,13 +108,17 @@ stateRouter.post('/import', async (req, res) => {
       //
       // A key that is absent or not an array leaves its table untouched, so a
       // partial payload cannot silently empty a table.
-      const replace = async (table: string, key: string, insert: () => Promise<void>) => {
+      const replace = (table: string, key: string, insert: () => void) => {
         if (!Array.isArray(payload[key])) return;
-        await run(`DELETE FROM ${table}`);
-        await insert();
+        // `table` is never caller-supplied: every call site below passes a
+        // literal. It is interpolated because the delete and the insert have to
+        // name the same table, and the alternative was nine near-identical
+        // blocks.
+        runSync(`DELETE FROM ${table}`);
+        insert();
       };
 
-      await replace('trades', 'trades', async () => {
+      replace('trades', 'trades', () => {
         for (const t of payload.trades) {
           // No `profit` column: it was dropped in migration 0003, and writing it
           // made every restore fail with "table trades has no column named
@@ -120,14 +128,14 @@ stateRouter.post('/import', async (req, res) => {
           // reverses its cash movement. It is null in backups taken before that
           // column existed, and nulling it is safe: there is no link to follow,
           // so nothing is reversed.
-          await run(
+          runSync(
             'INSERT OR REPLACE INTO trades (id, symbol, side, qty, price, time, cash_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [t.id ?? null, t.symbol, t.side, t.qty, t.price ?? null, t.time, t.cash_entry_id ?? t.cashEntryId ?? null],
           );
         }
       });
 
-      await replace('portfolio_snapshots', 'history', async () => {
+      replace('portfolio_snapshots', 'history', () => {
         // `brlusd_rate` was missing from this column list while the export sent
         // it (`SELECT *`), so a restore silently nulled the exchange rate on
         // every snapshot: 0% null before a restore, 100% after. `analyticsService`
@@ -137,7 +145,7 @@ stateRouter.post('/import', async (req, res) => {
         // candles are unaffected - the high/low of each one comes from `v` and
         // `p` - which is why this hid. `?? null` keeps older backups importable.
         for (const h of payload.history) {
-          await run(
+          runSync(
             'INSERT OR REPLACE INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note, brlusd_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               h.id ?? null,
@@ -168,12 +176,12 @@ stateRouter.post('/import', async (req, res) => {
       const hasBrlMonths = Array.isArray(payload.interestReaisMonths);
       const hasUsdMonths = Array.isArray(payload.interestDollarsMonths);
       if (hasBrlMonths || hasUsdMonths) {
-        await run('DELETE FROM interest');
+        runSync('DELETE FROM interest');
         // `Date.now()` is read once so every restored row shares a `created_at`,
         // rather than drifting by a millisecond per iteration.
         const now = Date.now();
         for (const m of hasBrlMonths ? payload.interestReaisMonths : []) {
-          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+          runSync('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
             m.month,
             'BRL',
             m.amount,
@@ -181,7 +189,7 @@ stateRouter.post('/import', async (req, res) => {
           ]);
         }
         for (const m of hasUsdMonths ? payload.interestDollarsMonths : []) {
-          await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+          runSync('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
             m.month,
             'USD',
             m.amount,
@@ -189,9 +197,9 @@ stateRouter.post('/import', async (req, res) => {
           ]);
         }
       }
-      await replace('alerts', 'alerts', async () => {
+      replace('alerts', 'alerts', () => {
         for (const a of payload.alerts) {
-          await run(
+          runSync(
             'INSERT OR REPLACE INTO alerts (id, symbol, alert_type, threshold, condition, reference_price, is_active, created_at, current_price, previous_price, percentage_change, triggered_at, dismissed_at, is_dismissed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               a.id ?? randomUUID(),
@@ -213,9 +221,9 @@ stateRouter.post('/import', async (req, res) => {
         }
       });
 
-      await replace('scenarios', 'scenarios', async () => {
+      replace('scenarios', 'scenarios', () => {
         for (const s of payload.scenarios) {
-          await run('INSERT OR REPLACE INTO scenarios (id, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+          runSync('INSERT OR REPLACE INTO scenarios (id, name, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
             s.id ?? randomUUID(),
             s.name,
             s.data,
@@ -227,9 +235,9 @@ stateRouter.post('/import', async (req, res) => {
 
       // The three tables added to the export in version 2. Absent from a
       // version 1 backup, in which case `replace` leaves the table alone.
-      await replace('price_cache', 'priceCache', async () => {
+      replace('price_cache', 'priceCache', () => {
         for (const p of payload.priceCache) {
-          await run('INSERT OR REPLACE INTO price_cache (symbol, price, ts, meta) VALUES (?, ?, ?, ?)', [
+          runSync('INSERT OR REPLACE INTO price_cache (symbol, price, ts, meta) VALUES (?, ?, ?, ?)', [
             p.symbol,
             p.price,
             p.ts ?? null,
@@ -238,9 +246,9 @@ stateRouter.post('/import', async (req, res) => {
         }
       });
 
-      await replace('asset_chart_cache', 'assetChartCache', async () => {
+      replace('asset_chart_cache', 'assetChartCache', () => {
         for (const c of payload.assetChartCache) {
-          await run('INSERT OR REPLACE INTO asset_chart_cache (symbol, days, interval, ts, data) VALUES (?, ?, ?, ?, ?)', [
+          runSync('INSERT OR REPLACE INTO asset_chart_cache (symbol, days, interval, ts, data) VALUES (?, ?, ?, ?, ?)', [
             c.symbol,
             c.days,
             c.interval,
@@ -250,9 +258,9 @@ stateRouter.post('/import', async (req, res) => {
         }
       });
 
-      await replace('analytics_snapshots', 'analyticsSnapshots', async () => {
+      replace('analytics_snapshots', 'analyticsSnapshots', () => {
         for (const a of payload.analyticsSnapshots) {
-          await run(
+          runSync(
             'INSERT OR REPLACE INTO analytics_snapshots (id, computed_at, period, return_pct, max_drawdown_pct, max_drawdown_start, max_drawdown_end, sharpe_ratio, allocation_json, cost_vs_market_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               a.id ?? randomUUID(),
@@ -270,9 +278,9 @@ stateRouter.post('/import', async (req, res) => {
         }
       });
       if (payload.cashEntries && Array.isArray(payload.cashEntries)) {
-        await run('DELETE FROM cash');
+        runSync('DELETE FROM cash');
         for (const e of payload.cashEntries) {
-          await run('INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+          runSync('INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
             e.id ?? randomUUID(),
             e.currency,
             e.amount,
@@ -283,10 +291,10 @@ stateRouter.post('/import', async (req, res) => {
       } else if (typeof payload.cashReais !== 'undefined' || typeof payload.cashDollars !== 'undefined') {
         const cashReais = Number(payload.cashReais) || 0;
         const cashDollars = Number(payload.cashDollars) || 0;
-        await run('DELETE FROM cash');
+        runSync('DELETE FROM cash');
         const entryTs = Date.now();
         if (cashReais !== 0) {
-          await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+          runSync('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
             randomUUID(),
             'BRL',
             cashReais,
@@ -295,7 +303,7 @@ stateRouter.post('/import', async (req, res) => {
           ]);
         }
         if (cashDollars !== 0) {
-          await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+          runSync('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
             randomUUID(),
             'USD',
             cashDollars,
@@ -304,11 +312,8 @@ stateRouter.post('/import', async (req, res) => {
           ]);
         }
       }
-      await run('COMMIT');
-    } catch (innerErr) {
-      await run('ROLLBACK');
-      throw innerErr;
-    }
+    });
+
     res.json({ ok: true });
   } catch (err) {
     console.error('Error importing state:', err);

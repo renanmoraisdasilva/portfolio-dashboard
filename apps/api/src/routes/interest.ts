@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { run, all } from '../db';
+import { run, all, runSync, transaction } from '../db';
 
 export const interestRouter = Router();
 
@@ -25,20 +25,15 @@ interestRouter.post('/months', async (req: Request, res: Response) => {
     // appended a second row for a month that already existed: editing an amount
     // listed the month twice and counted it twice in the totals. Delete first,
     // inside a transaction, so a month is one row.
-    await run('BEGIN TRANSACTION');
-    try {
-      await run('DELETE FROM interest WHERE month = ? AND currency = ?', [month, currency]);
-      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+    transaction(() => {
+      runSync('DELETE FROM interest WHERE month = ? AND currency = ?', [month, currency]);
+      runSync('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
         month,
         currency,
         amount,
         Date.now(),
       ]);
-      await run('COMMIT');
-    } catch (txErr) {
-      await run('ROLLBACK');
-      throw txErr;
-    }
+    });
     res.status(201).json({ month, currency, amount });
   } catch (err) {
     console.error('Error adding interest month', err);

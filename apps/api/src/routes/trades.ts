@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { computeRealizedFromSales } from '@portfolio-dashboard/shared';
-import { run, get, all } from '../db';
+import { all, runSync, getSync, transaction } from '../db';
 import { computeAndInsertHistoryPoint } from '../services/historyManager';
 import { SYMBOLS } from '../config/symbols';
 
@@ -65,21 +65,26 @@ function validateTradeRequest(
   return null;
 }
 
-async function createAutoCashEntry(symbol: string, side: string, qty: number, price: number | null, time: string): Promise<any> {
+/**
+ * Writes the cash movement a trade implies.
+ *
+ * Synchronous on purpose: it runs inside `transaction()`, which cannot await.
+ */
+function createAutoCashEntry(symbol: string, side: string, qty: number, price: number | null, time: string) {
   const assetCurrency = getAssetCurrency(symbol);
   const amount = side === 'buy' ? -(qty * (price || 0)) : qty * (price || 0);
   const desc = `Trade: ${side.toUpperCase()} ${qty} ${symbol} @ ${price}`;
   const cashEntryId = randomUUID();
   const tradeTs = new Date(time).getTime();
 
-  await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+  runSync('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
     cashEntryId,
     assetCurrency,
     amount,
     desc,
     tradeTs,
   ]);
-  return get('SELECT * FROM cash WHERE id = ?', [cashEntryId]);
+  return getSync('SELECT * FROM cash WHERE id = ?', [cashEntryId]);
 }
 
 tradesRouter.get('/', async (req: Request, res: Response) => {
@@ -127,13 +132,14 @@ tradesRouter.post('/', async (req, res) => {
     // INSERT can throw; without a rollback the cash row it had already written
     // was stranded permanently — the same defect class as the deleted-trade leak
     // that `cash_entry_id` was added for, and the reason DELETE wraps its two
-    // statements while POST did not.
-    await run('BEGIN TRANSACTION');
-    let cashEntry: any;
-    try {
-      cashEntry = await createAutoCashEntry(symbol, side, qty, price, t);
+    // statements.
+    //
+    // The read-back is inside the transaction so the response cannot describe a
+    // state the commit did not produce.
+    const { trade: row, cashEntry } = transaction(() => {
+      const cashEntry = createAutoCashEntry(symbol, side, qty, price, t);
 
-      await run('INSERT INTO trades (id, symbol, side, qty, price, time, cash_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?)', [
+      runSync('INSERT INTO trades (id, symbol, side, qty, price, time, cash_entry_id) VALUES (?, ?, ?, ?, ?, ?, ?)', [
         id,
         symbol,
         side,
@@ -142,15 +148,8 @@ tradesRouter.post('/', async (req, res) => {
         t,
         cashEntry?.id ?? null,
       ]);
-      await run('COMMIT');
-    } catch (txErr) {
-      await run('ROLLBACK');
-      throw txErr;
-    }
-
-    // Read back after the COMMIT, so this SELECT is not itself part of the
-    // transaction and cannot hold it open on the response path.
-    const row = await get('SELECT * FROM trades WHERE id = ?', [id]);
+      return { trade: getSync('SELECT * FROM trades WHERE id = ?', [id]), cashEntry };
+    });
 
     res.status(201).json({ trade: row, cashEntry });
 
@@ -176,18 +175,18 @@ tradesRouter.delete('/:id', async (req, res) => {
     // or a restore from a backup predating the column — and there is then
     // nothing to reverse. Hand-entered cash adjustments are never touched,
     // because no trade points at them.
-    const trade = await get<{ cash_entry_id: string | null }>('SELECT cash_entry_id FROM trades WHERE id = ?', [id]);
-    await run('BEGIN TRANSACTION');
-    try {
-      await run('DELETE FROM trades WHERE id = ?', [id]);
+    //
+    // The link is read inside the transaction too: reading it outside would leave
+    // a window where another request could delete the trade first, and this
+    // transaction would then delete a cash entry belonging to a different id.
+    transaction(() => {
+      const trade = getSync<{ cash_entry_id: string | null }>('SELECT cash_entry_id FROM trades WHERE id = ?', [id]);
+      runSync('DELETE FROM trades WHERE id = ?', [id]);
       if (trade?.cash_entry_id) {
-        await run('DELETE FROM cash WHERE id = ?', [trade.cash_entry_id]);
+        runSync('DELETE FROM cash WHERE id = ?', [trade.cash_entry_id]);
       }
-      await run('COMMIT');
-    } catch (txErr) {
-      await run('ROLLBACK');
-      throw txErr;
-    }
+    });
+
     res.status(204).send();
     computeAndInsertHistoryPoint({ note: 'post-trade-delete' }).catch((err) =>
       console.error('History snapshot after trade delete failed', err),

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { get, init, run } from './db';
+import { get, init, runSync, transaction } from './db';
 
 type SeedInterest = { month?: string; amount?: number };
 type SeedSnapshot = {
@@ -40,13 +40,12 @@ async function seed(filePath: string): Promise<void> {
   const data = JSON.parse(fs.readFileSync(filePath, 'utf8')) as SeedData;
   const now = Date.now();
 
-  await run('BEGIN TRANSACTION');
-  try {
-    await run('DELETE FROM portfolio_snapshots');
-    await run('DELETE FROM analytics_snapshots');
+  transaction(() => {
+    runSync('DELETE FROM portfolio_snapshots');
+    runSync('DELETE FROM analytics_snapshots');
 
     for (const trade of data.trades ?? []) {
-      await run('INSERT INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
+      runSync('INSERT INTO trades (id, symbol, side, qty, price, time) VALUES (?, ?, ?, ?, ?, ?)', [
         trade.id ?? randomUUID(),
         trade.symbol,
         trade.side,
@@ -57,7 +56,7 @@ async function seed(filePath: string): Promise<void> {
     }
 
     for (const snapshot of data.history ?? []) {
-      await run(
+      runSync(
         'INSERT INTO portfolio_snapshots (id, t, ts, v, i, p, manual, note, brlusd_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           snapshot.id ?? randomUUID(),
@@ -74,7 +73,7 @@ async function seed(filePath: string): Promise<void> {
     }
 
     for (const interest of data.interestReaisMonths ?? []) {
-      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+      runSync('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
         interest.month,
         'BRL',
         interest.amount ?? 0,
@@ -82,7 +81,7 @@ async function seed(filePath: string): Promise<void> {
       ]);
     }
     for (const interest of data.interestDollarsMonths ?? []) {
-      await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
+      runSync('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
         interest.month,
         'USD',
         interest.amount ?? 0,
@@ -91,7 +90,7 @@ async function seed(filePath: string): Promise<void> {
     }
 
     if (data.cashReais) {
-      await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+      runSync('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
         randomUUID(),
         'BRL',
         data.cashReais,
@@ -100,7 +99,7 @@ async function seed(filePath: string): Promise<void> {
       ]);
     }
     if (data.cashDollars) {
-      await run('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
+      runSync('INSERT INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [
         randomUUID(),
         'USD',
         data.cashDollars,
@@ -108,12 +107,7 @@ async function seed(filePath: string): Promise<void> {
         now,
       ]);
     }
-
-    await run('COMMIT');
-  } catch (error) {
-    await run('ROLLBACK');
-    throw error;
-  }
+  });
 
   console.log('[seed] Local sample data inserted.');
 }

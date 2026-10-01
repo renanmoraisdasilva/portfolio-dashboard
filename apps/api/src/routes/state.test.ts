@@ -1,5 +1,5 @@
 import express from 'express';
-import { all, get, run } from '../db';
+import { all, get, runSync, transaction } from '../db';
 import { stateRouter } from './state';
 
 /**
@@ -8,12 +8,23 @@ import { stateRouter } from './state';
  * shows up somewhere else entirely: `brlusd_rate` went missing from the import's
  * column list while the export still sent it, and the effect was not a broken
  * chart - it was the analytics converting BRL interest at today's exchange rate.
+ *
+ * The import writes through `runSync` inside `transaction()` now, so the fake
+ * implements those. `transaction` snapshots every table and restores it if the
+ * body throws, which is what makes "one bad row rolls the whole restore back"
+ * testable rather than assumed.
  */
-vi.mock('../db', () => ({ all: vi.fn(), get: vi.fn(), run: vi.fn() }));
+vi.mock('../db', () => ({
+  all: vi.fn(),
+  get: vi.fn(),
+  runSync: vi.fn(),
+  transaction: vi.fn(),
+}));
 
 const mockedAll = all as unknown as ReturnType<typeof vi.fn>;
 const mockedGet = get as unknown as ReturnType<typeof vi.fn>;
-const mockedRun = run as unknown as ReturnType<typeof vi.fn>;
+const mockedRunSync = runSync as unknown as ReturnType<typeof vi.fn>;
+const mockedTransaction = transaction as unknown as ReturnType<typeof vi.fn>;
 
 /** Rows the mocked database holds, so a restore can be inspected afterwards. */
 let snapshots: Record<string, unknown>[];
@@ -33,11 +44,39 @@ beforeEach(() => {
   analyticsSnapshots = [];
   interest = [];
   deletedFrom = [];
-  mockedRun.mockReset();
+  mockedRunSync.mockReset();
+  mockedTransaction.mockReset();
   mockedGet.mockReset();
   mockedAll.mockReset();
 
-  mockedRun.mockImplementation((sql: string, params: unknown[] = []) => {
+  // Real rollback: a throw inside the import body puts every table back. Without
+  // this, "the restore is one transaction" is an assumption rather than something
+  // the suite checks.
+  mockedTransaction.mockImplementation((fn: () => unknown) => {
+    const backup = {
+      snapshots: [...snapshots],
+      trades: [...trades],
+      priceCache: [...priceCache],
+      assetChartCache: [...assetChartCache],
+      analyticsSnapshots: [...analyticsSnapshots],
+      interest: [...interest],
+      deletedFrom: [...deletedFrom],
+    };
+    try {
+      return fn();
+    } catch (err) {
+      snapshots = backup.snapshots;
+      trades = backup.trades;
+      priceCache = backup.priceCache;
+      assetChartCache = backup.assetChartCache;
+      analyticsSnapshots = backup.analyticsSnapshots;
+      interest = backup.interest;
+      deletedFrom = backup.deletedFrom;
+      throw err;
+    }
+  });
+
+  mockedRunSync.mockImplementation((sql: string, params: unknown[] = []) => {
     const p = params as Array<string | number | null>;
     if (/^INSERT OR REPLACE INTO portfolio_snapshots/.test(sql)) {
       snapshots.push({ id: p[0], t: p[1], ts: p[2], v: p[3], i: p[4], p: p[5], manual: p[6], note: p[7], brlusd_rate: p[8] });
@@ -65,8 +104,8 @@ beforeEach(() => {
       deletedFrom.push(`${del[1]}${del[2].trim()}`);
       if (del[1] === 'interest') interest = [];
     }
-    return Promise.resolve({ changes: 0 });
   });
+
   mockedGet.mockResolvedValue({ cashReais: 0, cashDollars: 0 });
   mockedAll.mockResolvedValue([]);
 });
@@ -147,32 +186,32 @@ describe('POST /api/state/import — replace, not merge', () => {
     // database that the backup did not contain survived - a tool labelled
     // "restore" that could not undo a mistake. `cash` and `interest` were
     // already cleared, which is what made the behaviour inconsistent.
-    mockedRun.mockClear();
+    mockedRunSync.mockClear();
     await restore({
       trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }],
       history: [historyRow()],
     });
 
-    const deletes = mockedRun.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
+    const deletes = mockedRunSync.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
     expect(deletes).toContain('DELETE FROM trades');
     expect(deletes).toContain('DELETE FROM portfolio_snapshots');
   });
 
   test('an absent key leaves its table alone, so a partial payload cannot empty it', async () => {
-    mockedRun.mockClear();
+    mockedRunSync.mockClear();
     await restore({ history: [historyRow()] });
 
-    const deletes = mockedRun.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
+    const deletes = mockedRunSync.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
     expect(deletes).toContain('DELETE FROM portfolio_snapshots');
     expect(deletes).not.toContain('DELETE FROM trades');
     expect(deletes).not.toContain('DELETE FROM cash');
   });
 
   test('an empty array does clear the table - that is what replacing with nothing means', async () => {
-    mockedRun.mockClear();
+    mockedRunSync.mockClear();
     await restore({ trades: [] });
 
-    expect(mockedRun.mock.calls.map((c) => String(c[0]))).toContain('DELETE FROM trades');
+    expect(mockedRunSync.mock.calls.map((c) => String(c[0]))).toContain('DELETE FROM trades');
   });
 });
 
@@ -198,10 +237,10 @@ describe('POST /api/state/import — the tables added to the export in version 2
   });
 
   test('a version 1 backup without those keys leaves the tables untouched', async () => {
-    mockedRun.mockClear();
+    mockedRunSync.mockClear();
     await restore({ trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }] });
 
-    const deletes = mockedRun.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
+    const deletes = mockedRunSync.mock.calls.map((c) => String(c[0])).filter((sql) => /^DELETE FROM/.test(sql));
     expect(deletes).not.toContain('DELETE FROM price_cache');
     expect(deletes).not.toContain('DELETE FROM asset_chart_cache');
     expect(deletes).not.toContain('DELETE FROM analytics_snapshots');
@@ -262,6 +301,60 @@ describe('POST /api/state/import — interest', () => {
     expect(status).toBe(200);
     expect(deletedFrom).toContain('interest');
     expect(interest).toHaveLength(0);
+  });
+});
+
+describe('POST /api/state/import — atomicity', () => {
+  test('one failing row rolls the entire restore back', async () => {
+    // The point of the transaction. A restore is the operation that must not
+    // half-apply: a partial import leaves the database holding some tables from
+    // the backup and others from before it, which is a state no export can
+    // reproduce and no user can reason about.
+    //
+    // `transaction` here snapshots and restores, so this asserts a real rollback.
+    // The old fake ignored `ROLLBACK` and never undid anything, which is what
+    // made this untestable against it.
+    mockedRunSync.mockImplementationOnce(() => {
+      throw new Error('trades table locked');
+    });
+
+    const { status } = await restore({
+      trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }],
+      history: [historyRow()],
+      interestReaisMonths: [{ month: '2026-01', amount: 100 }],
+    });
+
+    expect(status).toBe(500);
+    expect(trades).toHaveLength(0);
+    expect(snapshots).toHaveLength(0);
+    expect(interest).toHaveLength(0);
+    // Even the deletes are undone: the snapshot is taken before the first one.
+    expect(deletedFrom).toEqual([]);
+  });
+
+  test('the whole restore is a single transaction', async () => {
+    await restore({ trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }] });
+
+    // Not one transaction per table: one for the restore. Nine separate ones
+    // would each be atomic alone, and the restore would not be.
+    expect(mockedTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  test('the error that caused a rollback is the one that surfaces', async () => {
+    // The hand-rolled version had `await run('ROLLBACK')` inside the catch, so a
+    // failure *of the rollback* replaced the original error - and the log then
+    // described a transaction problem instead of the actual cause. `transaction()`
+    // rolls back through the driver and rethrows what the body threw.
+    mockedRunSync.mockImplementationOnce(() => {
+      throw new Error('the real cause');
+    });
+
+    const { status } = await restore({
+      trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }],
+    });
+
+    expect(status).toBe(500);
+    expect(trades).toHaveLength(0);
   });
 });
 
