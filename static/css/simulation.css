@@ -360,53 +360,6 @@ td .currency {
   font-weight: 700;
 }
 
-.simulation-page .modal {
-  position: fixed;
-  inset: 0;
-  background: #000a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.simulation-page .modal-content {
-  background: var(--bg-secondary);
-  padding: 22px 18px;
-  border-radius: 10px;
-  min-width: 320px;
-  max-width: 90vw;
-  border: 1px solid var(--border);
-}
-.simulation-page .modal-content h2 {
-  margin-top: 0;
-  margin-bottom: 10px;
-}
-.simulation-page .modal .row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.simulation-page .modal .actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-.simulation-page .modal table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 8px;
-}
-.simulation-page .modal th,
-.simulation-page .modal td {
-  padding: 8px;
-  border-bottom: 1px solid var(--border);
-}
-.simulation-page .modal .small {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
 @media (max-width: 1200px) {
   .simulation-page .metrics-grid {
     grid-template-columns: repeat(4, minmax(160px, 1fr));

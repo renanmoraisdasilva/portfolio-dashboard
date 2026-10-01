@@ -206,6 +206,82 @@
   color: var(--text-muted, #5a6170);
 }
 
+/* ---- Modal ----------------------------------------------------------------
+ *
+ * `.modal` and `.modal-content` are deliberately UNSCOPED, and must stay that
+ * way. They used to be scoped to `.dashboard-page`, which is wrong: the settings
+ * dialog and the delete-trade confirmation are mounted by the shell (`App.vue`)
+ * as a sibling of `<RouterView />`, so they sit inside no page wrapper. A page
+ * -scoped rule cannot match them, and with no rule that could, the gear
+ * rendered its dialog as unstyled static block content at the bottom of the
+ * document instead of an overlay.
+ *
+ * The failure is ASYMMETRIC, which is how it survived review: the scenario
+ * modals (`ScenarioModals.vue`) are rendered by a page, so the page-scoped rule
+ * matched them and they kept working. Only the shell's two modals broke, and
+ * only for anyone who clicked the gear.
+ *
+ * Everything below `.modal` is safe unscoped for the same reason - the class is
+ * only ever applied to a modal's own markup - and the descendants are keyed ON
+ * `.modal` rather than left bare. `.small` and `.row` are also used outside any
+ * modal (`AddTradeForm`, `CashPanel`, `TradeForm`), so a bare `.small` here
+ * would collide with them exactly like the page-stylesheet collisions
+ * `AGENTS.md` documents.
+ *
+ * It lives in `components.css`, not a page stylesheet, for a second reason: this
+ * file is linked from `index.html`, so it is present on every route. In
+ * `dashboard.css` it only reached the browser as a side effect of
+ * `DashboardView.vue`'s import, so opening `/analytics` or `/simulation`
+ * directly meant no modal styling was fetched at all.
+ */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: #000a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: var(--bg-secondary);
+  padding: 28px 22px;
+  border-radius: 12px;
+  min-width: 320px;
+  max-width: 90vw;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+.modal .row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.modal .actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.modal table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+.modal th,
+.modal td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.modal .small {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 .positive {
   color: var(--accent-success);
 }

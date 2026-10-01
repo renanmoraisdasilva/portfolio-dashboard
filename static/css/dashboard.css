@@ -868,29 +868,6 @@ tr:hover {
   border: 1px solid var(--accent-danger);
 }
 
-.dashboard-page .modal {
-  position: fixed;
-  inset: 0;
-  background: #000a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.dashboard-page .modal-content {
-  background: var(--bg-secondary);
-  padding: 28px 22px;
-  border-radius: 12px;
-  min-width: 320px;
-  max-width: 90vw;
-  text-align: center;
-  border: 1px solid var(--border);
-}
-.dashboard-page .modal-content button {
-  margin: 8px 10px 0 10px;
-  min-width: 90px;
-}
-
 .asset-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

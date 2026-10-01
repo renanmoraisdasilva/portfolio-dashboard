@@ -31,6 +31,47 @@ test('the dashboard shows a formatted total, not a zero', async ({ page }) => {
   expect(await currentValue(page)).toMatch(/^\$[\d,]*\.\d{2}$/);
 });
 
+test('the settings gear opens a dialog over the page, not below it', async ({ page }) => {
+  // The gear's dialog is mounted by the shell (`App.vue`) as a sibling of
+  // `<RouterView />`, so it sits inside no page wrapper. It was briefly styled by
+  // `.dashboard-page .modal`, which cannot match it, and two things went wrong at
+  // once: the page-scoped selector never applied, and the rule lived in a
+  // stylesheet that only loads with the dashboard. The result was the dialog
+  // rendering as unstyled static block content at the bottom of the document.
+  //
+  // `/analytics` is deliberate. It never imports `dashboard.css`, so this is the
+  // route where a modal defined in a page stylesheet would have no styling at all
+  // - which is precisely what a reviewer clicking around the dashboard would miss.
+  await page.goto('/analytics');
+  await page.getByRole('button', { name: 'Settings & Tools' }).click();
+
+  const overlay = page.locator('.modal').first();
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveCSS('position', 'fixed');
+
+  // `inset: 0` on a fixed overlay covers the viewport. A block element in normal
+  // flow at the end of a long document does not, and its box is far taller than
+  // the fold - so this is the assertion that actually distinguishes a popup from
+  // a section that happens to exist.
+  const viewport = page.viewportSize();
+  const overlayBox = await overlay.boundingBox();
+  expect(overlayBox).not.toBeNull();
+  expect(overlayBox!.height).toBeGreaterThanOrEqual(viewport!.height - 1);
+
+  // And the panel is centred in the viewport rather than parked below the fold.
+  const dialogBox = await page.locator('.modal-content').first().boundingBox();
+  expect(dialogBox).not.toBeNull();
+  const centreOffset = Math.abs(dialogBox!.x + dialogBox!.width / 2 - viewport!.width / 2);
+  expect(centreOffset).toBeLessThan(4);
+
+  // Clicking the backdrop is not wired up, so closing is the close button - and
+  // the dialog must actually leave the DOM rather than just lose its backdrop.
+  // Addressed by class: the button's accessible name is its "✕" glyph, not the
+  // `title`, so `getByRole(..., { name: 'Close' })` would not find it.
+  await page.locator('.modal-close').click();
+  await expect(overlay).toHaveCount(0);
+});
+
 test.describe('portfolio dashboard', () => {
   test('the dashboard loads the seeded portfolio', async ({ page }) => {
     const errors: string[] = [];

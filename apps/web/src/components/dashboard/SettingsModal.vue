@@ -116,8 +116,13 @@ async function onImportFile(event: Event): Promise<void> {
     <div class="modal-content">
       <h2>Delete trade?</h2>
       <p>This will remove this trade from your history. This cannot be undone.</p>
-      <button style="background: #ef4444" @click="store.confirmDeleteTrade()">Delete</button>
-      <button @click="store.deleteTradeIndex = null">Cancel</button>
+      <!-- These two used to be spaced by `.modal-content button` in dashboard.css,
+           which could not match a shell-rendered modal. The spacing is here now,
+           scoped, so it travels with the markup that needs it. -->
+      <div class="confirm-actions">
+        <button class="confirm-delete" @click="store.confirmDeleteTrade()">Delete</button>
+        <button @click="store.deleteTradeIndex = null">Cancel</button>
+      </div>
     </div>
   </div>
 </template>
@@ -163,5 +168,12 @@ async function onImportFile(event: Event): Promise<void> {
 .tool-action {
   margin: 0;
   flex-shrink: 0;
+}
+.confirm-actions button {
+  margin: 8px 10px 0 10px;
+  min-width: 90px;
+}
+.confirm-delete {
+  background: #ef4444;
 }
 </style>

@@ -54,6 +54,15 @@ export default defineConfig({
           // Replaces `openapi-fetch`, so a store test can describe what the
           // server answers without stubbing the transport underneath it.
           setupFiles: ['./apps/web/src/test/networkHarness.ts'],
+          // Vitest replaces a `.css` import with an empty string unless this is
+          // on, and `?raw` does not bypass it - only the CSS pipeline sees it.
+          // `shellStylesheetScope.test.ts` reads the page stylesheets that way,
+          // because they sit outside `apps/web` and reading them through
+          // `node:fs` would mean adding `"types": ["node"]` to the browser app
+          // for the sake of one test. No other suite in this project imports CSS,
+          // so processing it costs nothing here, and it would also surface a
+          // broken `@import` rather than silently stubbing it.
+          css: true,
         },
       },
     ],

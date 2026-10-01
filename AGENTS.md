@@ -398,9 +398,32 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
     `.modal-content` are deliberately left unscoped in `dashboard.css` for exactly
     this reason - scoping them left the settings dialog rendering as unstyled
     static block content. Check this before moving a component into `App.vue`.
+  - **`.modal` and `.modal-content` live in `components.css`, unscoped, and must
+    stay there.** Two separate mistakes are being guarded against, and either one
+    alone reproduces the broken gear:
+    1. **Scoping.** A page-scoped rule cannot match them, because `App.vue`
+       renders `<SettingsModal />` as a _sibling_ of `<RouterView />`, so it is
+       inside no page root. This happened: `dee40ef` scoped them to
+       `.dashboard-page` and deleted the very comment that recorded the
+       exemption. The gear then put its dialog at the bottom of the page as
+       unstyled block content.
+    2. **Availability.** A page stylesheet reaches the browser only as a side
+       effect of the view that imports it, so in `dashboard.css` these rules were
+       absent on any route reached without visiting the dashboard first.
+       `components.css` is linked from `index.html`, so it is always fetched.
+       It hid because the failure is **asymmetric**: the scenario modals are
+       rendered _by_ a page, so the page-scoped rule matched them and they kept
+       working. Only the shell's two modals broke. Two definitions of "the modal" is
+       the underlying disease - they had already drifted apart on padding and radius.
+       `apps/web/src/test/shellStylesheetScope.test.ts` enforces all of this: it
+       fails if any page stylesheet scopes a shell-owned class, if a page stylesheet
+       redefines the modal, or if `components.css` stops declaring it. **That test is
+       the guard; the prose above is only why it exists.**
   - To find collisions, intersect the class names the page stylesheets define; do
-    not eyeball it. `explorer.css` is excluded - it belongs to the standalone
-    vanilla page, which never loads the Vue app's stylesheets.
+    not eyeball it - and note that `shellStylesheetScope.test.ts` now runs the
+    shell half of that intersection for you. `explorer.css` is excluded - it
+    belongs to the standalone vanilla page, which never loads the Vue app's
+    stylesheets.
 - **Scripts must not shell out through a platform shell.** `scripts/scan-secrets.cjs`
   used `execSync(cmd, { shell: 'powershell.exe' })`, which worked on the author's
   Windows machine and failed on the `ubuntu-latest` runner with `spawnSync
