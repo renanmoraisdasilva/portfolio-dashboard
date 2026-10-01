@@ -111,12 +111,19 @@ the store tests run in jsdom against a stubbed API client.
 
 ### The demo media
 
-`docs/dashboard-demo.gif` and `docs/images/*.png` are committed documentation
+`docs/dashboard-demo.gif` and `docs/images/*.webp` are committed documentation
 artifacts, not build output. Both are produced by
 `scripts/build-demo-gif.mjs`, which boots the built server against a temporary
 database seeded from the fixture, synthesises a deterministic price cache, and
 drives the real pages with Playwright. Nothing is hand-drawn, so a screenshot
 cannot drift from the product.
+
+The stills are **lossless** WebP. Playwright's own WebP output is lossy, and these
+pages are dark UI with 1px chart gridlines and small grey text on navy, which is
+what compression damages first — so the script captures PNG in memory and
+re-encodes with `sharp`. Lossy `q85` measured 62% smaller than PNG but visibly
+thinned the gridlines; lossless is 34% smaller and decodes to exactly the pixels
+that were on screen.
 
 Prices are synthesised rather than fetched, because `price_cache` is a cache of
 live quotes and the fixture cannot supply one — without it every position is
@@ -196,17 +203,17 @@ For the production host — Ubuntu, Docker and Dokploy — see
 
 ## Where things live
 
-| Path                          | What it holds                                                  |
-| ----------------------------- | -------------------------------------------------------------- |
-| `apps/api/src/routes/`        | the 14 Express route modules                                   |
-| `apps/api/src/services/`      | price fetching, snapshot history, analytics, Home Assistant    |
-| `apps/api/src/jobs/`          | the worker's three scheduled jobs                              |
-| `apps/api/src/schema.ts`      | the Drizzle schema — single source of truth for `portfolio.db` |
-| `apps/web/src/views/`         | the three Vue pages                                            |
-| `apps/web/src/stores/`        | one Pinia store per page                                       |
-| `packages/shared/src/domain/` | the money helpers, the FIFO lot walk and `computeValuation`    |
-| `docs/images/`                | README screenshots, produced by `npm run demo:stills`          |
-| `fixtures/`                   | the synthetic dataset — no real portfolio data, ever           |
+| Path                          | What it holds                                                         |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `apps/api/src/routes/`        | the 14 Express route modules                                          |
+| `apps/api/src/services/`      | price fetching, snapshot history, analytics, Home Assistant           |
+| `apps/api/src/jobs/`          | the worker's three scheduled jobs                                     |
+| `apps/api/src/schema.ts`      | the Drizzle schema — single source of truth for `portfolio.db`        |
+| `apps/web/src/views/`         | the three Vue pages                                                   |
+| `apps/web/src/stores/`        | one Pinia store per page                                              |
+| `packages/shared/src/domain/` | the money helpers, the FIFO lot walk and `computeValuation`           |
+| `docs/images/`                | README screenshots (lossless WebP), produced by `npm run demo:stills` |
+| `fixtures/`                   | the synthetic dataset — no real portfolio data, ever                  |
 
 Read [AGENTS.md](../AGENTS.md) before changing anything. It carries the
 conventions and, more importantly, the list of defects that are deliberate or

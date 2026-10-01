@@ -318,14 +318,26 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
   in `GETTING-STARTED.md`; when you add something that helps a visitor decide
   whether to care, it goes in the README. Do not let the two merge back.
 - **The README media is generated, never hand-drawn.** `docs/dashboard-demo.gif`
-  comes from `npm run demo:build` and the four PNGs in `docs/images/` from
-  `npm run demo:stills`; both run `scripts/build-demo-gif.mjs`, which boots the
+  comes from `npm run demo:build` and the four **lossless WebP** stills in
+  `docs/images/` from `npm run demo:stills`; both run
+  `scripts/build-demo-gif.mjs`, which boots the
   built server against a temporary seeded database, synthesises a deterministic
   price cache, and drives the real pages with Playwright. A mock-up that drifts
   from the product is worse than no demo. The synthesised prices are a fixed
   per-symbol drift from the fixture's own buy prices, so a regeneration produces
   the same numbers and a reviewer can check the arithmetic. They are committed,
   not built in CI, because a binary diff in every commit is worse.
+- **The stills must stay lossless WebP.** `shootStill` cannot use Playwright's
+  WebP output, which is always lossy. These pages are dark UI whose most
+  fragile content is 1px chart gridlines and small grey text on navy - exactly
+  what quantisation and chroma subsampling damage first, and the figures in them
+  are portfolio balances. Measured on the committed stills: lossy `q85` is 62%
+  smaller than PNG but visibly thins the gridlines, and PSNR barely moves
+  between q95 and q85 (34.3 vs 33.9 dB), so the aggressive settings buy size at
+  the cost of the one thing the screenshot exists to show. Lossless is 34%
+  smaller and decodes bit-for-bit to the captured pixels, so `shootStill`
+  screenshots to PNG in memory and re-encodes through `sharp`. Do not "optimise"
+  this without re-measuring.
 - **`CACHE_TTL` and the staleness warning are different numbers, on purpose.**
   `priceFetcher.ts` has two: `CACHE_TTL` (8 min) decides when to refetch, and
   `STALE_AFTER_MS` (24 min, three refresh cycles) decides when the UI says "prices
