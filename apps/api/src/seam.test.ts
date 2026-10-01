@@ -19,28 +19,25 @@ async function request(pathname: string): Promise<{ status: number; location: st
 }
 
 describe('strangler seam', () => {
-  test('the SQL Explorer is the only page still served from /legacy/', async () => {
-    const res = await request('/legacy/sql-explorer.html');
-    expect(res.status).toBe(200);
-    expect(res.body).toContain('sql');
-  });
-
-  test('every migrated page is gone from /legacy/', async () => {
-    // No such files any more: the static mount misses and the SPA fallback
-    // answers with the shell, so assert on what the body is not.
-    for (const page of ['index', 'analytics', 'simulation']) {
-      const res = await request(`/legacy/${page}.html`);
-      expect(res.body).not.toContain('period-tabs');
-      expect(res.body).not.toContain('asset-rows');
-      expect(res.body).not.toContain('metrics-grid');
-      expect(res.body).not.toContain(`/static/js/${page}.js`);
+  test('there is no /legacy/ mount and no pages/ tree any more', async () => {
+    // The SQL Explorer was the last vanilla page. With it gone there is nothing
+    // for `/legacy/` to serve, so the directory is retired rather than left
+    // mounted against an empty path: a request that used to return the page must
+    // fall through to the Vue shell instead of a 200 from static.
+    for (const pathname of ['/legacy/', '/legacy/sql-explorer.html', '/legacy/index.html']) {
+      const res = await request(pathname);
+      expect(res.status === 200 && res.body.includes('id="app"')).toBe(true);
     }
   });
 
-  test('old /pages/* links redirect to /legacy/*', async () => {
-    const res = await request('/pages/sql-explorer.html');
-    expect([301, 302]).toContain(res.status);
-    expect(res.location).toBe('/legacy/sql-explorer.html');
+  test('a bookmark for a retired page lands on the dashboard, not a dead /legacy/ URL', async () => {
+    // The fallback used to be `/legacy/<name>.html`, which no longer resolves.
+    // Sending these to `/` keeps an old bookmark useful instead of 404ing.
+    for (const pathname of ['/sql-explorer.html', '/pages/sql-explorer.html', '/dashboard.html']) {
+      const res = await request(pathname);
+      expect([301, 302]).toContain(res.status);
+      expect(res.location).toBe('/');
+    }
   });
 
   test('bookmarks of a migrated page follow it to its Vue route', async () => {
@@ -63,13 +60,7 @@ describe('strangler seam', () => {
     expect(res.location).toBe('/');
   });
 
-  test('old bookmark paths redirect to /legacy/', async () => {
-    const res = await request('/sql-explorer.html');
-    expect([301, 302]).toContain(res.status);
-    expect(res.location).toBe('/legacy/sql-explorer.html');
-  });
-
-  test('the root serves the Vue dashboard, never the legacy page', async () => {
+  test('the root serves the Vue dashboard, never a legacy page', async () => {
     const res = await request('/');
     if (hasWebBuild) {
       expect(res.status).toBe(200);
@@ -82,7 +73,7 @@ describe('strangler seam', () => {
     }
   });
 
-  test('static assets stay at the root for the legacy pages', async () => {
+  test('static assets stay at the root for the app shell', async () => {
     const res = await request('/static/css/layout.css');
     expect(res.status).toBe(200);
   });

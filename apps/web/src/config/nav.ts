@@ -12,38 +12,31 @@
  * nav could only ever reach it from the dashboard it lives inside, and a reload
  * would drop you back to the overview.
  */
-export type PageStatus = 'legacy' | 'migrated';
-
 export interface NavEntry {
   /** Clean path owned by the Vue app. */
   path: string;
   label: string;
-  status: PageStatus;
-  /** Where the untouched page lives. Absent once the page is migrated. */
-  legacyHref?: string;
   /** Dashboard sub-view. Only `/` has one; selects it via `?tab=`. */
   tab?: 'dashboard' | 'assetCharts';
 }
 
 /**
  * Order is the header's order: dashboard first, then its sub-view, then the
- * other pages, then the one page still served from `/legacy/`.
+ * other pages.
+ *
+ * Every entry is `migrated`, so there is no `status` field and no `legacyEntries()`
+ * any more. The SQL Explorer was the last page still served from `pages/`, and it
+ * was the only reason a nav entry could point somewhere the Vue app did not own:
+ * an unauthenticated arbitrary-SQL console behind an environment flag, which was
+ * not worth migrating and not worth keeping. With it gone the Vue app owns every
+ * route the header links to, and `LegacyHandoff.vue` went with it.
  */
 export const NAV_ENTRIES: NavEntry[] = [
-  { path: '/', label: 'Dashboard', status: 'migrated', tab: 'dashboard' },
-  { path: '/', label: 'Asset Charts', status: 'migrated', tab: 'assetCharts' },
-  { path: '/simulation', label: 'Simulation', status: 'migrated' },
-  { path: '/analytics', label: 'Analytics', status: 'migrated' },
-  { path: '/sql-explorer', label: 'SQL Explorer', status: 'legacy', legacyHref: '/legacy/sql-explorer.html' },
+  { path: '/', label: 'Dashboard', tab: 'dashboard' },
+  { path: '/', label: 'Asset Charts', tab: 'assetCharts' },
+  { path: '/simulation', label: 'Simulation' },
+  { path: '/analytics', label: 'Analytics' },
 ];
-
-/** A page still served untouched from `/legacy/`, with its hand-off target. */
-export function legacyEntries(): (NavEntry & { legacyHref: string })[] {
-  return NAV_ENTRIES.filter(
-    (entry): entry is NavEntry & { legacyHref: string } =>
-      entry.status === 'legacy' && entry.path !== '/' && Boolean(entry.legacyHref),
-  );
-}
 
 /**
  * Is this entry the current one?

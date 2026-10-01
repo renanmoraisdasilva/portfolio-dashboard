@@ -35,14 +35,21 @@ API notes:
 - `GET/POST/PUT/DELETE /api/scenarios` — saved simulation scenarios.
 - `GET /api/config/symbols` — the symbol registry that populates every select and chart.
 - `GET /api/history` (with an optional `range`), `POST /api/history/point`, `DELETE /api/history/:id` and `GET /api/history/ohlc` (candles derived from the snapshots). `POST /api/history/fill-gaps` and `DELETE /api/history` have both been removed — the first was a one-time repair of the early record, the second had no confirmation or way back, and a restore from a backup now covers that case.
-- `GET /api/sql/tables`, `GET /api/sql/schema`, `POST /api/sql/query` — the SQL Explorer, **with no authentication**. Gated behind `ENABLE_SQL_EXPLORER=true`: the routes answer `403` unless the flag is set, and it is off by default — including in the Docker image.
+
+There is deliberately **no arbitrary-SQL endpoint**. The SQL Explorer's
+`/api/sql/tables`, `/api/sql/schema` and `/api/sql/query` were an unauthenticated
+console that could `DELETE` any row, held shut by `ENABLE_SQL_EXPLORER`. They are
+gone rather than gated: a gate proves a feature is closed, and a public showcase
+has no use for one that is merely closed. For ad-hoc inspection, open the SQLite
+file with `npm run db:studio` (Drizzle Studio) instead — same database, and it
+never opens a port.
 
 Static content is served by the same app, split by the strangler seam:
 
 - `GET /` — the Vue app (`apps/web/dist`), with a SPA fallback for client-side routes.
-- `GET /legacy/<page>.html` — the not-yet-migrated vanilla pages from `pages/`.
-- `GET /static/...` and `GET /icon.png` — shared assets; the legacy pages reference them by absolute path.
-- Old links still resolve: `/pages/x.html` and `/x.html` both redirect to `/legacy/x.html`, and `/index.html` redirects to `/`.
+- `GET /static/...` and `GET /icon.png` — shared assets, referenced by absolute path.
+- `GET /<page>.html` and `GET /pages/<page>.html` — 302 redirects so old bookmarks follow a page to its Vue route (`/analytics.html` → `/analytics`), and `/index.html` → `/`.
+- There is no `/legacy/` mount and no `pages/` tree. The SQL Explorer was the last vanilla page; every page is Vue now.
 
 Nothing else in the repository is served — the previous `express.static(repoRoot)` also exposed `node_modules/` and `.git/`.
 

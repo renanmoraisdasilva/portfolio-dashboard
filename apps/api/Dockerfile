@@ -3,7 +3,7 @@
 # Layout note: the container mirrors the repository layout exactly —
 # WORKDIR /app is the npm workspace root, and the API lives at /app/apps/api.
 # src/app.ts computes repoRoot as three levels up from apps/api/{src,dist},
-# so this mirroring is what makes pages/ and static/ resolve at runtime.
+# so this mirroring is what makes static/ resolve at runtime.
 
 FROM node:22-alpine AS builder
 
@@ -27,7 +27,6 @@ RUN npm ci
 COPY apps/api/ apps/api/
 COPY apps/web/ apps/web/
 COPY packages/shared/ packages/shared/
-COPY pages/ pages/
 COPY static/ static/
 COPY icon.png icon.png
 
@@ -60,8 +59,8 @@ FROM node:22-alpine AS runtime
 # and leaks nothing. `docker-compose.yml` forwards it; Dokploy sets it in the
 # application's environment.
 #
-# ENABLE_SQL_EXPLORER is also NOT set: /api/sql/* answers 403 unless a
-# deployment opts in.
+# ENABLE_SQL_EXPLORER no longer exists: the SQL Explorer was deleted rather than
+# left gated, so there is no arbitrary-SQL console in the image to disable.
 
 WORKDIR /app
 
@@ -72,14 +71,12 @@ COPY --from=pruned /app/package-lock.json ./package-lock.json
 COPY --from=pruned /app/packages/shared ./packages/shared
 COPY --from=pruned /app/apps/api ./apps/api
 COPY --from=pruned /app/apps/web ./apps/web
-COPY --from=pruned /app/pages ./pages
 COPY --from=pruned /app/static ./static
 COPY --from=pruned /app/icon.png ./icon.png
 
-# Fail the image build early if a required page is missing. Every user-facing
-# page has been migrated to Vue; only the gated SQL Explorer is still vanilla.
-RUN test -f /app/pages/sql-explorer.html \
-	&& test -f /app/apps/web/dist/index.html
+# Fail the image build early if the built frontend is missing. A green build that
+# produced no `index.html` would ship an API with nothing to serve at `/`.
+RUN test -f /app/apps/web/dist/index.html
 
 # Tests belong to the builder stage only: `npm run test:docker` builds that
 # stage and runs the full suite from it, so they cannot be excluded at the

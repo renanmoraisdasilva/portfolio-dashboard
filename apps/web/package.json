@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Vue 3 + TypeScript + Vite frontend. The strangler shell and migrated pages live here; the vanilla pages stay under pages/ until they are migrated.",
+  "description": "Vue 3 + TypeScript + Vite frontend. The app shell and every page live here; the backend serves the build at `/`.",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",

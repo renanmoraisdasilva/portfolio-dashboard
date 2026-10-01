@@ -14,7 +14,7 @@ npm run dev:web        # Vite dev server for the Vue app, port 5173, proxying /a
 
 Schema initialization runs **automatically** on server start via Drizzle migrations. `npm run migrate:init` is only needed to import `fixtures/portfolio_data.json` into a fresh database — skip it for new setups.
 
-Frontend HTML files in `pages/` are served statically by the backend at `/legacy/`. Open `http://localhost:3000` after starting the server — that is the Vue shell, which links each page at its clean path.
+Open `http://localhost:3000` after starting the server — that is the Vue shell, which links each page at its clean path. There is no `pages/` tree left to serve.
 
 ## Build & test
 
@@ -81,26 +81,36 @@ packages/shared/
   dist/                  # Build output, gitignored. `main`/`types` point here; apps/api imports the package through it
 ```
 
-### Legacy frontend (still being migrated)
+### Legacy frontend (retired)
 
 ```
 static/js/
   (no page scripts left — every user-facing page is Vue; `static/js/__tests__`
    holds the two ESM suites that exercise `packages/shared`)
-static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics, explorer
+static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics
 ```
 
-`pages/` keeps only `sql-explorer.html`: it is gated behind `ENABLE_SQL_EXPLORER` and never migrated. The three user-facing pages live in `apps/web/src/views/`; their page stylesheets are still imported from `static/css/` by each view, so that tree goes away only when the Explorer does.
+**There is no `pages/` directory and no `/legacy/` mount.** The Vue app owns every
+route the header links to. The SQL Explorer was the last vanilla page — an
+unauthenticated arbitrary-SQL console behind `ENABLE_SQL_EXPLORER` — and deleting
+it retired the strangler's static half along with `pages/`, `LegacyHandoff.vue`,
+`PageStatus`/`legacyHref`/`legacyEntries()` in `src/config/nav.ts`, and
+`explorer.css`. The bookmark redirects in `app.ts` (`/analytics.html` →
+`/analytics`) stay; they are about _migrated_ pages, not legacy ones.
+
+The three user-facing pages live in `apps/web/src/views/`; their page stylesheets
+are still imported from `static/css/` by each view, so that tree goes away only
+when those views are migrated to component-scoped styles.
 
 ### Vue app (`apps/web`)
 
 ```
 apps/web/
-  index.html            # Vite entry; links base/components/layout.css from /static so the shell and pages/ match
+  index.html            # Vite entry; links base/components/layout.css from /static, so the shell is styled on first paint
   vite.config.ts        # vue plugin, dist/ output, dev proxy /api + /static → API_URL (default :3000)
   src/main.ts           # createApp().use(createPinia()).use(router).mount('#app')
   src/App.vue           # the shell, and the ONLY renderer of the header row: .shell > .app-header (brand, .app-nav, gear) > .app-nav + <RouterView/> + <SettingsModal/>
-  src/router/index.ts   # one route per page; unmigrated ones render LegacyHandoff
+  src/router/index.ts   # one route per page; three exist and the Vue app owns all of them
   src/config/nav.ts     # the nav table - one entry per header link, `tab` for the dashboard's sub-view, mark a page `migrated` to give it a real route
   src/composables/useApi.ts # openapi-fetch client (baseUrl /api) + ApiError and request()
   src/composables/useMoney.ts # display helpers; currency math comes from packages/shared
@@ -110,7 +120,7 @@ apps/web/
   src/stores/persistPlugin.ts   # Pinia plugin: mirrors opted-in state keys into localStorage
   src/stores/           # Pinia stores, one per migrated page (analytics, simulation, dashboard)
   src/components/       # ChartCanvas.vue (Chart.js lifecycle), MetricCard.vue, PageHeader.vue (a page's TITLE only - no navigation), AllocationTable.vue, analysis/, simulation/, dashboard/
-  src/views/            # DashboardView.vue (at `/`), AnalyticsView.vue, SimulationView.vue, LegacyHandoff.vue
+  src/views/            # DashboardView.vue (at `/`), AnalyticsView.vue, SimulationView.vue
 ```
 
 `/` is the dashboard and, like every other route, lazy-loaded: it pulls in lightweight-charts, which would otherwise add 400 kB to the shell's first paint.
@@ -123,21 +133,22 @@ The simulator's allocation currency lives in the store as `simAllocCurrency`, an
 
 `npm run build:web` type-checks with `vue-tsc` and bundles to `apps/web/dist`, which the API serves at `/` (strangler seam, in `mountWebRoutes`):
 
-| Path                          | Served by                                                                                                             |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `/` and any client-side route | `apps/web/dist/index.html` (SPA fallback) — `/` is the dashboard                                                      |
-| `/legacy/sql-explorer.html`   | the one vanilla page left, gated behind `ENABLE_SQL_EXPLORER`                                                         |
-| `/static/...`, `/icon.png`    | shared assets, referenced by absolute path from the legacy page                                                       |
-| `/pages/x.html`, `/x.html`    | 302 → `/legacy/x.html`, or to the Vue route for migrated pages (see `migratedPages` in `app.ts`); `/index.html` → `/` |
-| `/api/*`                      | the API routers                                                                                                       |
+| Path                          | Served by                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/` and any client-side route | `apps/web/dist/index.html` (SPA fallback) — `/` is the dashboard                                         |
+| `/static/...`, `/icon.png`    | shared assets, referenced by absolute path                                                               |
+| `/pages/x.html`, `/x.html`    | 302 → the Vue route for a migrated page (see `migratedPages` in `app.ts`), else `/`; `/index.html` → `/` |
+| `/api/*`                      | the API routers                                                                                          |
 
-`apps/api/src/seam.test.ts` covers that routing. Note the mount order: `pages/` is registered **before** the SPA fallback, otherwise `/legacy/index.html` would be swallowed by the Vue app and the redirects would loop.
+`apps/api/src/seam.test.ts` covers that routing, and it asserts the absence of the
+old seam too: `/legacy/*` now falls through to the Vue shell rather than answering
+from a static mount.
 
 **CI is a five-job matrix** (`.github/workflows/ci.yml`): `lint` (eslint + `prettier --check`), `build` (typecheck + build), `unit` (build first, then `npm test` — the seam test asserts against `apps/web/dist`), `e2e` (build, install Chromium, run `e2e/`, upload the report on failure), and `docker`, which `needs` all four and _smokes the built image_ rather than only building it. A green build is not a running container, and nothing tested the difference. `npm run check` locally is `lint → format:check → build → test`.
 
 **The e2e suite runs the built bundle against a temporary database.** `e2e/start-server.mjs` sets `PORTFOLIO_DATA_DIR` (an opt-in override in `db.ts`, unset in every normal run) to a fresh temp directory, seeds it from `fixtures/portfolio_data.json`, and deletes it afterwards — so a test can add a trade without any possibility of touching the real `portfolio.db`. See [e2e/README.md](e2e/README.md) before adding a test, in particular: **do not assert market prices**, because the worker is not running and `price_cache` is empty.
 
-To migrate a page: build the view under `src/views/` (and its store/composables), flip that page's `status` in `src/config/nav.ts` to `migrated` and give it a real route in `src/router/index.ts`, add the old name to `migratedPages` in `apps/api/src/app.ts` so bookmarks follow the page, then delete the vanilla file from `pages/` and its `<script>` tag. `pages/` now holds only the SQL Explorer, so the Dockerfile's page assertion covers that one file. **A view never renders navigation.** The header row is the shell's; a page contributes content and, optionally, a `PageHeader` for its own title plus `page-actions` for controls that mean nothing outside it (the simulator's three buttons). Adding a second row of buttons to a view is the failure this replaced.
+**A view never renders navigation.** The header row is the shell's; a page contributes content and, optionally, a `PageHeader` for its own title plus `page-actions` for controls that mean nothing outside it (the simulator's three buttons). Adding a second row of buttons to a view is the failure this replaced. The migration itself is finished — there is nothing left in `pages/` to move, so this is now a rule rather than a procedure.
 
 ## Key conventions
 
@@ -306,7 +317,27 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
   `uniqueIndex` or a currency check on `interest` would be the durable fix.
 - **Asset chart cache** is a rolling-window snapshot stored in the `asset_chart_cache` table (previously `asset_history`). It is **not immutable** - rows are overwritten in place, so a backfill rewrites history rather than extending it. The table was renamed by migration, not recreated, and the old name still appears in older SQL comments.
 - **`price_ticks` grows indefinitely** — never query it without a WHERE clause on the indexed `(symbol, ts)` columns. Full table scans will be slow once the table contains months of 8-minute ticks across all symbols.
-- **The maintenance backfills are gone: `routes/migrations.ts`, `services/cashBackfill.ts` and both endpoints.** Backfill Cash History ran `DELETE FROM cash` and rebuilt the balance from estimates, so one unconfirmed click in the UI zeroed the entire USD balance and destroyed every cash entry belonging to a trade; it had already done its one-time job. (Do not quote the real balance here, or anywhere else in the tree: this document is published, and a figure from the live account is not a detail a showcase needs. The scale of the loss is the point, not the number.) Backfill Price History was additive and idempotent, but `price_ticks` refills itself from the worker's own fetcher. `DELETE /api/history` ("Clear History") and `DELETE /api/state` ("Erase All") went with them, since a restore is now a true replace. The Settings modal is down to four tools: SQL Explorer, Export, Import, Test Notify.
+- **The maintenance backfills are gone: `routes/migrations.ts`, `services/cashBackfill.ts` and both endpoints.** Backfill Cash History ran `DELETE FROM cash` and rebuilt the balance from estimates, so one unconfirmed click in the UI zeroed the entire USD balance and destroyed every cash entry belonging to a trade; it had already done its one-time job. (Do not quote the real balance here, or anywhere else in the tree: this document is published, and a figure from the live account is not a detail a showcase needs. The scale of the loss is the point, not the number.) Backfill Price History was additive and idempotent, but `price_ticks` refills itself from the worker's own fetcher. `DELETE /api/history` ("Clear History") and `DELETE /api/state` ("Erase All") went with them, since a restore is now a true replace. The Settings modal is down to three tools: Export, Import, Test Notify.
+
+- **The SQL Explorer is deleted, not gated.** `routes/sqlExplorer.ts`,
+  `pages/sql-explorer.html` and the `/api/sql/*` paths are gone, along with
+  `ENABLE_SQL_EXPLORER`. It was arbitrary SQL over the database with no
+  authentication — `POST /api/sql/query` reached `stmt.run()`, so a `DELETE`
+  executed — and the only thing between it and the open internet was an
+  environment flag. Two reasons to delete rather than keep gating it:
+  1. **A gate is not a boundary, it is a config value.** It shipped off, and
+     `AGENTS.md` records that the Docker image once carried a real secret in
+     `ENV`. A second flag protecting a write console is the same shape of risk
+     for a capability no one needs — `npm run db:studio` opens the same SQLite
+     file without a port.
+  2. **`isSelectQuery` was never the permission check it looked like.** It
+     decided a response shape; `better-sqlite3`'s `.all()` throwing _"This
+     statement does not return data"_ on a `WITH ... INSERT` was what actually
+     stopped that bypass, and a write beginning with `SELECT` is impossible.
+     Read that way, "read-only console" was a description of a coincidence.
+     `seam.test.ts` asserts `/legacy/*` now falls through to the Vue shell, the e2e
+     suite asserts all three `/api/sql/*` paths are **404** (absent, not 403), and
+     `openapi.contract.test.ts` would fail if a stale spec entry outlived the router.
 - **`POST /api/history/fill-gaps` is gone, and the history it would have filled is staying thin.** It recomputed the snapshots the early record never received: the first 30 days have no day reaching 40 snapshots, because the worker was not running then, while the last fortnight sit at 48/day. The worker only appends, so nothing would ever repair that period on its own - which is exactly why the endpoint looked permanent when it was not. It is a one-time repair of a past that is not worth a permanent route, and the 128 rows it did produce carry `note = 'gap-fill'`. `recomputeHistoryAt` in `services/historyManager.ts` is what made it possible; it stays exported and tested with no caller in the app, so delete it together with `historyManager.test.ts`'s four `recomputeHistoryAt` blocks if the capability is not wanted either.
 - **Bond symbols (`type: 'bond'`) are absent from `price_ticks` history** before the migration date — the Yahoo backfill script skips them. `recomputeHistoryAt(ts)` will throw if asked to recompute a timestamp before the first non-bond price tick exists.
 - **`history_points.brlusd_rate` is `NULL` for rows inserted before the migration** — the column was added via `ALTER TABLE`; old rows were not backfilled, and with `fill-gaps` gone nothing rewrites them, so treat a `NULL` rate as permanent for existing rows. A restore is not a way to lose it either: the export sends the column and the import writes it, which it briefly did not — that nulled the rate on every snapshot and left the analytics converting BRL interest at today's rate, while the chart looked perfect because candles only read `v` and `p`.
@@ -420,10 +451,10 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
        redefines the modal, or if `components.css` stops declaring it. **That test is
        the guard; the prose above is only why it exists.**
   - To find collisions, intersect the class names the page stylesheets define; do
-    not eyeball it - and note that `shellStylesheetScope.test.ts` now runs the
-    shell half of that intersection for you. `explorer.css` is excluded - it
-    belongs to the standalone vanilla page, which never loads the Vue app's
-    stylesheets.
+    not eyeball it — and note that `shellStylesheetScope.test.ts` now runs the
+    shell half of that intersection for you. Only the three page stylesheets take
+    part; `base.css` and `components.css` are global by definition and
+    `layout.css` is the shell's own.
 - **Scripts must not shell out through a platform shell.** `scripts/scan-secrets.cjs`
   used `execSync(cmd, { shell: 'powershell.exe' })`, which worked on the author's
   Windows machine and failed on the `ubuntu-latest` runner with `spawnSync

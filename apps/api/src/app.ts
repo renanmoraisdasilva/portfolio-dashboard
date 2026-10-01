@@ -17,7 +17,6 @@ import { configRouter } from './routes/config';
 import { scenariosRouter } from './routes/scenarios';
 import analyticsRouter from './routes/analytics';
 import { portfolioRouter } from './routes/portfolio';
-import { sqlExplorerRouter } from './routes/sqlExplorer';
 import { metricsText, observeHttpRequest } from './metrics';
 import { invalidateResponseCaches } from './services/responseCache';
 // __dirname is apps/api/src (dev) or apps/api/dist (compiled), so repo root is three levels up.
@@ -42,23 +41,23 @@ export function createApp(): Express {
   return app;
 }
 export function mountWebRoutes(app: Express): void {
-  // Strangler seam: the Vue app owns `/`, and the vanilla pages that were not
-  // migrated stay reachable under /legacy/. Static
-  // assets stay at the root because the legacy pages reference them by
-  // absolute path (/static/..., /icon.png). Nothing else in the repository is
-  // served any more — the old `express.static(repoRoot)` also exposed
-  // node_modules and .git.
+  // Strangler seam: the Vue app owns `/`. Static assets stay at the root because
+  // the app references them by absolute path (/static/..., /icon.png). Nothing
+  // else in the repository is served any more — the old `express.static(repoRoot)`
+  // also exposed node_modules and .git.
+  //
+  // There is no `/legacy/` mount and no `pages/` tree. The SQL Explorer was the
+  // last vanilla page, and it was an unauthenticated arbitrary-SQL console over
+  // HTTP that existed only behind an environment flag; removing it took the
+  // strangler's static half with it. The bookmark redirects below stay, because
+  // those are about *migrated* pages.
   app.use('/static', express.static(path.join(repoRoot, 'static')));
   app.get('/icon.png', (_req, res) => res.sendFile(path.join(repoRoot, 'icon.png')));
-  app.use('/legacy', express.static(path.join(repoRoot, 'pages')));
-  // Old bookmarks keep resolving: /pages/x.html and /x.html land on /legacy/x.html,
-  // except for the pages that have moved into the Vue app - their
-  // bookmarks must follow to the new route, not to a file that no longer exists.
+  // Old bookmarks keep resolving: /pages/x.html and /x.html follow the page to
+  // wherever it ended up. Anything not in the table lands on the dashboard rather
+  // than on a /legacy/ URL that no longer exists.
   const migratedPages: Record<string, string> = { analytics: '/analytics', simulation: '/simulation' };
-  const pageTarget = (file: string): string => {
-    const name = file.replace(/\.html$/, '');
-    return migratedPages[name] ?? `/legacy/${name}.html`;
-  };
+  const pageTarget = (file: string): string => migratedPages[file.replace(/\.html$/, '')] ?? '/';
   app.get('/pages/:file', (req, res) => res.redirect(pageTarget(req.params.file)));
   app.get('/index.html', (_req, res) => res.redirect('/'));
   app.get('/:page.html', (req, res) => res.redirect(pageTarget(req.params.page)));
@@ -78,18 +77,6 @@ export function mountWebRoutes(app: Express): void {
   app.use('/api/asset', assetRouter);
   app.use('/api/alerts', alertsRouter);
   app.use('/api/config', configRouter);
-  // The SQL Explorer is an arbitrary-SQL console over HTTP with no
-  // authentication, so it stays closed unless explicitly enabled. Off by
-  // default, including in the Docker image.
-  const sqlExplorerEnabled = process.env.ENABLE_SQL_EXPLORER === 'true';
-  app.use(
-    '/api/sql',
-    (_req, res, next) => {
-      if (sqlExplorerEnabled) return next();
-      res.status(403).json({ error: 'SQL Explorer is disabled. Set ENABLE_SQL_EXPLORER=true to enable it.' });
-    },
-    sqlExplorerRouter,
-  );
   app.use('/api/scenarios', scenariosRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/portfolio', portfolioRouter);

@@ -67,9 +67,9 @@ onBeforeUnmount(() => {
 <template>
   <div class="dashboard-page">
     <!--
-      Content only. The header row - Dashboard, Asset Charts, Simulation, Analytics,
-      SQL Explorer and the settings gear - is the shell's, in `App.vue`, because it
-      is the same on every page and this view used to render a second row of its own.
+      Content only. The header row - Dashboard, Asset Charts, Simulation, Analytics
+      and the settings gear - is the shell's, in `App.vue`, because it is the same on
+      every page and this view used to render a second row of its own.
       Which of the two dashboard views is showing comes from `?tab=` in the URL, so
       a reload and a shared link both land on the right one.
     -->

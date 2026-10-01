@@ -159,9 +159,11 @@ Three things to know before you build on it:
   a trade reverses the movement. This is the one place where "the database has
   two views of the same fact" is prevented structurally rather than by
   convention.
-- **The SQL Explorer is closed unless `ENABLE_SQL_EXPLORER=true`.** It is
-  arbitrary SQL over the database with no authentication, and that is not
-  something to ship open by default — including in the Docker image.
+- **The SQL Explorer was deleted, not hidden behind a flag.** `/api/sql/query`
+  took arbitrary SQL with no authentication — including `DELETE` — and was held
+  shut by `ENABLE_SQL_EXPLORER`. If you want to inspect the database, run
+  `npm run db:studio`, which opens the same SQLite file in Drizzle Studio without
+  exposing a port. Nothing in the app serves arbitrary SQL.
 
 More in [BACKEND.md](BACKEND.md).
 

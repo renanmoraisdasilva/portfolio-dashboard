@@ -32,8 +32,6 @@ tags:
     description: Analytics snapshot endpoints
   - name: Portfolio
     description: Server-computed portfolio values
-  - name: SQL Explorer
-    description: Read-only SQL console endpoints
 paths:
   /state/export:
     get:
@@ -736,87 +734,6 @@ paths:
       responses:
         '204':
           description: Deleted
-  /sql/tables:
-    get:
-      tags: [SQL Explorer]
-      summary: List tables in the database
-      parameters:
-        - name: db
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [portfolio]
-            default: portfolio
-      responses:
-        '200':
-          description: Table names
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tables:
-                    type: array
-                    items:
-                      type: string
-        '400':
-          description: Unknown database
-  /sql/schema:
-    get:
-      tags: [SQL Explorer]
-      summary: List the columns of a table
-      parameters:
-        - name: db
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [portfolio]
-            default: portfolio
-        - name: table
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Column definitions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  columns:
-                    type: array
-                    items:
-                      type: object
-        '400':
-          description: Missing table parameter or unknown database
-  /sql/query:
-    post:
-      tags: [SQL Explorer]
-      summary: Run a single statement
-      description: >
-        SELECT statements are returned as rows; anything else is executed as a
-        write. The endpoint is unauthenticated and answers 403 unless
-        ENABLE_SQL_EXPLORER=true, which is off by default — including in the
-        Docker image.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SqlQueryRequest'
-      responses:
-        '200':
-          description: Query result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SqlQueryResult'
-        '400':
-          description: Missing sql field, unknown database, or rejected statement
 components:
   schemas:
     Trade:
@@ -1446,38 +1363,6 @@ components:
               type: number
             rf_per_period:
               type: number
-    SqlQueryRequest:
-      type: object
-      required: [sql]
-      properties:
-        sql:
-          type: string
-        db:
-          type: string
-          enum: [portfolio]
-          default: portfolio
-    SqlQueryResult:
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [select, write]
-        rows:
-          type: array
-          items:
-            type: object
-          description: Present when type is select
-        columns:
-          type: array
-          items:
-            type: string
-        rowCount:
-          type: integer
-        lastInsertRowid:
-          description: Present when type is write
-        message:
-          type: string
-          description: Present when type is write
     HealthStatus:
       type: object
       properties:

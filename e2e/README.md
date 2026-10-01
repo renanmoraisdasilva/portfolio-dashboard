@@ -16,14 +16,17 @@ First run only: `npx playwright install chromium`.
 
 ## What they check
 
-| Test                                        | Asserts                                                                                                                      |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `the dashboard shows a formatted total`     | the first metric card is formatted currency, not a raw number or a zero                                                      |
-| `the dashboard loads the seeded portfolio`  | five populated cards, the seeded 14-row ledger, the fixture's R$ 95.000,00 / $ 12.500,00 balances, and **no console errors** |
-| `adding a trade…`                           | buying 0.01 BTC at $1,000 grows the ledger to 15 rows, creates the position, and takes exactly $10 off the USD balance       |
-| `the simulation and analytics pages render` | both pages render their metrics and the allocation legend, with no console error                                             |
-| `the SQL Explorer stays closed`             | `/api/sql/tables` is 403 without `ENABLE_SQL_EXPLORER=true`                                                                  |
-| `the retired aggregation is really gone`    | `GET /api/state` is 404 while `/trades` and `/portfolio/valuation` answer                                                    |
+| Test                                             | Asserts                                                                                                                      |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `the dashboard shows a formatted total`          | the first metric card is formatted currency, not a raw number or a zero                                                      |
+| `the settings gear opens a dialog over the page` | the gear's dialog is a `position: fixed` overlay covering the viewport and horizontally centred, not a block below the fold  |
+| `the dashboard loads the seeded portfolio`       | five populated cards, the seeded 14-row ledger, the fixture's R$ 95.000,00 / $ 12.500,00 balances, and **no console errors** |
+| `adding a trade…`                                | buying 0.01 BTC at $1,000 grows the ledger to 15 rows, creates the position, and takes exactly $10 off the USD balance       |
+| `the simulation and analytics pages render`      | both pages render their metrics and the allocation legend, with no console error                                             |
+| `the SQL Explorer endpoints are gone, not gated` | all three `/api/sql/*` paths are **404** — the router is absent, not closed by a flag                                        |
+| `the header no longer links the SQL Explorer`    | `.app-nav` has no entry for it, so the removal left no dead link                                                             |
+| `the settings modal offers three tools`          | exactly three `.tool-row`s and no mention of the Explorer                                                                    |
+| `the retired aggregation is really gone`         | `GET /api/state` is 404 while `/trades` and `/portfolio/valuation` answer                                                    |
 
 ## Two things to know before adding a test
 

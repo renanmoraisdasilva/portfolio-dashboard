@@ -154,12 +154,40 @@ test.describe('portfolio dashboard', () => {
   });
 });
 
-test('the SQL Explorer stays closed unless it is explicitly enabled', async ({ request }) => {
-  // It is gated, and a gate that nobody tests is a gate that eventually
-  // gets refactored away.
-  const response = await request.get('/api/sql/tables');
-  expect(response.status()).toBe(403);
-  expect((await response.json()).error).toMatch(/ENABLE_SQL_EXPLORER/);
+test('the SQL Explorer endpoints are gone, not merely gated', async ({ request }) => {
+  // It used to answer 403 unless ENABLE_SQL_EXPLORER=true. It is deleted now, so
+  // the assertion that matters is 404: a gate proves the feature is closed, a
+  // 404 proves it is absent. Anything weaker would pass against a router that
+  // still exists and still runs SQL.
+  for (const [method, path] of [
+    ['get', '/api/sql/tables'],
+    ['get', '/api/sql/schema'],
+    ['post', '/api/sql/query'],
+  ] as const) {
+    const response = await request[method](path as string);
+    expect([404, 401, 403]).toContain(response.status());
+    expect(response.status()).toBe(404);
+  }
+});
+
+test('the header no longer links the SQL Explorer', async ({ page }) => {
+  // Removing the page but leaving a nav entry to it would render a dead link
+  // that routes to `/` — a silent regression rather than a visible one.
+  await page.goto('/');
+  await expect(page.locator('.app-header')).toBeVisible();
+  await expect(page.locator('.app-nav a', { hasText: 'SQL Explorer' })).toHaveCount(0);
+});
+
+test('the settings modal offers three tools, none of them the Explorer', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings & Tools' }).click();
+
+  const rows = page.locator('.settings-content .tool-row');
+  await expect(rows).toHaveCount(3);
+  await expect(page.locator('.settings-content')).not.toContainText('SQL Explorer');
+  // Export, Import and Test Notify - the destructive maintenance endpoints that
+  // used to sit next to it are gone too, so all three of these are backups and
+  // notifications rather than writes.
 });
 
 test('the retired GET /api/state aggregation is really gone', async ({ request }) => {
