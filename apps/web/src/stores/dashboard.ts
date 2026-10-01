@@ -105,7 +105,7 @@ export const useDashboardStore = defineStore(
     const prices = ref<Record<string, number>>({});
     const priceMeta = ref<Record<string, PriceMeta>>({});
     const priceTimestamps = ref<Record<string, number>>({});
-    const cacheTtlMs = ref(600_000);
+    const cacheTtlMs = ref(1_440_000);
     const trades = ref<DashboardTrade[]>([]);
     const history = ref<HistoryPoint[]>([]);
     const historyOHLC = ref<OhlcCandle[]>([]);
@@ -939,7 +939,11 @@ export const useDashboardStore = defineStore(
       const nextPrices: Record<string, number> = {};
       const nextMeta: Record<string, PriceMeta> = {};
       const nextTs: Record<string, number> = {};
-      let ttl = 600_000;
+      // 24 min: three worker refresh cycles. The server sends the authoritative
+      // value as `cacheTTLms` on the next line; this is only the fallback for when
+      // it is missing, and it must not be the fetch cache's 8 minutes or the
+      // banner fires on every cycle.
+      let ttl = 1_440_000;
 
       for (const [key, value] of Object.entries(data ?? {})) {
         if (key === 'cacheTTLms') {

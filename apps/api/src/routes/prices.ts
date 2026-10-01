@@ -19,10 +19,13 @@ pricesRouter.get('/', async (req: Request, res: Response) => {
       }
     }
     try {
+      // The client uses this as the staleness threshold, so it is
+      // `STALE_AFTER_MS` and NOT the fetch cache's `CACHE_TTL`. They were the
+      // same value once, which meant the banner appeared on every refresh cycle.
       const pf = await import('../services/priceFetcher');
-      obj.cacheTTLms = pf.CACHE_TTL || 600000;
+      obj.cacheTTLms = pf.STALE_AFTER_MS || 1_440_000;
     } catch (_) {
-      obj.cacheTTLms = 600000;
+      obj.cacheTTLms = 1_440_000;
     }
     res.json(obj);
   } catch (err) {

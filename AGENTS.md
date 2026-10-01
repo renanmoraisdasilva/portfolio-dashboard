@@ -326,6 +326,23 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
   per-symbol drift from the fixture's own buy prices, so a regeneration produces
   the same numbers and a reviewer can check the arithmetic. They are committed,
   not built in CI, because a binary diff in every commit is worse.
+- **`CACHE_TTL` and the staleness warning are different numbers, on purpose.**
+  `priceFetcher.ts` has two: `CACHE_TTL` (8 min) decides when to refetch, and
+  `STALE_AFTER_MS` (24 min, three refresh cycles) decides when the UI says "prices
+  may be stale". `/api/prices` sends the latter as `cacheTTLms`, and the dashboard
+  uses it as the warning threshold. They were the same constant once, which meant a
+  healthy worker tripped the banner at the end of every cycle - the exact moment
+  the data is as fresh as it will ever be.
+  - **`MIN_INTERVAL` guards against a double fetch, not against the schedule.** It
+    is 30 seconds. At 8 minutes it raced the worker's own 8-minute refresh loop: a
+    loop firing a second late made `now - prev.ts` land just under the guard and the
+    symbol was skipped, which left equities and `BRLUSD` reading 16m while
+    unguarded crypto read 8m. Half a minute covers the double fetch without vetoing
+    the next scheduled run.
+  - Pinned by `apps/api/src/services/priceFetcher.freshness.test.ts`, so they
+    cannot drift back together.
+  - The warning loop iterates the _symbol registry_, not the price table, so a row
+    for a symbol with no entry in `config/symbols.ts` (`CDI`) is never checked.
 - **Sizes are `px`, not `rem`.** Nothing in this app sets a root font size — there
   is no `html`, `body` or `:root` `font-size` anywhere — so `1rem` is permanently
   16px and `rem` was only a less readable way to write `px`. It also hid the
