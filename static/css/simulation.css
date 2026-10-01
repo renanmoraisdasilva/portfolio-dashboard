@@ -22,24 +22,24 @@
   background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
 }
 .simulation-page .metric-label {
-  font-size: 0.8rem;
+  font-size: 13px;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
 .simulation-page .metric-value {
-  font-size: 1.9rem;
+  font-size: 30px;
   font-weight: 700;
   margin: 6px 0;
 }
 .simulation-page .metric-sub {
-  font-size: 0.6rem;
+  font-size: 10px;
   color: var(--text-muted);
   margin-top: 3px;
   display: block;
 }
 .simulation-page .metric-change {
-  font-size: 0.85rem;
+  font-size: 14px;
   color: var(--text-muted);
   display: flex;
   gap: 6px;
@@ -118,7 +118,7 @@ select.simulation-page .chip {
   border-radius: 8px;
 }
 .asset-current {
-  font-size: 0.85rem;
+  font-size: 14px;
   color: var(--text-muted);
   margin-left: 8px;
 }
@@ -138,11 +138,11 @@ select.simulation-page .chip {
   align-items: flex-end;
 }
 .sim-metrics .sim-value {
-  font-size: 1.3rem;
+  font-size: 21px;
   font-weight: 700;
 }
 .sim-metrics .sim-impact {
-  font-size: 1.1rem;
+  font-size: 18px;
   font-weight: 700;
   color: var(--accent-success);
 }
@@ -252,16 +252,16 @@ select.simulation-page .chip {
   padding: 8px;
 }
 .simulation-page .alloc-summary .simulation-page .summary-label {
-  font-size: 0.85rem;
+  font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
 .simulation-page .alloc-summary .simulation-page .summary-value {
-  font-size: 1.4rem;
+  font-size: 22px;
   font-weight: 700;
 }
 .simulation-page .alloc-summary .simulation-page .summary-sub {
-  font-size: 0.9rem;
+  font-size: 14px;
   color: var(--text-muted);
   margin-top: 14px;
 }
@@ -307,7 +307,7 @@ select.simulation-page .chip {
   border: 1px solid var(--border);
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  font-size: 0.8rem;
+  font-size: 13px;
   cursor: pointer;
 }
 .simulation-page .chip[data-currency].active {
@@ -333,7 +333,7 @@ table {
 }
 thead th {
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
@@ -342,13 +342,13 @@ td {
   padding: 10px;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  font-size: 0.95rem;
+  font-size: 15px;
 }
 td .currency {
   font-weight: 600;
 }
 .simulation-page .small {
-  font-size: 0.85rem;
+  font-size: 14px;
   color: var(--text-muted);
 }
 .positive {
@@ -403,7 +403,7 @@ td .currency {
   border-bottom: 1px solid var(--border);
 }
 .simulation-page .modal .simulation-page .small {
-  font-size: 0.85rem;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
@@ -430,7 +430,7 @@ td .currency {
     width: 96px;
   }
   .asset-current {
-    font-size: 0.75rem;
+    font-size: 12px;
   }
   .simulation-page .sim-slider {
     height: 10px;
@@ -459,7 +459,7 @@ td .currency {
     height: 8px;
   }
   .simulation-page .metric-value {
-    font-size: 1.5rem;
+    font-size: 24px;
   }
 }
 
@@ -472,11 +472,11 @@ td .currency {
     margin-bottom: 8px;
   }
   .simulation-page .card .simulation-page .small {
-    font-size: 0.72rem;
+    font-size: 12px;
   }
   .sim-input {
     padding: 6px 8px;
-    font-size: 0.92rem;
+    font-size: 15px;
   }
   .asset-row {
     grid-template-columns: 28px 40px 64px 1fr 74px;
@@ -485,16 +485,16 @@ td .currency {
   .asset-price {
     width: 64px;
     padding: 6px;
-    font-size: 0.9rem;
+    font-size: 14px;
   }
   .asset-current {
-    font-size: 0.72rem;
+    font-size: 12px;
   }
   .simulation-page .metrics-grid {
     gap: 10px;
   }
   .simulation-page .metric-value {
-    font-size: 1.4rem;
+    font-size: 22px;
   }
   .simulation-page .sim-slider {
     height: 8px;
@@ -505,7 +505,7 @@ td .currency {
   table th,
   table td {
     padding: 8px;
-    font-size: 0.88rem;
+    font-size: 14px;
   }
   .simulation-page .form-grid {
     grid-template-columns: 1fr;
@@ -520,11 +520,11 @@ td .currency {
   margin-bottom: 6px;
 }
 .compact-sim .simulation-page .card .simulation-page .small {
-  font-size: 0.66rem;
+  font-size: 11px;
 }
 .compact-sim .sim-input {
   padding: 4px 6px;
-  font-size: 0.85rem;
+  font-size: 14px;
 }
 .compact-sim .asset-row {
   grid-template-columns: 28px 36px 56px 1fr 64px;
@@ -533,17 +533,17 @@ td .currency {
 .compact-sim .asset-price {
   width: 56px;
   padding: 4px;
-  font-size: 0.82rem;
+  font-size: 13px;
 }
 .compact-sim .asset-current {
-  font-size: 0.68rem;
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 64px;
 }
 .compact-sim .simulation-page .metric-value {
-  font-size: 1.2rem;
+  font-size: 19px;
 }
 .compact-sim .simulation-page .chart-container {
   height: 160px;
@@ -554,7 +554,7 @@ td .currency {
 .compact-sim table th,
 .compact-sim table td {
   padding: 6px;
-  font-size: 0.82rem;
+  font-size: 13px;
 }
 .compact-sim .simulation-page .form-grid {
   grid-template-columns: 1fr;
@@ -569,8 +569,8 @@ td .currency {
   gap: 8px;
 }
 .compact-sim .simulation-page .metric-label {
-  font-size: 0.72rem;
+  font-size: 12px;
 }
 .compact-sim .simulation-page .metric-sub {
-  font-size: 0.56rem;
+  font-size: 9px;
 }

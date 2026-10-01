@@ -65,7 +65,7 @@ async function onImportFile(event: Event): Promise<void> {
   <div v-if="store.settingsOpen" class="modal">
     <div class="modal-content settings-content">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px">
-        <h2 style="margin: 0; font-size: 1.05rem">⚙ Settings &amp; Tools</h2>
+        <h2 style="margin: 0; font-size: 17px">⚙ Settings &amp; Tools</h2>
         <button class="modal-close" title="Close" @click="store.settingsOpen = false">✕</button>
       </div>
 
@@ -133,7 +133,7 @@ async function onImportFile(event: Event): Promise<void> {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.25rem;
+  font-size: 20px;
   cursor: pointer;
   padding: 2px 8px;
   line-height: 1;
@@ -153,11 +153,11 @@ async function onImportFile(event: Event): Promise<void> {
 }
 .tool-title {
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 14px;
 }
 .tool-sub {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 12px;
   margin-top: 3px;
 }
 .tool-action {

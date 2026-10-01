@@ -69,7 +69,7 @@
               ]),
               EditorView.theme({
                 '&': {
-                  fontSize: '0.9rem',
+                  fontSize: '14px',
                   fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
                   borderRadius: '8px',
                   overflow: 'hidden',
@@ -168,13 +168,13 @@
           const res = await fetch(`/api/sql/tables?db=${encodeURIComponent(dbName)}`);
           const data = await res.json();
           if (!res.ok) {
-            el.innerHTML = `<span style="color:var(--accent-danger);font-size:0.8rem;">${data.error}</span>`;
+            el.innerHTML = `<span style="color:var(--accent-danger);font-size:13px;">${data.error}</span>`;
             return;
           }
           schemaCache[dbName] = data.tables;
           renderSchema(data.tables, dbName);
         } catch (e) {
-          el.innerHTML = `<span style="color:var(--accent-danger);font-size:0.8rem;">Failed to load schema</span>`;
+          el.innerHTML = `<span style="color:var(--accent-danger);font-size:13px;">Failed to load schema</span>`;
         }
       }
 
@@ -204,7 +204,7 @@
               if (!colsLoaded) {
                 const loadingLi = document.createElement('li');
                 loadingLi.style.color = 'var(--text-muted)';
-                loadingLi.style.fontSize = '0.75rem';
+                loadingLi.style.fontSize = '12px';
                 loadingLi.style.paddingLeft = '12px';
                 loadingLi.textContent = 'Loading…';
                 colUl = document.createElement('ul');
@@ -223,7 +223,7 @@
                   });
                   colsLoaded = true;
                 } catch {
-                  colUl.innerHTML = '<li style="color:var(--accent-danger);font-size:0.75rem;">Error</li>';
+                  colUl.innerHTML = '<li style="color:var(--accent-danger);font-size:12px;">Error</li>';
                 }
               } else {
                 li.appendChild(colUl);
@@ -281,7 +281,7 @@
             area.innerHTML = `
         <div class="results-meta">
           <span class="badge badge-success">✓ Success</span>
-          <span style="font-size:0.78rem;color:var(--text-muted);">${elapsed}ms</span>
+          <span style="font-size:12px;color:var(--text-muted);">${elapsed}ms</span>
         </div>
         <div class="write-result">✓ ${escHtml(data.message)}</div>`;
           } else {
@@ -302,7 +302,7 @@
     <div class="results-meta">
       <span class="badge badge-info">${rows.length} row${rows.length !== 1 ? 's' : ''}</span>
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:0.78rem;color:var(--text-muted);">${elapsed}ms</span>
+        <span style="font-size:12px;color:var(--text-muted);">${elapsed}ms</span>
         ${rows.length ? `<button class="export-btn" onclick="exportCSV()">⬇ CSV</button>` : ''}
       </div>
     </div>`;

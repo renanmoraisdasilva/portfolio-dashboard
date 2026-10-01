@@ -63,7 +63,7 @@ async function dismiss(id: string): Promise<void> {
   <div v-if="store.triggeredRows.length > 0" class="triggered-banner">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
       <div style="flex: 1">
-        <h3 style="margin: 0 0 8px; color: #ef4444; font-size: 1rem; display: flex; align-items: center; gap: 8px">
+        <h3 style="margin: 0 0 8px; color: #ef4444; font-size: 16px; display: flex; align-items: center; gap: 8px">
           <span>⚠️</span><span>Active Price Alerts</span>
         </h3>
         <div style="display: grid; gap: 8px">
@@ -72,9 +72,7 @@ async function dismiss(id: string): Promise<void> {
               <strong>{{ row.symbol }}</strong> -
               <span style="color: var(--text-secondary)">{{ row.priceText }}</span>
               <br />
-              <span style="font-size: 0.85rem; color: var(--text-muted)"
-                >{{ row.details }} • Triggered: {{ row.triggeredAt }}</span
-              >
+              <span style="font-size: 14px; color: var(--text-muted)">{{ row.details }} • Triggered: {{ row.triggeredAt }}</span>
             </div>
             <button class="alert-item-close" @click="dismiss(row.id)">Dismiss</button>
           </div>
@@ -94,7 +92,7 @@ async function dismiss(id: string): Promise<void> {
         border: 1px solid var(--border);
       "
     >
-      <h3 style="margin-bottom: 14px; font-size: 1.05rem">Create New Alert</h3>
+      <h3 style="margin-bottom: 14px; font-size: 17px">Create New Alert</h3>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px">
         <div>
           <label class="field-label">Asset</label>
@@ -124,7 +122,7 @@ async function dismiss(id: string): Promise<void> {
         <div v-if="isPercentage">
           <label class="field-label">Reference Price</label>
           <input v-model="referencePrice" type="number" class="field-control" placeholder="e.g., 50000" step="0.01" />
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px">
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px">
             The baseline price to calculate percentage change from
           </p>
         </div>
@@ -133,7 +131,7 @@ async function dismiss(id: string): Promise<void> {
     </div>
 
     <div style="margin-bottom: 16px">
-      <h3 style="margin-bottom: 14px; font-size: 1.05rem">Active Alerts</h3>
+      <h3 style="margin-bottom: 14px; font-size: 17px">Active Alerts</h3>
       <div style="display: grid; gap: 12px">
         <p v-if="store.alertRows.length === 0" style="color: var(--text-muted); text-align: center; padding: 20px">
           No alerts configured yet.
@@ -152,13 +150,13 @@ async function dismiss(id: string): Promise<void> {
           "
         >
           <div style="flex: 1">
-            <strong style="font-size: 1rem; color: var(--text-primary)">{{ row.symbol }}</strong>
-            <span style="margin-left: 12px; color: var(--text-secondary); font-size: 0.9rem">{{ row.label }}</span>
-            <span style="margin-left: 12px; color: var(--text-muted); font-size: 0.85rem"
+            <strong style="font-size: 16px; color: var(--text-primary)">{{ row.symbol }}</strong>
+            <span style="margin-left: 12px; color: var(--text-secondary); font-size: 14px">{{ row.label }}</span>
+            <span style="margin-left: 12px; color: var(--text-muted); font-size: 14px"
               >Active: {{ row.isActive ? '✓' : '✗' }}</span
             >
           </div>
-          <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem" @click="remove(row.id)">Delete</button>
+          <button class="btn btn-danger" style="padding: 6px 12px; font-size: 14px" @click="remove(row.id)">Delete</button>
         </div>
       </div>
     </div>
@@ -177,7 +175,7 @@ async function dismiss(id: string): Promise<void> {
 }
 .field-label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 6px;
   text-transform: uppercase;
@@ -190,6 +188,6 @@ async function dismiss(id: string): Promise<void> {
   border-radius: 6px;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: 15px;
 }
 </style>

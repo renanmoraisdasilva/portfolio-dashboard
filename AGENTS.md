@@ -326,13 +326,22 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
   per-symbol drift from the fixture's own buy prices, so a regeneration produces
   the same numbers and a reviewer can check the arithmetic. They are committed,
   not built in CI, because a binary diff in every commit is worse.
+- **Sizes are `px`, not `rem`.** Nothing in this app sets a root font size — there
+  is no `html`, `body` or `:root` `font-size` anywhere — so `1rem` is permanently
+  16px and `rem` was only a less readable way to write `px`. It also hid the
+  collision that made Analytics restyle the Dashboard: `.metric-value` was
+  `1.9rem` in `dashboard.css` and `2rem` in `analytics.css`, and reading those
+  two numbers side by side does not tell you they are 30px against 32px. Write
+  `px`. The one cost is that text no longer follows the browser's default
+  font-size preference; for a single-user dashboard that is the right trade, but
+  it is a trade rather than a free win.
 - **Each view owns its stylesheet, so each stylesheet must be scoped to its view.**
   `DashboardView`, `AnalyticsView` and `SimulationView` import `dashboard.css`,
   `analytics.css` and `simulation.css` as module side effects, which means Vite
   injects all of them into `<head>` on first visit and **never removes one**. Any
   class name two of those files define is therefore a collision whose winner
   depends on load order, and visiting a second page silently restyles the first.
-  It shipped as exactly that: `.metric-value` is `1.9rem` in `dashboard.css` and
+  It shipped as exactly that: `.metric-value` was `1.9rem` in `dashboard.css` and
   `2rem` in `analytics.css`, so opening Analytics and coming back rendered the
   dashboard's numbers 24px -> 32px.
   - Each view is wrapped in a page root - `.dashboard-page`, `.analytics-page`,

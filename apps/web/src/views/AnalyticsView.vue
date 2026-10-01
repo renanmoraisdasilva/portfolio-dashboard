@@ -68,7 +68,7 @@ const muted = { color: 'var(--text-muted)' } as Record<string, string>;
         >Last computed: <strong>{{ lastComputed }}</strong></span
       >
       <span class="spacer"></span>
-      <span style="color: var(--text-muted); font-size: 0.8rem">Updates every 24 h</span>
+      <span style="color: var(--text-muted); font-size: 13px">Updates every 24 h</span>
     </div>
 
     <div class="period-tabs">
@@ -175,7 +175,7 @@ const muted = { color: 'var(--text-muted)' } as Record<string, string>;
             <div class="chart-card-icon">💹</div>
             Cost Basis vs Market Value
           </div>
-          <span style="font-size: 0.8rem; color: var(--text-muted)">at period end</span>
+          <span style="font-size: 13px; color: var(--text-muted)">at period end</span>
         </div>
         <ChartCanvas :config="costMarketConfig" empty-message="No position data available" />
       </div>
@@ -187,7 +187,7 @@ const muted = { color: 'var(--text-muted)' } as Record<string, string>;
           <div class="chart-card-icon">🥧</div>
           Allocation &amp; P/L at Period End
         </div>
-        <span style="font-size: 0.8rem; color: var(--text-muted)"> Replayed from trades · prices at snapshot time </span>
+        <span style="font-size: 13px; color: var(--text-muted)"> Replayed from trades · prices at snapshot time </span>
       </div>
 
       <AllocationTable />

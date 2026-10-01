@@ -10,7 +10,7 @@
   margin-bottom: 20px;
 }
 .card-title {
-  font-size: 0.7rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -31,7 +31,7 @@
   gap: 8px;
 }
 .db-select-wrap label {
-  font-size: 0.82rem;
+  font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -41,7 +41,7 @@ select.db-picker {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 7px 10px;
-  font-size: 0.88rem;
+  font-size: 14px;
   cursor: pointer;
   outline: none;
   min-width: 140px;
@@ -59,7 +59,7 @@ select.db-picker:focus {
   border: none;
   border-radius: 7px;
   padding: 8px 18px;
-  font-size: 0.9rem;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -73,7 +73,7 @@ select.db-picker:focus {
   cursor: not-allowed;
 }
 .run-btn .kbd {
-  font-size: 0.72rem;
+  font-size: 12px;
   background: rgba(0, 0, 0, 0.25);
   border-radius: 4px;
   padding: 2px 5px;
@@ -87,7 +87,7 @@ select.db-picker:focus {
   border: 1px solid var(--border);
   border-radius: 7px;
   padding: 7px 14px;
-  font-size: 0.85rem;
+  font-size: 14px;
   cursor: pointer;
   transition:
     color 0.15s,
@@ -131,7 +131,7 @@ select.db-picker:focus {
   min-width: 0;
 }
 .schema-panel h2 {
-  font-size: 0.7rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -140,7 +140,7 @@ select.db-picker:focus {
 }
 .schema-loading {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 13px;
 }
 
 .table-list {
@@ -153,7 +153,7 @@ select.db-picker:focus {
   background: none;
   border: none;
   color: var(--accent-primary);
-  font-size: 0.83rem;
+  font-size: 13px;
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 5px;
@@ -175,7 +175,7 @@ select.db-picker:focus {
   margin-top: 4px;
 }
 .col-list li {
-  font-size: 0.75rem;
+  font-size: 12px;
   color: var(--text-secondary);
   padding: 2px 0;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
@@ -187,7 +187,7 @@ select.db-picker:focus {
 }
 .col-list li .col-type {
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 11px;
 }
 
 #results-area {
@@ -203,7 +203,7 @@ select.db-picker:focus {
   flex-wrap: wrap;
 }
 .results-meta .badge {
-  font-size: 0.78rem;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   font-weight: 600;
@@ -230,7 +230,7 @@ select.db-picker:focus {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 5px 12px;
-  font-size: 0.8rem;
+  font-size: 13px;
   cursor: pointer;
   transition:
     color 0.15s,
@@ -249,14 +249,14 @@ select.db-picker:focus {
 .results-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 13px;
 }
 .results-table th {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: 11px;
   letter-spacing: 0.05em;
   padding: 10px 12px;
   text-align: left;
@@ -274,7 +274,7 @@ select.db-picker:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.8rem;
+  font-size: 13px;
 }
 .results-table td.null-val {
   color: var(--text-muted);
@@ -291,7 +291,7 @@ select.db-picker:focus {
   text-align: center;
   padding: 32px 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .write-result {
@@ -303,7 +303,7 @@ select.db-picker:focus {
   border: 1px solid rgba(16, 185, 129, 0.2);
   border-radius: 8px;
   color: #10b981;
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .error-box {
@@ -313,7 +313,7 @@ select.db-picker:focus {
   border-radius: 8px;
   color: #ef4444;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82rem;
+  font-size: 13px;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -324,11 +324,11 @@ select.db-picker:focus {
   color: var(--text-muted);
 }
 .placeholder-msg .icon {
-  font-size: 2.5rem;
+  font-size: 40px;
   margin-bottom: 10px;
 }
 .placeholder-msg p {
-  font-size: 0.88rem;
+  font-size: 14px;
 }
 
 .spinner {
@@ -373,7 +373,7 @@ select.db-picker:focus {
 .history-list .hist-sql {
   flex: 1;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+  font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -384,12 +384,12 @@ select.db-picker:focus {
   color: var(--accent-primary);
 }
 .history-list .hist-time {
-  font-size: 0.7rem;
+  font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
 }
 .history-list .hist-db {
-  font-size: 0.7rem;
+  font-size: 11px;
   padding: 2px 7px;
   border-radius: 10px;
   font-weight: 600;
@@ -401,7 +401,7 @@ select.db-picker:focus {
 
 .no-history {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 13px;
   text-align: center;
   padding: 16px 0;
 }

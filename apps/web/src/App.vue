@@ -33,7 +33,7 @@ const store = useDashboardStore();
           class="btn"
           title="Settings & Tools"
           aria-label="Settings & Tools"
-          style="font-size: 1.25rem; padding: 7px 13px; line-height: 1"
+          style="font-size: 20px; padding: 7px 13px; line-height: 1"
           @click="store.settingsOpen = true"
         >
           ⚙

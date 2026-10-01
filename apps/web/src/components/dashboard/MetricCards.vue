@@ -71,9 +71,9 @@ function brlOf(usdValue: number): string {
 <style scoped>
 /* The legacy page inlined this style on every BRL sub-line. */
 .metric-sub-line {
-  font-size: 0.6rem;
+  font-size: 10px;
   color: #64748b;
-  margin-top: -0.3rem;
+  margin-top: -5px;
   display: block;
 }
 </style>

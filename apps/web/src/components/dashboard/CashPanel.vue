@@ -136,7 +136,7 @@ async function removeEntry(id: string): Promise<void> {
           <td>{{ row.currency }}</td>
           <td :class="row.positive ? 'positive' : 'negative'">{{ row.amount }}</td>
           <td>
-            <button class="btn btn-sm" style="padding: 2px 10px; font-size: 0.75rem" @click="removeEntry(row.id)">Delete</button>
+            <button class="btn btn-sm" style="padding: 2px 10px; font-size: 12px" @click="removeEntry(row.id)">Delete</button>
           </td>
         </tr>
       </tbody>
@@ -150,18 +150,18 @@ async function removeEntry(id: string): Promise<void> {
     <button
       class="btn btn-sm"
       :disabled="store.cashEntriesPage === 1"
-      style="padding: 2px 10px; font-size: 0.75rem"
+      style="padding: 2px 10px; font-size: 12px"
       @click="store.loadCashEntries(store.cashEntriesPage - 1)"
     >
       ‹ Prev
     </button>
-    <span style="font-size: 0.85rem; color: var(--text-muted)"
+    <span style="font-size: 14px; color: var(--text-muted)"
       >Page {{ store.cashEntriesPage }} of {{ store.cashEntriesPages }}</span
     >
     <button
       class="btn btn-sm"
       :disabled="store.cashEntriesPage === store.cashEntriesPages"
-      style="padding: 2px 10px; font-size: 0.75rem"
+      style="padding: 2px 10px; font-size: 12px"
       @click="store.loadCashEntries(store.cashEntriesPage + 1)"
     >
       Next ›
@@ -196,7 +196,7 @@ async function removeEntry(id: string): Promise<void> {
 
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
-            <div style="font-size: 0.9rem; color: #94a3b8">
+            <div style="font-size: 14px; color: #94a3b8">
               <span v-if="store.interestReaisMonths.length === 0"
                 ><span class="empty-state">No monthly interest recorded.</span></span
               >
@@ -227,7 +227,7 @@ async function removeEntry(id: string): Promise<void> {
                 </button>
               </div>
             </div>
-            <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8">
+            <div style="margin-top: 8px; font-size: 14px; color: #94a3b8">
               Total (months recorded): R$ {{ brlTotal.toFixed(2) }}
             </div>
           </div>
@@ -254,7 +254,7 @@ async function removeEntry(id: string): Promise<void> {
 
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
-            <div style="font-size: 0.9rem; color: #94a3b8">
+            <div style="font-size: 14px; color: #94a3b8">
               <span v-if="store.interestDollarsMonths.length === 0"
                 ><span class="empty-state">No monthly USD interest recorded.</span></span
               >
@@ -285,7 +285,7 @@ async function removeEntry(id: string): Promise<void> {
                 </button>
               </div>
             </div>
-            <div style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8">
+            <div style="margin-top: 8px; font-size: 14px; color: #94a3b8">
               Total (months recorded): $ {{ usdTotal.toFixed(2) }}
             </div>
           </div>
@@ -297,13 +297,13 @@ async function removeEntry(id: string): Promise<void> {
 
 <style scoped>
 .balance-label {
-  font-size: 0.75rem;
+  font-size: 12px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .balance-value {
-  font-size: 1.25rem;
+  font-size: 20px;
   font-weight: 700;
   margin-top: 2px;
 }

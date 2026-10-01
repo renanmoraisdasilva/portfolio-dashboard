@@ -45,7 +45,7 @@ const rows = computed(() => {
       </thead>
       <tbody>
         <tr v-if="rows.length === 0">
-          <td colspan="6" style="text-align: center; color: #475569; padding: 2rem">No position data</td>
+          <td colspan="6" style="text-align: center; color: #475569; padding: 32px">No position data</td>
         </tr>
         <tr v-for="row in rows" :key="row.asset">
           <td>

@@ -49,7 +49,7 @@ onBeforeUnmount(() => chart.value?.destroy());
   justify-content: center;
   margin: 0;
   color: #475569;
-  font-size: 0.9rem;
+  font-size: 14px;
   pointer-events: none;
 }
 </style>

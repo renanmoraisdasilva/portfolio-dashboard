@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
 .toast {
   padding: 12px 16px;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 14px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 .toast.success {

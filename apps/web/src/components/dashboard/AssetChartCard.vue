@@ -132,7 +132,7 @@ onBeforeUnmount(destroy);
   <div class="asset-chart-card">
     <b>
       {{ symbol }}
-      <span v-if="priceText" style="margin-left: 8px; color: #94a3b8; font-weight: 600; font-size: 0.9rem">{{ priceText }}</span>
+      <span v-if="priceText" style="margin-left: 8px; color: #94a3b8; font-weight: 600; font-size: 14px">{{ priceText }}</span>
       <span v-if="change" :class="change.positive ? 'positive' : 'negative'" style="margin-left: 8px">{{ change.text }}</span>
     </b>
     <div ref="el" style="flex: 1; width: 100%"></div>
