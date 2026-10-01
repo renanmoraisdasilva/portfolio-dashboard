@@ -82,7 +82,14 @@ onBeforeUnmount(() => {
       <MetricCards />
 
       <div class="content-grid">
-        <div class="card">
+        <!--
+          `card-chart` makes this a flex column so the chart fills whatever height
+          the row ends up at. It sits beside the allocation panel, and that panel
+          is taller because its legend has ten rows; with a fixed-height container
+          the row stretched to the taller card and left an empty band under the
+          chart. Only visible on a wide screen, where the two are side by side.
+        -->
+        <div class="card card-chart">
           <div class="card-header">
             <div class="card-title"><span class="card-icon">📈</span>Portfolio Value Over Time</div>
             <div class="chart-controls">

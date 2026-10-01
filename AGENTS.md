@@ -355,6 +355,23 @@ ASC`, never rowid — on this database they differ), because a FIFO walk on
     cannot drift back together.
   - The warning loop iterates the _symbol registry_, not the price table, so a row
     for a symbol with no entry in `config/symbols.ts` (`CDI`) is never checked.
+  - **An override of a scoped rule must be scoped too.** Scoping raises
+    specificity: `.chart-container` became `.dashboard-page .chart-container` at
+    (0,2,0), while `.chart-container-large { height: 480px }` stayed at (0,1,0)
+    and silently lost the cascade. The value chart rendered at the 260px default
+    inside a card the grid had stretched, leaving a 160px empty band - visible
+    only where `.content-grid` is two columns, so a narrow viewport hid it
+    completely. When you scope a rule, find the rules that override it and scope
+    those in the same pass.
+- **`ValueChart` fills its container; do not reintroduce `height: 100%` there.**
+  Its box is `position: absolute; inset: 0` because the container is a flex item
+  with `height: auto`, and a percentage height against an auto-height parent does
+  not resolve - it falls back to auto, so the div took its height from the canvas
+  and left a gap. The `ResizeObserver` applies **width and height**; syncing width
+  only left a chart created while short at that height forever, since
+  lightweight-charts does not observe its own container. The chart is seven
+  canvases (plot plus time scale), so the first is legitimately shorter than the
+  box by the time-axis height - that is not a gap.
 - **Sizes are `px`, not `rem`.** Nothing in this app sets a root font size — there
   is no `html`, `body` or `:root` `font-size` anywhere — so `1rem` is permanently
   16px and `rem` was only a less readable way to write `px`. It also hid the

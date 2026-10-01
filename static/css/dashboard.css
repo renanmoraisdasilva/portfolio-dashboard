@@ -102,7 +102,33 @@
 .dashboard-page .chart-container.alloc {
   height: 400px;
 }
-.chart-container-large {
+/* The value chart's container.
+
+   Two rules, and the first one is the bug fix. `chart-container` sets a 260px
+   default; this override used to be `.chart-container-large { height: 480px }`,
+   which worked by source order at equal specificity. Scoping the base rule to
+   `.dashboard-page` raised it to (0,2,0) and left the override at (0,1,0), so the
+   default won and the chart rendered at 260px.
+
+   `.card-chart` makes the card a flex column so the container can absorb whatever
+   height the grid row ends up at. It shares a row with the allocation panel,
+   which is the taller of the two, so a fixed height left an empty band under the
+   chart - 160px of it at 1440 wide. `min-height` keeps 480px when the card is on
+   its own (narrow screens, where the cards stack).
+
+   Both are scoped, and the override is the more specific of the two, because an
+   override of a scoped rule must be scoped too or the cascade silently reorders. */
+.dashboard-page .card-chart {
+  display: flex;
+  flex-direction: column;
+}
+.dashboard-page .card-chart .chart-container-large {
+  flex: 1 1 auto;
+  min-height: 480px;
+  height: auto;
+}
+/* Fallback for a `chart-container-large` that is not inside `.card-chart`. */
+.dashboard-page .chart-container-large {
   height: 480px;
 }
 

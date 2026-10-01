@@ -66,8 +66,17 @@ function build(): void {
     crosshairMarkerVisible: true,
   });
 
+  // Width AND height. This only ever synced width, so a chart created while its
+  // container was short kept that height forever: lightweight-charts does not
+  // observe its own container, and the container here grows when the row it sits
+  // in is stretched by a taller sibling (the allocation panel beside it). The
+  // canvas ended up 452px tall inside a 480px box inside a 575px card, which is
+  // the empty band under the chart on a wide screen.
   resizeObserver = new ResizeObserver(() => {
-    if (chart.value && el.value) chart.value.applyOptions({ width: el.value.clientWidth });
+    if (!chart.value || !el.value) return;
+    const w = el.value.clientWidth;
+    const h = el.value.clientHeight;
+    if (w > 0 && h > 0) chart.value.applyOptions({ width: w, height: h });
   });
   resizeObserver.observe(container);
 }
@@ -117,5 +126,13 @@ onBeforeUnmount(destroy);
 </script>
 
 <template>
-  <div ref="el" style="width: 100%; height: 100%"></div>
+  <!--
+    Absolutely positioned, not `height: 100%`. The container is a flex item with
+    `height: auto`, and a percentage height against an auto-height parent does not
+    resolve - it falls back to auto, so this div took its height from the canvas
+    and left a gap at the bottom of the card. `inset: 0` fills the container
+    whatever height the flex layout gives it. `.chart-container` is already
+    `position: relative`, so this is the containing block.
+  -->
+  <div ref="el" style="position: absolute; inset: 0"></div>
 </template>
