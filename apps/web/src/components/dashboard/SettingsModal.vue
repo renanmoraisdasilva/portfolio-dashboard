@@ -6,7 +6,7 @@ import { useToast } from '../../composables/useToast';
 /**
  * Three tools, and that is deliberate.
  *
- * The modal used to carry ten. Fill History Gaps, Clear History, Erase All,
+ * The modal used to carry nine. Fill History Gaps, Clear History, Erase All,
  * Backfill Cash History and Backfill Price History are gone. Two reasons.
  *
  * *Some were one-time repairs for bad data that no longer exists.* Backfill Cash
@@ -21,13 +21,6 @@ import { useToast } from '../../composables/useToast';
  * erasing everything are maintenance operations with no legitimate everyday use,
  * and a restore from a JSON backup is now a true replace, so it covers the
  * "start over from a known state" case properly.
- *
- * The SQL Explorer was the tenth. It was an arbitrary-SQL console over HTTP with
- * no authentication, reachable only behind ENABLE_SQL_EXPLORER, and it was the
- * last page still served as vanilla markup. It is deleted rather than migrated:
- * a showcase has no reason to ship an unauthenticated write console, and
- * `Drizzle Studio` covers the same ground for anyone who genuinely needs ad-hoc
- * SQL against the same file.
  *
  * The backfills' capability is not lost, only its button: `price_ticks` refills
  * itself from Yahoo on the worker's schedule, and the worker keeps taking

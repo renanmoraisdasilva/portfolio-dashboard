@@ -159,11 +159,10 @@ Three things to know before you build on it:
   a trade reverses the movement. This is the one place where "the database has
   two views of the same fact" is prevented structurally rather than by
   convention.
-- **The SQL Explorer was deleted, not hidden behind a flag.** `/api/sql/query`
-  took arbitrary SQL with no authentication — including `DELETE` — and was held
-  shut by `ENABLE_SQL_EXPLORER`. If you want to inspect the database, run
-  `npm run db:studio`, which opens the same SQLite file in Drizzle Studio without
-  exposing a port. Nothing in the app serves arbitrary SQL.
+- **Nothing in the app runs arbitrary SQL.** To inspect the database, run
+  `npm run db:studio` — it opens the SQLite file in Drizzle Studio and binds no
+  port, which is the opposite of an HTTP endpoint that executes whatever it is
+  sent.
 
 More in [BACKEND.md](BACKEND.md).
 

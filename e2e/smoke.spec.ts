@@ -154,40 +154,44 @@ test.describe('portfolio dashboard', () => {
   });
 });
 
-test('the SQL Explorer endpoints are gone, not merely gated', async ({ request }) => {
-  // It used to answer 403 unless ENABLE_SQL_EXPLORER=true. It is deleted now, so
-  // the assertion that matters is 404: a gate proves the feature is closed, a
-  // 404 proves it is absent. Anything weaker would pass against a router that
-  // still exists and still runs SQL.
+test('no endpoint executes arbitrary SQL', async ({ request }) => {
+  // The API takes no statement string. A 404 is the assertion that matters: a
+  // 403 would prove a route exists and is merely gated, and a router that runs
+  // SQL behind a flag would still pass a looser check.
   for (const [method, path] of [
     ['get', '/api/sql/tables'],
     ['get', '/api/sql/schema'],
     ['post', '/api/sql/query'],
   ] as const) {
     const response = await request[method](path as string);
-    expect([404, 401, 403]).toContain(response.status());
     expect(response.status()).toBe(404);
   }
 });
 
-test('the header no longer links the SQL Explorer', async ({ page }) => {
-  // Removing the page but leaving a nav entry to it would render a dead link
-  // that routes to `/` — a silent regression rather than a visible one.
+test('every header link resolves to a route the app serves', async ({ page }) => {
+  // Guards the nav table against an entry whose path 404s into the SPA
+  // fallback, which would look like a working link and land on the dashboard.
   await page.goto('/');
   await expect(page.locator('.app-header')).toBeVisible();
-  await expect(page.locator('.app-nav a', { hasText: 'SQL Explorer' })).toHaveCount(0);
+
+  const hrefs = await page
+    .locator('.app-nav a')
+    .evaluateAll((links) => links.map((a) => (a as HTMLAnchorElement).getAttribute('href') ?? ''));
+  expect(hrefs.length).toBeGreaterThan(0);
+  for (const href of hrefs) {
+    const response = await page.request.get(href);
+    expect(response.status(), `${href} is linked from the header but does not resolve`).toBe(200);
+  }
 });
 
-test('the settings modal offers three tools, none of them the Explorer', async ({ page }) => {
+test('the settings modal offers exactly three tools', async ({ page }) => {
+  // Export, Import and Test Notify. The destructive maintenance operations that
+  // once sat beside them are gone, so every remaining tool is a backup or a
+  // notification rather than a write.
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings & Tools' }).click();
 
-  const rows = page.locator('.settings-content .tool-row');
-  await expect(rows).toHaveCount(3);
-  await expect(page.locator('.settings-content')).not.toContainText('SQL Explorer');
-  // Export, Import and Test Notify - the destructive maintenance endpoints that
-  // used to sit next to it are gone too, so all three of these are backups and
-  // notifications rather than writes.
+  await expect(page.locator('.settings-content .tool-row')).toHaveCount(3);
 });
 
 test('the retired GET /api/state aggregation is really gone', async ({ request }) => {

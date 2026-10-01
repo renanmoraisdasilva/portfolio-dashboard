@@ -46,16 +46,12 @@ export function mountWebRoutes(app: Express): void {
   // else in the repository is served any more — the old `express.static(repoRoot)`
   // also exposed node_modules and .git.
   //
-  // There is no `/legacy/` mount and no `pages/` tree. The SQL Explorer was the
-  // last vanilla page, and it was an unauthenticated arbitrary-SQL console over
-  // HTTP that existed only behind an environment flag; removing it took the
-  // strangler's static half with it. The bookmark redirects below stay, because
-  // those are about *migrated* pages.
+  // The Vue app owns every route the header links to; only these three kinds of
+  // path are served from the repository itself.
   app.use('/static', express.static(path.join(repoRoot, 'static')));
   app.get('/icon.png', (_req, res) => res.sendFile(path.join(repoRoot, 'icon.png')));
   // Old bookmarks keep resolving: /pages/x.html and /x.html follow the page to
-  // wherever it ended up. Anything not in the table lands on the dashboard rather
-  // than on a /legacy/ URL that no longer exists.
+  // wherever it ended up. Anything not in the table lands on the dashboard.
   const migratedPages: Record<string, string> = { analytics: '/analytics', simulation: '/simulation' };
   const pageTarget = (file: string): string => migratedPages[file.replace(/\.html$/, '')] ?? '/';
   app.get('/pages/:file', (req, res) => res.redirect(pageTarget(req.params.file)));

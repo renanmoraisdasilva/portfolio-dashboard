@@ -24,12 +24,8 @@ export interface NavEntry {
  * Order is the header's order: dashboard first, then its sub-view, then the
  * other pages.
  *
- * Every entry is `migrated`, so there is no `status` field and no `legacyEntries()`
- * any more. The SQL Explorer was the last page still served from `pages/`, and it
- * was the only reason a nav entry could point somewhere the Vue app did not own:
- * an unauthenticated arbitrary-SQL console behind an environment flag, which was
- * not worth migrating and not worth keeping. With it gone the Vue app owns every
- * route the header links to, and `LegacyHandoff.vue` went with it.
+ * Every entry is a route the Vue app owns. Adding a page means adding its entry
+ * here and its route in `src/router/index.ts`.
  */
 export const NAV_ENTRIES: NavEntry[] = [
   { path: '/', label: 'Dashboard', tab: 'dashboard' },

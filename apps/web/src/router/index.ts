@@ -4,9 +4,9 @@ import { createRouter, createWebHistory } from 'vue-router';
  * Every route is lazy, `/` included: the dashboard pulls in lightweight-charts,
  * which would otherwise weigh 400 kB on the shell's first paint.
  *
- * `/` is the dashboard, and the Vue app now owns the whole thing. There is no
- * `LegacyHandoff` route: the SQL Explorer was the last page served from
- * `pages/`, and removing it left every header link pointing at a Vue route.
+ * `/` is the dashboard, and the Vue app owns every route the header links to.
+ * The catch-all sends an unknown path to the dashboard rather than 404ing, so a
+ * mistyped URL still lands somewhere usable.
  */
 export const router = createRouter({
   history: createWebHistory(),

@@ -19,21 +19,20 @@ async function request(pathname: string): Promise<{ status: number; location: st
 }
 
 describe('strangler seam', () => {
-  test('there is no /legacy/ mount and no pages/ tree any more', async () => {
-    // The SQL Explorer was the last vanilla page. With it gone there is nothing
-    // for `/legacy/` to serve, so the directory is retired rather than left
-    // mounted against an empty path: a request that used to return the page must
-    // fall through to the Vue shell instead of a 200 from static.
-    for (const pathname of ['/legacy/', '/legacy/sql-explorer.html', '/legacy/index.html']) {
+  test('/legacy/ falls through to the Vue shell rather than serving a file', async () => {
+    // Nothing is mounted under `/legacy/`, so a request there must reach the SPA
+    // fallback and answer with the shell. A 200 from static would mean the mount
+    // is back and serving something outside the Vue app's control.
+    for (const pathname of ['/legacy/', '/legacy/index.html', '/legacy/anything.html']) {
       const res = await request(pathname);
       expect(res.status === 200 && res.body.includes('id="app"')).toBe(true);
     }
   });
 
-  test('a bookmark for a retired page lands on the dashboard, not a dead /legacy/ URL', async () => {
-    // The fallback used to be `/legacy/<name>.html`, which no longer resolves.
-    // Sending these to `/` keeps an old bookmark useful instead of 404ing.
-    for (const pathname of ['/sql-explorer.html', '/pages/sql-explorer.html', '/dashboard.html']) {
+  test('a bookmark with no matching page lands on the dashboard', async () => {
+    // The redirect table only knows migrated pages. Anything else goes to `/` so
+    // an old bookmark stays useful rather than 404ing.
+    for (const pathname of ['/dashboard.html', '/pages/unknown.html', '/unknown.html']) {
       const res = await request(pathname);
       expect([301, 302]).toContain(res.status);
       expect(res.location).toBe('/');

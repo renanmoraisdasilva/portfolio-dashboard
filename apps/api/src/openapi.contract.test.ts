@@ -127,10 +127,9 @@ describe('OpenAPI contract', () => {
     // These are floors, deliberately well below the real counts (37 operations
     // across 13 routers). They used to be pinned to the exact current numbers,
     // which made them a change detector rather than the sanity check they claim to
-    // be: removing the three `/api/sql/*` operations dropped the count to 37 and
-    // turned this red, which says nothing about whether the contract holds.
-    // Mounting a router is what has to keep working; the totals are the two
-    // bidirectional assertions' job.
+    // be: any endpoint added or removed turned this red, which says nothing about
+    // whether the contract holds. Mounting a router is what has to keep working;
+    // the totals are the two bidirectional assertions' job.
     expect(mounted.length).toBeGreaterThanOrEqual(25);
     expect(new Set(mounted.map((r) => r.path.split('/')[2])).size).toBeGreaterThanOrEqual(10);
   });

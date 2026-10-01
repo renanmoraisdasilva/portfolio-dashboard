@@ -36,20 +36,15 @@ API notes:
 - `GET /api/config/symbols` — the symbol registry that populates every select and chart.
 - `GET /api/history` (with an optional `range`), `POST /api/history/point`, `DELETE /api/history/:id` and `GET /api/history/ohlc` (candles derived from the snapshots). `POST /api/history/fill-gaps` and `DELETE /api/history` have both been removed — the first was a one-time repair of the early record, the second had no confirmation or way back, and a restore from a backup now covers that case.
 
-There is deliberately **no arbitrary-SQL endpoint**. The SQL Explorer's
-`/api/sql/tables`, `/api/sql/schema` and `/api/sql/query` were an unauthenticated
-console that could `DELETE` any row, held shut by `ENABLE_SQL_EXPLORER`. They are
-gone rather than gated: a gate proves a feature is closed, and a public showcase
-has no use for one that is merely closed. For ad-hoc inspection, open the SQLite
-file with `npm run db:studio` (Drizzle Studio) instead — same database, and it
-never opens a port.
+No route takes a statement string and executes it — see the note in
+[AGENTS.md](../AGENTS.md). For ad-hoc inspection, `npm run db:studio` opens the
+SQLite file in Drizzle Studio without opening a port.
 
 Static content is served by the same app, split by the strangler seam:
 
 - `GET /` — the Vue app (`apps/web/dist`), with a SPA fallback for client-side routes.
 - `GET /static/...` and `GET /icon.png` — shared assets, referenced by absolute path.
 - `GET /<page>.html` and `GET /pages/<page>.html` — 302 redirects so old bookmarks follow a page to its Vue route (`/analytics.html` → `/analytics`), and `/index.html` → `/`.
-- There is no `/legacy/` mount and no `pages/` tree. The SQL Explorer was the last vanilla page; every page is Vue now.
 
 Nothing else in the repository is served — the previous `express.static(repoRoot)` also exposed `node_modules/` and `.git/`.
 

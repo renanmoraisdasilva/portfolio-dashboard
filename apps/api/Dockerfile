@@ -59,8 +59,9 @@ FROM node:22-alpine AS runtime
 # and leaks nothing. `docker-compose.yml` forwards it; Dokploy sets it in the
 # application's environment.
 #
-# ENABLE_SQL_EXPLORER no longer exists: the SQL Explorer was deleted rather than
-# left gated, so there is no arbitrary-SQL console in the image to disable.
+# The API takes no statement string and executes none, so there is no
+# arbitrary-SQL console in this image and no flag to disable one.
+# `npm run db:studio` opens the SQLite file for inspection without a port.
 
 WORKDIR /app
 

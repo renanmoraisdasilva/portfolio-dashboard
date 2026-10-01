@@ -81,26 +81,21 @@ packages/shared/
   dist/                  # Build output, gitignored. `main`/`types` point here; apps/api imports the package through it
 ```
 
-### Legacy frontend (retired)
+### Static assets
 
 ```
 static/js/
-  (no page scripts left — every user-facing page is Vue; `static/js/__tests__`
+  (no page scripts — every user-facing page is Vue; `static/js/__tests__`
    holds the two ESM suites that exercise `packages/shared`)
 static/css/             # base.css + components.css (global), layout.css (shared shell + nav), then one file per page: dashboard, simulation, analytics
 ```
 
-**There is no `pages/` directory and no `/legacy/` mount.** The Vue app owns every
-route the header links to. The SQL Explorer was the last vanilla page — an
-unauthenticated arbitrary-SQL console behind `ENABLE_SQL_EXPLORER` — and deleting
-it retired the strangler's static half along with `pages/`, `LegacyHandoff.vue`,
-`PageStatus`/`legacyHref`/`legacyEntries()` in `src/config/nav.ts`, and
-`explorer.css`. The bookmark redirects in `app.ts` (`/analytics.html` →
-`/analytics`) stay; they are about _migrated_ pages, not legacy ones.
+The Vue app owns every route the header links to. `app.ts` still carries the
+bookmark redirects (`/analytics.html` → `/analytics`) so old links keep working.
 
 The three user-facing pages live in `apps/web/src/views/`; their page stylesheets
 are still imported from `static/css/` by each view, so that tree goes away only
-when those views are migrated to component-scoped styles.
+when those views move to component-scoped styles.
 
 ### Vue app (`apps/web`)
 
@@ -362,25 +357,12 @@ symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
   the failure mode here is a silently wrong comparison rather than an error.
 - **The maintenance backfills are gone: `routes/migrations.ts`, `services/cashBackfill.ts` and both endpoints.** Backfill Cash History ran `DELETE FROM cash` and rebuilt the balance from estimates, so one unconfirmed click in the UI zeroed the entire USD balance and destroyed every cash entry belonging to a trade; it had already done its one-time job. (Do not quote the real balance here, or anywhere else in the tree: this document is published, and a figure from the live account is not a detail a showcase needs. The scale of the loss is the point, not the number.) Backfill Price History was additive and idempotent, but `price_ticks` refills itself from the worker's own fetcher. `DELETE /api/history` ("Clear History") and `DELETE /api/state` ("Erase All") went with them, since a restore is now a true replace. The Settings modal is down to three tools: Export, Import, Test Notify.
 
-- **The SQL Explorer is deleted, not gated.** `routes/sqlExplorer.ts`,
-  `pages/sql-explorer.html` and the `/api/sql/*` paths are gone, along with
-  `ENABLE_SQL_EXPLORER`. It was arbitrary SQL over the database with no
-  authentication — `POST /api/sql/query` reached `stmt.run()`, so a `DELETE`
-  executed — and the only thing between it and the open internet was an
-  environment flag. Two reasons to delete rather than keep gating it:
-  1. **A gate is not a boundary, it is a config value.** It shipped off, and
-     `AGENTS.md` records that the Docker image once carried a real secret in
-     `ENV`. A second flag protecting a write console is the same shape of risk
-     for a capability no one needs — `npm run db:studio` opens the same SQLite
-     file without a port.
-  2. **`isSelectQuery` was never the permission check it looked like.** It
-     decided a response shape; `better-sqlite3`'s `.all()` throwing _"This
-     statement does not return data"_ on a `WITH ... INSERT` was what actually
-     stopped that bypass, and a write beginning with `SELECT` is impossible.
-     Read that way, "read-only console" was a description of a coincidence.
-     `seam.test.ts` asserts `/legacy/*` now falls through to the Vue shell, the e2e
-     suite asserts all three `/api/sql/*` paths are **404** (absent, not 403), and
-     `openapi.contract.test.ts` would fail if a stale spec entry outlived the router.
+- **The app serves no arbitrary-SQL endpoint.** There is no route that takes a
+  statement string and runs it; `/api/sql/*` does not exist and answers `404`.
+  `npm run db:studio` (Drizzle Studio) is how the database is inspected by hand —
+  it opens the same SQLite file and opens no port. `openapi.contract.test.ts`
+  fails if a documented path ever outruns a mounted router, which is what keeps
+  an endpoint from reappearing undocumented.
 - **`POST /api/history/fill-gaps` is gone, and the history it would have filled is staying thin.** It recomputed the snapshots the early record never received: the first 30 days have no day reaching 40 snapshots, because the worker was not running then, while the last fortnight sit at 48/day. The worker only appends, so nothing would ever repair that period on its own - which is exactly why the endpoint looked permanent when it was not. It is a one-time repair of a past that is not worth a permanent route, and the 128 rows it did produce carry `note = 'gap-fill'`. `recomputeHistoryAt` in `services/historyManager.ts` is what made it possible; it stays exported and tested with no caller in the app, so delete it together with `historyManager.test.ts`'s four `recomputeHistoryAt` blocks if the capability is not wanted either.
 - **Bond symbols (`type: 'bond'`) are absent from `price_ticks` history** before the migration date — the Yahoo backfill script skips them. `recomputeHistoryAt(ts)` will throw if asked to recompute a timestamp before the first non-bond price tick exists.
 - **`history_points.brlusd_rate` is `NULL` for rows inserted before the migration** — the column was added via `ALTER TABLE`; old rows were not backfilled, and with `fill-gaps` gone nothing rewrites them, so treat a `NULL` rate as permanent for existing rows. A restore is not a way to lose it either: the export sends the column and the import writes it, which it briefly did not — that nulled the rate on every snapshot and left the analytics converting BRL interest at today's rate, while the chart looked perfect because candles only read `v` and `p`.
