@@ -84,7 +84,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
-select.simulation-page .chip {
+.simulation-page select .chip {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -251,16 +251,16 @@ select.simulation-page .chip {
   justify-content: flex-start;
   padding: 8px;
 }
-.simulation-page .alloc-summary .simulation-page .summary-label {
+.simulation-page .alloc-summary .summary-label {
   font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
-.simulation-page .alloc-summary .simulation-page .summary-value {
+.simulation-page .alloc-summary .summary-value {
   font-size: 22px;
   font-weight: 700;
 }
-.simulation-page .alloc-summary .simulation-page .summary-sub {
+.simulation-page .alloc-summary .summary-sub {
   font-size: 14px;
   color: var(--text-muted);
   margin-top: 14px;
@@ -273,31 +273,31 @@ select.simulation-page .chip {
   flex-direction: column;
   gap: 6px;
 }
-.simulation-page .alloc-summary .simulation-page .alloc-row {
+.simulation-page .alloc-summary .alloc-row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   justify-content: space-between;
 }
-.simulation-page .alloc-summary .simulation-page .alloc-row .simulation-page .left {
+.simulation-page .alloc-summary .alloc-row .left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.simulation-page .alloc-summary .simulation-page .swatch {
+.simulation-page .alloc-summary .swatch {
   width: 12px;
   height: 12px;
   border-radius: 3px;
   flex: 0 0 12px;
 }
-.simulation-page .alloc-summary .simulation-page .asset-label {
+.simulation-page .alloc-summary .asset-label {
   font-weight: 600;
 }
-.simulation-page .alloc-summary .simulation-page .asset-value {
+.simulation-page .alloc-summary .asset-value {
   font-weight: 700;
 }
-.simulation-page .alloc-summary .simulation-page .currency-toggle {
+.simulation-page .alloc-summary .currency-toggle {
   display: flex;
   gap: 6px;
 }
@@ -381,7 +381,7 @@ td .currency {
   margin-top: 0;
   margin-bottom: 10px;
 }
-.simulation-page .modal .simulation-page .row {
+.simulation-page .modal .row {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -402,7 +402,7 @@ td .currency {
   padding: 8px;
   border-bottom: 1px solid var(--border);
 }
-.simulation-page .modal .simulation-page .small {
+.simulation-page .modal .small {
   font-size: 14px;
   color: var(--text-muted);
 }
@@ -471,7 +471,7 @@ td .currency {
   .simulation-page .card-header {
     margin-bottom: 8px;
   }
-  .simulation-page .card .simulation-page .small {
+  .simulation-page .card .small {
     font-size: 12px;
   }
   .sim-input {
@@ -513,13 +513,13 @@ td .currency {
   }
 }
 
-.compact-sim .simulation-page .card {
+.simulation-page .compact-sim .card {
   padding: 6px !important;
 }
-.compact-sim .simulation-page .card-header {
+.simulation-page .compact-sim .card-header {
   margin-bottom: 6px;
 }
-.compact-sim .simulation-page .card .simulation-page .small {
+.simulation-page .compact-sim .card .small {
   font-size: 11px;
 }
 .compact-sim .sim-input {
@@ -542,13 +542,13 @@ td .currency {
   text-overflow: ellipsis;
   max-width: 64px;
 }
-.compact-sim .simulation-page .metric-value {
+.simulation-page .compact-sim .metric-value {
   font-size: 19px;
 }
-.compact-sim .simulation-page .chart-container {
+.simulation-page .compact-sim .chart-container {
   height: 160px;
 }
-.compact-sim .simulation-page .sim-slider {
+.simulation-page .compact-sim .sim-slider {
   height: 7px;
 }
 .compact-sim table th,
@@ -556,21 +556,21 @@ td .currency {
   padding: 6px;
   font-size: 13px;
 }
-.compact-sim .simulation-page .form-grid {
+.simulation-page .compact-sim .form-grid {
   grid-template-columns: 1fr;
 }
-.compact-sim .simulation-page .allocation-legend {
+.simulation-page .compact-sim .allocation-legend {
   display: none;
 }
 .compact-sim .asset-current {
   justify-self: end;
 }
-.compact-sim .simulation-page .metrics-grid {
+.simulation-page .compact-sim .metrics-grid {
   gap: 8px;
 }
-.compact-sim .simulation-page .metric-label {
+.simulation-page .compact-sim .metric-label {
   font-size: 12px;
 }
-.compact-sim .simulation-page .metric-sub {
+.simulation-page .compact-sim .metric-sub {
   font-size: 9px;
 }

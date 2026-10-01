@@ -246,11 +246,11 @@
   }
 }
 
-.side-seg .dashboard-page .chip {
+.dashboard-page .side-seg .chip {
   padding: 6px 8px;
   font-size: 14px;
 }
-.side-seg .dashboard-page .chip.active {
+.dashboard-page .side-seg .chip.active {
   box-shadow: 0 0 8px var(--glow);
   border-color: var(--accent-primary);
 }
@@ -259,13 +259,13 @@
   display: none;
 }
 
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-wrap {
+.dashboard-page .chart-container.alloc .alloc-wrap {
   display: flex;
   gap: 16px;
   align-items: center;
   height: 100%;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-chart {
+.dashboard-page .chart-container.alloc .alloc-chart {
   flex: 1;
   display: flex;
   align-items: center;
@@ -273,7 +273,7 @@
   height: 100%;
   position: relative;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-chart .dashboard-page .currency-toggle.top {
+.dashboard-page .chart-container.alloc .alloc-chart .currency-toggle.top {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -281,11 +281,11 @@
   display: flex;
   gap: 6px;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-chart .dashboard-page .currency-toggle .dashboard-page .chip {
+.dashboard-page .chart-container.alloc .alloc-chart .currency-toggle .chip {
   padding: 6px 8px;
   font-size: 12px;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary {
+.dashboard-page .chart-container.alloc .alloc-summary {
   width: 260px;
   display: flex;
   flex-direction: column;
@@ -294,16 +294,16 @@
   padding: 8px;
   height: 100%;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary .dashboard-page .summary-label {
+.dashboard-page .chart-container.alloc .alloc-summary .summary-label {
   font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary .dashboard-page .summary-value {
+.dashboard-page .chart-container.alloc .alloc-summary .summary-value {
   font-size: 22px;
   font-weight: 700;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-summary .dashboard-page .summary-sub {
+.dashboard-page .chart-container.alloc .alloc-summary .summary-sub {
   font-size: 14px;
   color: var(--text-muted);
   margin-top: 14px;
@@ -317,35 +317,35 @@
   gap: 6px;
   margin-top: 8px;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-row {
+.dashboard-page .chart-container.alloc .alloc-row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   justify-content: space-between;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .alloc-row .dashboard-page .left {
+.dashboard-page .chart-container.alloc .alloc-row .left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .swatch {
+.dashboard-page .chart-container.alloc .swatch {
   width: 12px;
   height: 12px;
   border-radius: 3px;
   flex: 0 0 12px;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .asset-label {
+.dashboard-page .chart-container.alloc .asset-label {
   font-weight: 600;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .asset-value {
+.dashboard-page .chart-container.alloc .asset-value {
   font-weight: 700;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .currency-toggle {
+.dashboard-page .chart-container.alloc .currency-toggle {
   display: flex;
   gap: 6px;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .chip[data-currency] {
+.dashboard-page .chart-container.alloc .chip[data-currency] {
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -354,17 +354,17 @@
   font-size: 13px;
   cursor: pointer;
 }
-.dashboard-page .chart-container.alloc .dashboard-page .chip[data-currency].active {
+.dashboard-page .chart-container.alloc .chip[data-currency].active {
   border-color: var(--accent-primary);
   box-shadow: 0 0 10px var(--glow);
 }
 
 @media (max-width: 900px) {
-  .dashboard-page .chart-container.alloc .dashboard-page .alloc-wrap {
+  .dashboard-page .chart-container.alloc .alloc-wrap {
     flex-direction: column;
     align-items: stretch;
   }
-  .dashboard-page .chart-container.alloc .dashboard-page .alloc-summary {
+  .dashboard-page .chart-container.alloc .alloc-summary {
     width: 100%;
     align-items: flex-start;
     margin-top: 8px;
@@ -372,7 +372,7 @@
   .dashboard-page .chart-container.alloc {
     height: auto;
   }
-  .dashboard-page .chart-container.alloc .dashboard-page .alloc-chart {
+  .dashboard-page .chart-container.alloc .alloc-chart {
     height: 260px;
   }
 }
@@ -396,13 +396,13 @@
   gap: 8px;
   padding-right: 6px;
 }
-.trade-left .dashboard-page .row {
+.dashboard-page .trade-left .row {
   display: flex;
   gap: 12px;
   align-items: flex-start;
   flex-wrap: wrap;
 }
-.trade-left .dashboard-page .row > div {
+.dashboard-page .trade-left .row > div {
   flex: 1;
   min-width: 0;
 }
@@ -422,15 +422,15 @@
   align-items: center;
   gap: 12px;
 }
-.trade-left .dashboard-page .sim-slider {
+.dashboard-page .trade-left .sim-slider {
   flex: 1;
   height: 10px;
 }
-.slider-row .dashboard-page .small#qtyPctLabel {
+.dashboard-page .slider-row .small#qtyPctLabel {
   min-width: 36px;
   text-align: right;
 }
-.trade-left .dashboard-page .row.inline-row {
+.dashboard-page .trade-left .row.inline-row {
   align-items: flex-end;
 }
 .trade-slider-wrap {
@@ -458,7 +458,7 @@
   white-space: nowrap;
   height: 39px;
 }
-#maxQtyBtn.dashboard-page .small {
+.dashboard-page #maxQtyBtn .small {
   padding: 6px 10px;
   height: 36px;
 }
@@ -466,10 +466,10 @@
   margin-top: 8px;
   text-align: right;
 }
-.trade-left .dashboard-page .row > .total-row {
+.dashboard-page .trade-left .row > .total-row {
   margin-top: 12px;
 }
-.trade-left .dashboard-page .row > div label {
+.dashboard-page .trade-left .row > div label {
   display: block;
   margin-bottom: 6px;
   color: var(--text-secondary);
@@ -488,7 +488,7 @@
   font-weight: 600;
 }
 @media (max-width: 900px) {
-  .trade-left .dashboard-page .row {
+  .dashboard-page .trade-left .row {
     flex-direction: column;
     gap: 10px;
   }
@@ -500,7 +500,7 @@
   padding-left: 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.04);
 }
-.trade-right .dashboard-page .chip.active {
+.dashboard-page .trade-right .chip.active {
   box-shadow: 0 0 12px var(--glow);
   border-color: var(--accent-primary);
 }
@@ -597,11 +597,11 @@
 .trade-left {
   min-width: 0;
 }
-.trade-left .dashboard-page .row {
+.dashboard-page .trade-left .row {
   min-width: 0;
 }
-.trade-left .dashboard-page .row > div:nth-child(3),
-.trade-left .dashboard-page .row > div:nth-child(4) {
+.dashboard-page .trade-left .row > div:nth-child(3),
+.dashboard-page .trade-left .row > div:nth-child(4) {
   flex: 1 1 160px;
   min-width: 120px;
 }
@@ -617,7 +617,7 @@
   .trade-left .side-seg {
     gap: 6px;
   }
-  .trade-left .side-seg .dashboard-page .chip {
+  .dashboard-page .trade-left .side-seg .chip {
     padding: 4px 6px;
     font-size: 13px;
     height: 34px;
@@ -627,17 +627,17 @@
     padding: 6px 8px;
     font-size: 15px;
   }
-  .trade-left .dashboard-page .row > div label {
+  .dashboard-page .trade-left .row > div label {
     margin-bottom: 4px;
     font-size: 12px;
   }
 
-  .trade-left .dashboard-page .row:not(.inline-row) {
+  .dashboard-page .trade-left .row:not(.inline-row) {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
-  .trade-left .dashboard-page .row:not(.inline-row) > div:nth-child(5) {
+  .dashboard-page .trade-left .row:not(.inline-row) > div:nth-child(5) {
     grid-column: 1 / -1;
   }
   .trade-left .col-side,
@@ -646,7 +646,7 @@
     min-width: unset;
   }
 
-  .trade-left .dashboard-page .row.inline-row {
+  .dashboard-page .trade-left .row.inline-row {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
@@ -842,12 +842,7 @@ tr:hover {
   border: 1px solid var(--accent-danger);
 }
 
-/* `.modal` and `.modal-content` are deliberately NOT scoped to
-   `.dashboard-page`. The settings modal is mounted by the shell (`App.vue`), so
-   it sits inside no page wrapper - scoping these two left it rendering as
-   unstyled static block content the moment the gear was clicked. Anything used
-   only by this page can be scoped; anything the shell renders cannot. */
-.modal {
+.dashboard-page .modal {
   position: fixed;
   inset: 0;
   background: #000a;
@@ -856,7 +851,7 @@ tr:hover {
   justify-content: center;
   z-index: 1000;
 }
-.modal-content {
+.dashboard-page .modal-content {
   background: var(--bg-secondary);
   padding: 28px 22px;
   border-radius: 12px;
@@ -865,7 +860,7 @@ tr:hover {
   text-align: center;
   border: 1px solid var(--border);
 }
-.modal-content button {
+.dashboard-page .modal-content button {
   margin: 8px 10px 0 10px;
   min-width: 90px;
 }
