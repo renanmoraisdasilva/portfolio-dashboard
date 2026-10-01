@@ -208,8 +208,10 @@ the current single web process, but separate web replicas would have separate
 cache contents. When the web tier is scaled horizontally, the cache adapter can
 be replaced with Redis without changing the route contracts.
 
-OpenTelemetry exports application metrics, including cache hit and miss
-counters, to the shared SigNoz collector for querying and alerting.
+OpenTelemetry exports all application metrics to the shared SigNoz collector for
+querying and alerting — cache hits, misses and coalesced loads, plus HTTP request
+counts and duration histograms. There is no scrape endpoint: SigNoz over OTLP is
+the only metrics path.
 
 ### 4. What is not a cache?
 

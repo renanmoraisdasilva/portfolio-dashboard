@@ -145,3 +145,32 @@ export async function init() {
     console.log('[db] Drizzle migrations up to date');
   }
 }
+
+/**
+ * Checkpoints the WAL and closes the connection.
+ *
+ * The reason this exists at all: in WAL mode, recent writes live in
+ * `portfolio.db-wal` until a checkpoint folds them into the main file, and a
+ * checkpoint happens when the last connection closes *cleanly*. Without a
+ * shutdown path, `docker stop` and Ctrl-C both skipped it — so the main file
+ * could be weeks behind its own WAL. That is not hypothetical here: copying
+ * `portfolio.db` on its own once captured a 7-week-old state, complete with a row
+ * deleted hours earlier. (`GET /api/state/export` reads through the WAL and is
+ * unaffected, which is why it is the documented backup route.)
+ *
+ * `TRUNCATE` rather than the default `PASSIVE`: it checkpoints everything and
+ * resets the WAL to zero bytes, so a later bare file copy is a complete backup.
+ * Best-effort, because a checkpoint can fail on a busy database and refusing to
+ * exit over it would be worse than exiting anyway.
+ */
+export function close(): void {
+  try {
+    if (sqlite.open) {
+      sqlite.pragma('wal_checkpoint(TRUNCATE)');
+      sqlite.close();
+      console.log('[db] WAL checkpointed and connection closed');
+    }
+  } catch (err) {
+    console.error('[db] close failed, exiting anyway:', err instanceof Error ? err.message : err);
+  }
+}

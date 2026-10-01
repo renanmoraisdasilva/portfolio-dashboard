@@ -107,7 +107,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: docker build -f apps/api/Dockerfile -t portfolio-dashboard:ci .
-      # The container has to serve the SPA and answer the API, not just build.
+      # The container has to serve the SPA, answer the API, and stop cleanly.
+      # The stop half matters because `docker stop` is what a deploy issues, and
+      # the shutdown path checkpoints the SQLite WAL: without it a bare copy of
+      # portfolio.db can lag its own -wal file by weeks. Verified locally against
+      # this image — WAL non-empty while running, truncated to 0 after `docker stop`.
       - name: Smoke the built image
         run: |
           docker run -d --name pd -p 3300:3000 portfolio-dashboard:ci
@@ -118,4 +122,17 @@ jobs:
           curl -fsS http://127.0.0.1:3300/api/health
           curl -fsS -o /dev/null -w 'dashboard %{http_code}\n' http://127.0.0.1:3300/
           curl -fsS -o /dev/null -w 'valuation %{http_code}\n' http://127.0.0.1:3300/api/portfolio/valuation
+
+          # `docker stop` sends SIGTERM and waits out the grace period. The exit
+          # code has to be 0: a non-zero exit is what a crashed container returns
+          # too, so without this a broken shutdown would look identical to a
+          # clean one.
+          stop=$(docker stop -w 20 -t 20 pd && echo stopped)
+          echo "$stop"
+          code=$(docker inspect -f '{{.State.ExitCode}}' pd)
+          echo "exit code: $code"
+          test "$code" = "0"
+
+          # And the handler has to have run, not just the process to have ended.
+          docker logs pd 2>&1 | grep -E 'SIGTERM received|WAL checkpointed|shutdown complete'
           docker rm -f pd

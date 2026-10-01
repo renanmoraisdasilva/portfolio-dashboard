@@ -235,6 +235,44 @@ INDEX` fails and the server refuses to boot, so a restore that reintroduces
   SQLite's own `backup()` API. A checkpoint happens when the last connection
   closes cleanly, so the main file's mtime is not a reliable "last written"
   signal either.
+- **Both processes shut down cleanly, and that is what checkpoints the WAL.**
+  `web.ts` and `worker.ts` handle `SIGTERM`/`SIGINT`, which is what `docker stop`
+  sends: the web process calls `server.close()` so in-flight requests finish
+  instead of being cut off (the proxy would answer 502), then `db.close()` runs
+  `wal_checkpoint(TRUNCATE)`. Without that, `docker stop` killed the process
+  outright and the WAL was left uncheckpointed — the mechanism behind the
+  7-week-stale copy above.
+  - `jobs/scheduler.ts` owns every `setInterval` and `unref`s it, so a scheduled
+    job can never be the reason the process stays alive. `stopWorkerJobs()` clears
+    them; the three job modules must register through `schedule()` and not call
+    `setInterval` directly, or shutdown will not stop them.
+  - Each shutdown has a 10-second hard timeout. Without it, a hung keep-alive
+    socket or an in-flight price fetch would hold the process open until the
+    orchestrator killed it, which is the outcome this avoids — just less politely.
+  - `telemetry.ts` registers its own `SIGTERM`/`SIGINT` handler for the OTel SDK
+    flush. Node runs every listener, and `process.once` fires each exactly once,
+    so the two do not conflict.
+  - **Verify with the container, not on Windows.** Windows maps a signal name to
+    `TerminateProcess`, so JS handlers never run there and a local `SIGTERM` test
+    proves nothing. `npm run test:docker` and the CI `docker` job both build the
+    image and assert the shutdown log and the exit code.
+- **`npm run test:docker` runs the suite inside the builder stage, and it needs
+  `vitest.config.ts` in the image.** Two things had to line up for it to work at
+  all, and it was silently broken until both were fixed:
+  1. **`tsconfig.json` excludes `src/**/*.test.ts` from the build.** Without it
+     `tsc` compiled every suite into `dist/`, and Vitest's default include
+     pattern then picked the compiled CommonJS `dist/**/*.test.js` up alongside
+     the real sources — where `globals: true` did not apply, so 32 of 36 files
+     failed on `describe is not defined`. The Dockerfile's `find ... -name
+'*.test.*'` deletion was a band-aid over the same bug and has been removed;
+     the exclude is the fix. Local `dist/` had been carrying 19 stale compiled
+     tests for the same reason.
+  2. **The Dockerfile copies `vitest.config.ts` into the builder.** `test:docker`
+     runs `npm test` at `/app`, and the config was never copied, so Vitest ran
+     with no configuration at all. It is builder-only — the runtime stage does
+     not need it, `playwright.config.ts`, `e2e/` or `fixtures/`.
+     Verify a change here with `npm run test:docker` (419 tests), not just `npm test`
+     locally: the container is the only place both conditions are exercised together.
 - **Never start a server against `apps/api/data` while testing.** Set
   `PORTFOLIO_DATA_DIR` to a throwaway directory. `e2e/start-server.mjs` and
   `scripts/build-demo-gif.mjs` both do this; a hand-started
@@ -345,9 +383,27 @@ symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
   captures the generation before loading and only stores if it has not moved. A
   counter rather than a cleared `inFlight`, because clearing the map would let a
   second caller start a duplicate load. Coalesced requests now count in
-  `cache_coalesced_total` instead of inflating `cache_hits_total` — they are not
+  `cache_coalesced_total` instead of inflating `cache_hits_total` - they are not
   cache hits, and folding them in made the hit ratio measure request collapsing.
-  `responseCache.test.ts` is new and covers both.
+  `responseCache.test.ts` covers both.
+- **There is no `/metrics` endpoint; SigNoz over OTLP is the only metrics path.**
+  `metrics.ts` used to build `prom-client` instruments and serve them in
+  Prometheus text format on the public port, while `telemetry.ts` exported the same
+  signals to SigNoz. Two metrics systems, nothing scraping the first - no scrape
+  config, no Prometheus in the deployment, and `docs/SERVER-SETUP.md` names SigNoz
+  as the only observability stack. `prom-client` is gone from the dependency tree;
+  the instruments are `@opentelemetry/api` ones with the same names, so existing
+  SigNoz queries still match. Query them in SigNoz.
+  Two details the rewrite depends on:
+  - **`metrics.getMeter()` returns a proxy**, not a snapshot, so the instruments
+    created at module load bind to whichever `MeterProvider` `telemetry.ts`
+    registers later. The OTel API exposes no global `createCounter`; instruments
+    come from the meter.
+  - **`routeLabel` must not use `req.path` for an unmatched request.** The raw
+    path is caller-controlled, so labelling a metric with it lets any
+    unauthenticated request mint unbounded time series - and this app is on a
+    public host with open CORS. Unmatched requests now share one `unmatched`
+    label.
 - **`alerts.is_active` and `alerts.is_dismissed` are `NOT NULL`.**
   `checkAndTriggerAlerts` compares `is_dismissed === 0`; a NULL compared `false`,
   so a row that omitted the column — a restored backup, or any insert leaving it

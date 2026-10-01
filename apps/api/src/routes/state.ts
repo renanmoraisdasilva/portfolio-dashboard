@@ -153,29 +153,39 @@ stateRouter.post('/import', async (req, res) => {
           );
         }
       });
-      if (payload.interestReaisMonths && Array.isArray(payload.interestReaisMonths)) {
-        // `interest` has no unique key, so OR REPLACE would append a second row
-        // per month and every restore would inflate the interest income. The
-        // months in the backup replace the months in the database, as `cash`
-        // already does below.
-        await run('DELETE FROM interest WHERE currency = ?', ['BRL']);
-        for (const m of payload.interestReaisMonths) {
+      // One wholesale DELETE for both currencies, not one per currency.
+      //
+      // Clearing `WHERE currency = 'BRL'` and then `WHERE currency = 'USD'`
+      // replaced only those two. A row in any third currency survived every
+      // restore, which contradicts the contract this endpoint documents — "every
+      // table the payload carries is replaced" — and it failed quietly, which is
+      // the only way a stale row survives a restore at all.
+      //
+      // The delete is guarded on *either* months key being present, because the
+      // two are independent halves of one table: clearing both when only the BRL
+      // half arrived would drop USD months the backup never mentioned. Same rule
+      // as `replace()` above — a key that is absent leaves its table alone.
+      const hasBrlMonths = Array.isArray(payload.interestReaisMonths);
+      const hasUsdMonths = Array.isArray(payload.interestDollarsMonths);
+      if (hasBrlMonths || hasUsdMonths) {
+        await run('DELETE FROM interest');
+        // `Date.now()` is read once so every restored row shares a `created_at`,
+        // rather than drifting by a millisecond per iteration.
+        const now = Date.now();
+        for (const m of hasBrlMonths ? payload.interestReaisMonths : []) {
           await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
             m.month,
             'BRL',
             m.amount,
-            Date.now(),
+            now,
           ]);
         }
-      }
-      if (payload.interestDollarsMonths && Array.isArray(payload.interestDollarsMonths)) {
-        await run('DELETE FROM interest WHERE currency = ?', ['USD']);
-        for (const m of payload.interestDollarsMonths) {
+        for (const m of hasUsdMonths ? payload.interestDollarsMonths : []) {
           await run('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
             m.month,
             'USD',
             m.amount,
-            Date.now(),
+            now,
           ]);
         }
       }

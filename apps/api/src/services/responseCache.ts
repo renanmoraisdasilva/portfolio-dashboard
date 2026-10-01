@@ -26,7 +26,7 @@ export const ANALYTICS_CACHE_KEY = 'analytics';
 export async function getOrSetResponse<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
   const cached = cache.get(key);
   if (cached !== undefined) {
-    cacheHitsTotal.inc({ cache: key });
+    cacheHitsTotal.add(1, { cache: key });
     return cached as T;
   }
 
@@ -36,11 +36,11 @@ export async function getOrSetResponse<T>(key: string, ttlMs: number, loader: ()
   // than anything the cache actually served.
   const existing = inFlight.get(key);
   if (existing) {
-    cacheCoalescedTotal.inc({ cache: key });
+    cacheCoalescedTotal.add(1, { cache: key });
     return existing as Promise<T>;
   }
 
-  cacheMissesTotal.inc({ cache: key });
+  cacheMissesTotal.add(1, { cache: key });
   const startedAt = generation;
   const pending = loader();
   inFlight.set(key, pending);

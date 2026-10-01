@@ -27,6 +27,15 @@ RUN npm ci
 COPY apps/api/ apps/api/
 COPY apps/web/ apps/web/
 COPY packages/shared/ packages/shared/
+# The test runner reads these three. `test:docker` builds `--target builder` and
+# runs `npm test` there, so without them the container had no Vitest config at
+# all: Vitest fell back to its defaults, `globals: true` never applied, and every
+# suite failed on `describe is not defined`. The `.dockerignore` does not exclude
+# them, so they were simply never copied. The runtime stage needs none of the
+# three.
+COPY vitest.config.ts playwright.config.ts ./
+COPY fixtures/ fixtures/
+COPY e2e/ e2e/
 COPY static/ static/
 COPY icon.png icon.png
 
@@ -83,8 +92,13 @@ RUN test -f /app/apps/web/dist/index.html
 # stage and runs the full suite from it, so they cannot be excluded at the
 # build-context level - a .dockerignore entry would silently drop suites
 # from that run. The shipped image needs neither the TypeScript sources, nor
-# the compiled output tsc produced in dist, nor the static-page helpers.
-RUN rm -rf static/js/__tests__ && find apps/api/src apps/api/dist -type f -name '*.test.*' -exec rm -f {} +
+# the static-page helpers.
+#
+# `apps/api/dist` needs no sweep any more. `tsconfig.json` excludes `*.test.ts`
+# from the build, so `tsc` never emits compiled tests; the old `find` here was
+# deleting them after the fact, which is what let them accumulate unnoticed in
+# local `dist/` and get picked up by Vitest's default include pattern.
+RUN rm -rf static/js/__tests__
 
 EXPOSE 3000
 CMD ["node", "apps/api/dist/web.js"]

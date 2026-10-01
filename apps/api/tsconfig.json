@@ -12,5 +12,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  // Tests are excluded from the build. Without this, `tsc` compiled every
+  // `*.test.ts` into `dist/`, and the runtime image shipped them — which then
+  // broke `npm run test:docker`: Vitest's default include pattern picked the
+  // compiled `dist/**\/*.test.js` up alongside the real sources, and those files
+  // were CommonJS with `globals: true` not applying, so 32 of 36 files failed
+  // with "describe is not defined". The Dockerfile's `find ... -name '*.test.*'`
+  // deletion was a band-aid over the same problem; this is the actual fix.
+  "exclude": ["src/**/*.test.ts"]
 }

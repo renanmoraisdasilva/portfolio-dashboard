@@ -1,4 +1,5 @@
 import { computeAndInsertHistoryPoint } from '../services/historyManager';
+import { schedule } from './scheduler';
 
 const HISTORY_INTERVAL_MS = 30 * 60 * 1000;
 
@@ -10,12 +11,11 @@ export async function startHistorySnapshotJob(): Promise<void> {
     console.warn('Initial history point not created:', err instanceof Error ? err.message : String(err));
   }
 
-  setInterval(async () => {
-    try {
-      const result = await computeAndInsertHistoryPoint({ manual: false });
-      if (result) console.log('Scheduled history point inserted', result.ts);
-    } catch (err) {
-      console.error('History point insertion error', err);
-    }
-  }, HISTORY_INTERVAL_MS);
+  schedule('history snapshot', HISTORY_INTERVAL_MS, () => {
+    computeAndInsertHistoryPoint({ manual: false })
+      .then((result) => {
+        if (result) console.log('Scheduled history point inserted', result.ts);
+      })
+      .catch((err) => console.error('History point insertion error:', err));
+  });
 }

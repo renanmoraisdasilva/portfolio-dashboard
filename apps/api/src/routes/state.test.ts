@@ -21,6 +21,9 @@ let trades: Record<string, unknown>[];
 let priceCache: Record<string, unknown>[];
 let assetChartCache: Record<string, unknown>[];
 let analyticsSnapshots: Record<string, unknown>[];
+let interest: Record<string, unknown>[];
+/** Every `DELETE FROM <table>` the handler issued, so a restore can be audited. */
+let deletedFrom: string[];
 
 beforeEach(() => {
   snapshots = [];
@@ -28,6 +31,8 @@ beforeEach(() => {
   priceCache = [];
   assetChartCache = [];
   analyticsSnapshots = [];
+  interest = [];
+  deletedFrom = [];
   mockedRun.mockReset();
   mockedGet.mockReset();
   mockedAll.mockReset();
@@ -48,6 +53,17 @@ beforeEach(() => {
     }
     if (/^INSERT OR REPLACE INTO analytics_snapshots/.test(sql)) {
       analyticsSnapshots.push({ id: p[0], computed_at: p[1], period: p[2], return_pct: p[3], sharpe_ratio: p[7] });
+    }
+    if (/^INSERT INTO interest/.test(sql)) {
+      interest.push({ month: p[0], currency: p[1], amount: p[2], created_at: p[3] });
+    }
+    // Record the table, and the WHERE clause if there is one: `DELETE FROM x` and
+    // `DELETE FROM x WHERE currency = ?` are different contracts, and which one
+    // the handler issues is exactly what the interest tests are about.
+    const del = /^DELETE FROM (\w+)(.*)$/.exec(sql);
+    if (del) {
+      deletedFrom.push(`${del[1]}${del[2].trim()}`);
+      if (del[1] === 'interest') interest = [];
     }
     return Promise.resolve({ changes: 0 });
   });
@@ -189,6 +205,63 @@ describe('POST /api/state/import — the tables added to the export in version 2
     expect(deletes).not.toContain('DELETE FROM price_cache');
     expect(deletes).not.toContain('DELETE FROM asset_chart_cache');
     expect(deletes).not.toContain('DELETE FROM analytics_snapshots');
+  });
+});
+
+describe('POST /api/state/import — interest', () => {
+  const month = (m: string) => ({ month: m, amount: 100 });
+
+  test('clears the whole table, not one currency at a time', async () => {
+    // `DELETE ... WHERE currency = 'BRL'` then `... 'USD'` replaced those two and
+    // left every other currency in place, so a row in a third currency survived
+    // every restore - silently, and in contradiction of the endpoint's own
+    // documented contract. A wholesale DELETE is what "replaces" means.
+    const { status } = await restore({ interestReaisMonths: [month('2026-01')], interestDollarsMonths: [month('2026-02')] });
+
+    expect(status).toBe(200);
+    expect(deletedFrom).toContain('interest');
+    // Exactly one delete, and it is unqualified.
+    expect(deletedFrom.filter((d) => d.startsWith('interest'))).toEqual(['interest']);
+  });
+
+  test('restores both currencies from one payload', async () => {
+    await restore({ interestReaisMonths: [month('2026-01')], interestDollarsMonths: [month('2026-02')] });
+
+    expect(interest).toHaveLength(2);
+    expect(interest.map((r) => r.currency).sort()).toEqual(['BRL', 'USD']);
+  });
+
+  test('a BRL-only payload still clears the table', async () => {
+    // The two keys are halves of one table. Clearing conditionally per currency
+    // would let a payload carrying only BRL months leave USD rows behind, which
+    // is the same class of silent survivor as the third-currency case.
+    await restore({ interestReaisMonths: [month('2026-01')] });
+
+    expect(deletedFrom).toContain('interest');
+    expect(interest).toHaveLength(1);
+    expect(interest[0].currency).toBe('BRL');
+  });
+
+  test('a payload with neither key leaves interest alone', async () => {
+    await restore({ trades: [{ id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' }] });
+
+    expect(deletedFrom.filter((d) => d.startsWith('interest'))).toEqual([]);
+  });
+
+  test('every restored month shares one created_at', async () => {
+    // Read once per restore rather than per row: a per-row Date.now() drifts by a
+    // millisecond each iteration, which makes the rows' provenance unorderable.
+    await restore({ interestReaisMonths: [month('2026-01'), month('2026-02'), month('2026-03')] });
+
+    expect(new Set(interest.map((r) => r.created_at)).size).toBe(1);
+  });
+
+  test('an empty array clears the table, which is what restoring nothing means', async () => {
+    const { status } = await restore({ interestReaisMonths: [], interestDollarsMonths: [] });
+
+    expect(status).toBe(200);
+    expect(deletedFrom).toContain('interest');
+    expect(interest).toHaveLength(0);
   });
 });
 

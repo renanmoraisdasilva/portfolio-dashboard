@@ -75,14 +75,15 @@ The cache is intentionally process-local for the current single-web-process
 deployment. It must move to a shared backend such as Redis before running
 multiple web replicas.
 
-Cache metrics remain available at `/metrics` for local diagnostics, while the
-production metrics signal is exported to SigNoz over OTLP:
+Every metric is exported to SigNoz over OTLP — there is no Prometheus scrape
+endpoint, so query them in SigNoz rather than curling the app:
 
 ```text
-cache_hits_total{cache="state"}
 cache_hits_total{cache="analytics"}
-cache_misses_total{cache="state"}
 cache_misses_total{cache="analytics"}
+cache_coalesced_total{cache="analytics"}
+http_requests_total{route="/api/portfolio/valuation",method="GET",status_code="200"}
+http_request_duration_seconds
 ```
 
 Notes:

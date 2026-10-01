@@ -15,9 +15,9 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
  * rather than anything the cache actually served.
  */
 vi.mock('../metrics', () => ({
-  cacheHitsTotal: { inc: vi.fn() },
-  cacheMissesTotal: { inc: vi.fn() },
-  cacheCoalescedTotal: { inc: vi.fn() },
+  cacheHitsTotal: { add: vi.fn() },
+  cacheMissesTotal: { add: vi.fn() },
+  cacheCoalescedTotal: { add: vi.fn() },
 }));
 
 import { getOrSetResponse, invalidateResponseCaches, ANALYTICS_CACHE_KEY } from './responseCache';
@@ -25,8 +25,9 @@ import { cacheHitsTotal, cacheMissesTotal, cacheCoalescedTotal } from '../metric
 
 /**
  * The counters, typed as the `Mock` the module factory returns rather than as
- * the `Counter` they replace. Casting to the production type would leave
- * `mockClear` untyped, because `prom-client`'s `Counter` has no such method.
+ * the OTel `Counter` they stand in for. Casting to the production type would
+ * leave `mockClear` untyped, because `@opentelemetry/api`'s `Counter` has no
+ * such method.
  */
 const hits = vi.mocked(cacheHitsTotal);
 const misses = vi.mocked(cacheMissesTotal);
@@ -48,9 +49,9 @@ const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 beforeEach(() => {
   invalidateResponseCaches();
-  hits.inc.mockClear();
-  misses.inc.mockClear();
-  coalesced.inc.mockClear();
+  hits.add.mockClear();
+  misses.add.mockClear();
+  coalesced.add.mockClear();
 });
 
 describe('getOrSetResponse', () => {
@@ -88,13 +89,13 @@ describe('getOrSetResponse', () => {
     await first;
     await joined;
 
-    expect(coalesced.inc).toHaveBeenCalledTimes(1);
-    expect(misses.inc).toHaveBeenCalledTimes(1); // one real load, not two
-    expect(hits.inc).not.toHaveBeenCalled(); // nothing came from the cache
+    expect(coalesced.add).toHaveBeenCalledTimes(1);
+    expect(misses.add).toHaveBeenCalledTimes(1); // one real load, not two
+    expect(hits.add).not.toHaveBeenCalled(); // nothing came from the cache
 
     // A read after the load has settled *is* a genuine hit.
     await expect(getOrSetResponse(ANALYTICS_CACHE_KEY, 1_000, vi.fn())).resolves.toEqual({ total: 1 });
-    expect(hits.inc).toHaveBeenCalledTimes(1);
+    expect(hits.add).toHaveBeenCalledTimes(1);
   });
 
   test('does not cache a rejected load, so the next call retries', async () => {

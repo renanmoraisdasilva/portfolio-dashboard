@@ -17,13 +17,20 @@ import { configRouter } from './routes/config';
 import { scenariosRouter } from './routes/scenarios';
 import analyticsRouter from './routes/analytics';
 import { portfolioRouter } from './routes/portfolio';
-import { metricsText, observeHttpRequest } from './metrics';
+import { observeHttpRequest } from './metrics';
 import { invalidateResponseCaches } from './services/responseCache';
 // __dirname is apps/api/src (dev) or apps/api/dist (compiled), so repo root is three levels up.
 // This must mirror the container layout, where WORKDIR is /app/apps/api and pages/static live at /app.
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 export function createApp(): Express {
   const app = express();
+  // Unrestricted CORS is a deliberate trade, not an oversight: this is a
+  // single-user dashboard on a private network, and the API answers no cookies
+  // and carries no per-user authorization, so a cross-origin `GET` can read
+  // nothing the operator's own browser could not. The one thing worth remembering
+  // is that it stays open *only* while that is true — if this ever becomes
+  // multi-user, or any endpoint takes a credential, `cors()` has to become an
+  // origin allowlist before that endpoint is deployed.
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
   app.use(observeHttpRequest);
@@ -35,9 +42,9 @@ export function createApp(): Express {
     });
     next();
   });
-  app.get('/metrics', async (_req, res) => {
-    res.type('text/plain').send(await metricsText());
-  });
+  // There is no `/metrics` endpoint. Metrics go to SigNoz over OTLP from
+  // `telemetry.ts`; a second, Prometheus-shaped surface served the same counters
+  // on this port and nothing ever scraped it.
   return app;
 }
 export function mountWebRoutes(app: Express): void {
