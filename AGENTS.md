@@ -614,6 +614,20 @@ powershell.exe ENOENT` - a security gate that could not run on the platform
 - The `apps/api/data/` directory is created at runtime. Do not commit database files.
 - Price fetching uses multiple external APIs — tests that exercise `priceFetcher.ts` should mock network calls.
 - Coverage thresholds are enforced at 80%; new code in `src/` should include tests or the build will fail.
+
+**Two coverage numbers, and they answer different questions.** `npm run test:coverage`
+gates at 80% over a hand-listed `coverage.include` — a set of files that each have
+tests behind them. That gate says nothing about the rest of `src/`, so
+`npm run test:coverage:full` reports all of `src/` with no threshold, and that is
+the number to quote when asked how much of the codebase is tested. It currently
+reads about 31% statements, and the gap is almost entirely Vue single-file
+components: no test mounts one, so `MetricCards.vue`, `PositionsTable.vue` and
+every view read 0%. Those are genuinely uncovered, not unmeasurable. `domain/` is
+at ~99.7% and `useApi.ts` at 100%. `scripts/config-integrity.test.ts` fails if the
+include list names a file that does not exist — `cashBackfill.ts` sat there after
+the file was deleted, and a pattern matching nothing is a valid pattern, so
+nothing else noticed.
+
 - **Always use the promisified helpers** `run()`, `get()`, `all()` from `db.ts` — never call the raw `sqlite` instance directly in routes (it bypasses the async contract the rest of the codebase expects).
 - **Coverage collection is narrow by design** - `vitest.config.ts` `coverage.include` lists exactly the files that are genuinely test-covered: `apps/api/src/config/`, `apps/api/src/schema.ts`, `apps/api/src/routes/health.ts`, `apps/api/src/routes/portfolio.ts`, `apps/api/src/services/portfolioCalculator.ts` and `packages/shared/src/domain/`. Widen that list only _after_ adding tests - the gate is 80% on all four metrics, globally.
 - **Store tests replace `openapi-fetch`, not `fetch`** - `apps/web/src/test/networkHarness.ts` is a `setupFiles` entry that mocks the module. The reason is mechanical: `openapi-fetch` constructs a `Request` _before_ calling `fetch`, and jsdom's `Request` rejects a relative URL, which `baseUrl: '/api'` always is. Stubbing `fetch` alone fails inside the client. The mock keeps the real contract (`{ data, error, response }`), so `request()`, the stores and all error handling are the real code; a test declares what the server answers with `stubNetwork([...])` and can flip `network.offline` for the no-response case.

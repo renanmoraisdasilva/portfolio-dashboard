@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "typecheck": "npm run build --workspace packages/shared && npm run typecheck --workspace apps/api",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:full": "vitest run --coverage --coverage.include=\"apps/api/src/**\" --coverage.include=\"apps/web/src/**\" --coverage.include=\"packages/shared/src/**\" --coverage.thresholds.100=false --coverage.thresholds.branches=0 --coverage.thresholds.functions=0 --coverage.thresholds.lines=0 --coverage.thresholds.statements=0",
     "test:docker": "npm run test:docker --workspace apps/api",
     "check": "npm run lint && npm run format:check && npm run build && npm test",
     "api:types": "openapi-typescript apps/api/openapi.yaml -o packages/shared/src/generated/api.ts",

@@ -42,7 +42,16 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['apps/api/src/**/*.test.ts', 'packages/shared/src/**/*.test.ts', 'static/js/__tests__/**/*.test.js'],
+          include: [
+            'apps/api/src/**/*.test.ts',
+            'packages/shared/src/**/*.test.ts',
+            'static/js/__tests__/**/*.test.js',
+            // The project's own configuration integrity, which needs `node:fs`.
+            // It lives here rather than in the web project because that project
+            // deliberately has no Node types - see the `css: true` note below for
+            // the same trade in the other direction.
+            'scripts/**/*.test.ts',
+          ],
         },
       },
       {
@@ -69,15 +78,35 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: 'v8',
-      // Still narrow by design, and for the same reason as under Jest: a file
-      // in this list is a file with tests behind it. Widen it *after* adding
-      // the tests, or the gate stops meaning anything.
+      // Narrow on purpose, and it is important to be honest about what that means:
+      // a file in this list is a file with tests behind it, so the 80% gate below
+      // says something true about those files and **nothing at all about the rest
+      // of `src/`**. Every entry here was a file the moment someone wrote a test
+      // for it; `cashBackfill.ts` stayed listed after the file was deleted, which
+      // is what 5.3 was, and it is the reason this list cannot be trusted without
+      // a check (see `scripts/config-integrity.test.ts`).
+      //
+      // So the ungated number is published alongside it rather than left implied.
+      // `npm run test:coverage` reports the gated subset; `npm run test:coverage:full`
+      // reports all of `src/` with no threshold, which is the number to quote when
+      // asking "how much of this codebase is tested". Neither replaces the other:
+      // the subset is the gate because it can be held at 80% honestly, and the
+      // whole is the measurement because it cannot.
+      //
+      // **What the full number currently is, and why.** Around 31% statements, and
+      // it is not that the tested code is bad — `packages/shared/src/domain` is at
+      // ~99.7% and `useApi.ts` at 100%. It is that the Vue single-file components
+      // read 0%, because no test mounts one: `MetricCards.vue`, `PositionsTable.vue`,
+      // every view. Those are genuinely uncovered rather than unmeasurable (the
+      // report lists their uncovered line ranges), and they are the largest single
+      // gap in the project — 4.2 in the review plan. So the number is a fair
+      // measure of how much of *this* codebase is tested, and it says the next
+      // meaningful increase comes from component tests, not from more domain tests.
       include: [
         'apps/api/src/config/**',
         'apps/api/src/schema.ts',
         'apps/api/src/routes/health.ts',
         'apps/api/src/routes/portfolio.ts',
-        'apps/api/src/services/cashBackfill.ts',
         'apps/api/src/services/portfolioCalculator.ts',
         'packages/shared/src/domain/**',
       ],
