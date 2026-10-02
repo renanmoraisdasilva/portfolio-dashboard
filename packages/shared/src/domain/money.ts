@@ -6,9 +6,72 @@
  * map as an argument through `createSymbolClassifier`, so the API binds
  * `src/config/symbols.ts` and the frontend binds whatever `/api/config/symbols`
  * returned — one implementation, two registries.
- *
-
  */
+
+/**
+ * ## The rounding policy
+ *
+ * Every monetary value in this application is an IEEE-754 double, and every
+ * monetary column is SQLite `real`. There is no minor-unit representation, no
+ * `decimal.js`, and no rounding at persistence. **That is a decision, and this is
+ * where it is written down** — previously the policy existed only as an absence,
+ * which is indistinguishable from an oversight until someone "fixes" it.
+ *
+ * **1. The domain computes in full precision.** No intermediate result is
+ *    rounded. `computeValuation` sums lots, converts BRL at a rate, and reports
+ *    what it gets. Rounding mid-calculation compounds: round each of twelve
+ *    monthly interest amounts and the total is wrong by up to six cents, and
+ *    which six cents depends on the order of the rows.
+ *
+ * **2. Persistence stores what was computed.** The `real` column keeps the full
+ *    double. Rounding on write would mean the stored figure and the computed
+ *    figure disagree, and the stored one is what a restore brings back — so the
+ *    rounding error would become permanent rather than cosmetic.
+ *
+ * **3. Display rounds, and only display.** `formatMoney` and `formatSigned` are
+ *    the single rounding boundary in the system. They hand the raw double to
+ *    `Intl.NumberFormat`, which rounds half-away-from-zero for display and
+ *    nothing else.
+ *
+ * **4. Never compare money for equality.** `0.1 + 0.2 !== 0.3`. Where a
+ *    comparison is unavoidable, compare against a named tolerance rather than a
+ *    literal — see `CENT` below, which is the one such place in the domain.
+ *
+ * **Why doubles are acceptable here.** This is a single-user dashboard reading
+ * its own recorded trades. The quantities are: a handful of symbols, a few
+ * thousand trades over years, prices quoted to at most four decimal places, and an
+ * exchange rate that is itself stored as a double. Error accumulates as roughly
+ * `n × ulp`, which over thousands of additions of values in the 10^4-10^5 range is
+ * far below a cent. Integer minor units would remove the question entirely at the
+ * cost of touching every calculation, every fixture and every migration — and the
+ * premium it buys is insurance against a class of error this application does not
+ * have.
+ *
+ * **When to revisit.** Two things would change the arithmetic:
+ *
+ * - **Settlement or accounting.** If this ever has to reconcile against a broker
+ *   or a tax filing, the broker's figure is authoritative and the two must match to
+ *   the cent. That is the point at which doubles stop being a rounding question
+ *   and become a correctness one, and the answer becomes integer minor units.
+ * - **A currency without two decimal places.** Nothing here assumes 2dp except the
+ *   display formatters; a currency with 0 or 3 minor units would need the exponent
+ *   carried alongside the amount rather than assumed at the edge.
+ */
+
+/**
+ * One cent, as the domain's only sanctioned comparison tolerance.
+ *
+ * Named rather than written as `0.01` inline because the literal is what made the
+ * policy invisible: `Math.abs(unrealized) < 0.01` in `computeValuation` reads as a
+ * magic number, and the reason a half-cent threshold is the right one for "is this
+ * portfolio at break-even" — that a residual below a cent is float noise from
+ * summing lots and converting currencies, not a real gain or loss — was recorded
+ * nowhere.
+ *
+ * Half a cent would be tighter than the noise floor for the sums involved, and a
+ * whole dollar would hide a real move.
+ */
+export const CENT = 0.01;
 
 export type Currency = 'BRL' | 'USD';
 

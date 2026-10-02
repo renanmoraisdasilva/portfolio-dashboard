@@ -1,5 +1,6 @@
 import { computeValuation, type ValuationInput } from './valuation';
 import { createPortfolioCalculator } from './portfolio';
+import { CENT } from './money';
 
 const SYMBOLS = {
   BTC: { type: 'crypto' },
@@ -105,7 +106,7 @@ describe('computeValuation totals', () => {
     expect(empty.unrealizedPct).toBe(0);
   });
 
-  test('breakOnly holds when the portfolio is within a cent of its cost', () => {
+  test('breakEven holds when the portfolio is within a cent of its cost', () => {
     const flat = valuation({
       prices: { BTC: 50_000, SPY: 400, BRLUSD: 0.18 },
       cash: { cashReais: 0, cashDollars: 0 },
@@ -113,6 +114,33 @@ describe('computeValuation totals', () => {
     expect(flat.unrealized).toBeCloseTo(0, 8);
     expect(flat.breakEven).toBe(true);
     expect(valuation().breakEven).toBe(false);
+  });
+
+  test('breakEven compares against `CENT`, not against zero', () => {
+    // The one place in the domain where a monetary value is compared to a bound,
+    // and the reason the policy needs a named tolerance: `unrealized` is a sum
+    // over lots plus two currency conversions, so an exact-zero comparison would
+    // read a rounding residual as a real loss and colour the dashboard red on a
+    // portfolio that has not moved.
+    //
+    // Driven by nudging a price by a fraction of a cent rather than by asserting
+    // the constant, so it fails if `breakEven` goes back to `unrealized === 0` or
+    // the threshold moves.
+    const base = { BTC: 50_000, SPY: 400, BRLUSD: 0.18 };
+    const cash = { cashReais: 0, cashDollars: 0 };
+
+    const at = (price: number) => valuation({ prices: { ...base, BTC: price }, cash });
+
+    // A 0.05 share of BTC is $2.50 of exposure; a $0.0001 nudge is well under a
+    // cent of the total and must still read as break-even.
+    const nudged = at(base.BTC + 0.0001);
+    expect(Math.abs(nudged.unrealized)).toBeLessThan(CENT);
+    expect(nudged.breakEven).toBe(true);
+
+    // Half a dollar is a real move and must not be called break-even.
+    const moved = at(base.BTC + 0.5);
+    expect(Math.abs(moved.unrealized)).toBeGreaterThan(CENT);
+    expect(moved.breakEven).toBe(false);
   });
 
   test('tickerValue excludes cash and the BRLUSD pair, so investedPct is the share at risk', () => {

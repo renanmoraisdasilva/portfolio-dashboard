@@ -62,6 +62,30 @@ Other endpoints of note:
 
   Or configure a volume in your `docker-compose.yml` to map `./apps/api/data` to the container path `/app/apps/api/data`.
 
+## Money and rounding
+
+Every monetary column is SQLite `real` and every calculation runs on IEEE-754
+doubles. **No rounding happens except at display** — `formatMoney` and
+`formatSigned` in `packages/shared/src/domain/money.ts` are the single rounding
+boundary, and they hand the raw value to `Intl.NumberFormat`.
+
+This is deliberate and the full policy, including when it should be revisited,
+is documented at the top of `money.ts`. The short version:
+
+- **Compute in full precision.** Rounding an intermediate compounds, and which
+  way it compounds depends on the order of the rows.
+- **Store what was computed.** Rounding on write would make the stored figure and
+  the computed figure disagree — and the stored one is what a restore brings back.
+- **Never compare money for equality.** The single exception is `breakEven`,
+  which compares against the named `CENT` tolerance because a sub-cent residual is
+  float noise from summing lots and converting currencies, not a real move.
+
+The figures are trustworthy at this application's scale — a few thousand trades,
+prices quoted to four decimal places, an exchange rate that is itself a double. The
+thing that would invalidate this is a requirement to reconcile against a broker or
+a tax filing, at which point integer minor units stop being a rounding nicety and
+become a correctness requirement.
+
 ## Response caching
 
 The response cache is implemented in `apps/api/src/services/responseCache.ts` with

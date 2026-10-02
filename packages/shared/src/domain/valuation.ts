@@ -23,7 +23,7 @@
  * view. What the view must not re-derive is which currency an amount is in, or
  * whether a BRL quote needs converting — that is the domain, and it is here.
  */
-import { brlToUSD, createSymbolClassifier, type Currency, type SymbolMap } from './money';
+import { CENT, brlToUSD, createSymbolClassifier, type Currency, type SymbolMap } from './money';
 import { createPortfolioCalculator, type LotEntry } from './portfolio';
 
 export interface ValuationTrade {
@@ -406,7 +406,13 @@ export function computeValuation(input: ValuationInput): ValuationResult {
     unrealizedPct,
     tickerValue,
     investedPct,
-    breakEven: Math.abs(unrealized) < 0.01,
+    // "At break-even" is a question about float noise, not about a real gain or
+    // loss: `unrealized` is a sum over lots plus two currency conversions, so a
+    // residual of a fraction of a cent is arithmetic dust. `CENT` rather than an
+    // inline `0.01` so the threshold is the policy's named tolerance — see the
+    // rounding policy at the top of `money.ts`. This is the only place in the
+    // domain that compares a monetary value against a bound.
+    breakEven: Math.abs(unrealized) < CENT,
     rows,
     allocation,
     plByAsset,
