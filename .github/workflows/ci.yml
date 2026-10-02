@@ -34,6 +34,24 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # `packages/shared` must be built before anything that needs types, because
+      # `apps/api` and `apps/web` resolve `@portfolio-dashboard/shared` through its
+      # `dist/` (AGENTS.md records this). This used to matter only to the build
+      # jobs, which all run one.
+      #
+      # It now matters here too: the type-aware ESLint rules added in `34080a8`
+      # need a real program, so with no `dist/` on a fresh runner the import
+      # `import type { components } from '@portfolio-dashboard/shared'` resolves
+      # to a TypeScript *error type* — which behaves like `any` — and every union
+      # built from it trips `no-redundant-type-constituents`. That produced nine
+      # errors here and **zero** locally, because a developer's working tree already
+      # has `dist/` from the previous build. The failure mode is "works on my
+      # machine" in its purest form: it is a missing artifact, not a code defect.
+      #
+      # The `lint` script builds it as well, so this is belt and braces: the step
+      # makes the dependency visible in the log, and the script keeps a fresh
+      # clone correct even if this workflow is edited.
+      - run: npm run build --workspace packages/shared
       # A PR cannot merge with an unused import or a stray semicolon.
       - run: npm run lint
       - run: npm run format:check

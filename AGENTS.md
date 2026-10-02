@@ -459,6 +459,17 @@ symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
   `eslint.config.mjs`, with the reasoning inline. The trade is real: a handler
   added without a `try/catch` fails silently, and nothing enforces that. Express 5
   would fix it by awaiting handlers and rejecting through middleware.
+- **`npm run lint` builds `packages/shared` first, and it must keep doing so.**
+  The type-aware rules added in `34080a8` need a real program, and `apps/api` and
+  `apps/web` resolve `@portfolio-dashboard/shared` through its `dist/`. On a fresh
+  runner with no `dist/`, `import type { components } from '@portfolio-dashboard/shared'`
+  resolves to a TypeScript **error type** — which behaves like `any` — and every
+  union built from it trips `no-redundant-type-constituents`: nine errors across
+  five files, and **zero on a developer machine**, because a working tree already
+  has `dist/` from the previous build. The `lint` script now builds it, and the CI
+  `lint` job has an explicit step for the same reason. Do not "optimise" that build
+  out of either one; if lint ever fails with an _error type_ where a type should
+  be, the artifact is missing rather than the code being wrong.
 - **The type-aware ESLint rules are on, and four are deliberately off.**
   `tseslint.configs.recommendedTypeChecked` is included, so the config's header
   claim about catching floating promises is now true rather than aspirational.
