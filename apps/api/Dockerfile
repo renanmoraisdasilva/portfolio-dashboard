@@ -37,6 +37,12 @@ COPY vitest.config.ts playwright.config.ts ./
 COPY fixtures/ fixtures/
 COPY e2e/ e2e/
 COPY static/ static/
+# `scripts/` because `scripts/config-integrity.test.ts` is part of the suite
+# `test:docker` runs. Without it the container runs 7 tests fewer than the host
+# and reports success — the same shape of failure as the missing
+# `vitest.config.ts` above, where the gap was invisible because nothing compared
+# the two counts. Builder only; the runtime stage needs none of these.
+COPY scripts/ scripts/
 COPY icon.png icon.png
 
 # Build (produces packages/shared/dist, apps/api/dist and apps/web/dist)
