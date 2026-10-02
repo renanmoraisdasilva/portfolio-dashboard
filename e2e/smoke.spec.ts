@@ -201,3 +201,89 @@ test('the retired GET /api/state aggregation is really gone', async ({ request }
   expect((await request.get('/api/trades')).status()).toBe(200);
   expect((await request.get('/api/portfolio/valuation')).status()).toBe(200);
 });
+
+/**
+ * The two documented failure paths, end to end.
+ *
+ * Every other test in this suite asserts a success. That leaves the contracts
+ * that matter most to a user — the ones that say *no* — exercised only by unit
+ * tests against mocked or in-process databases. Both of these were documented in
+ * the code and verified nowhere:
+ *
+ * - `ApiError.isConflict`, which the client relies on to show a rejected trade's
+ *   server message rather than a generic failure. It could not fire at all while
+ *   the 409 was derived from a substring check on the message text. It also cannot
+ *   be reached through the store's own request helper here, which is why this test
+ *   posts directly: the point is the wire contract.
+ * - A rejected backup, which now answers 400 with the offending rows named.
+ */
+test('a rejected trade answers 409 for a currency conflict, and 400 for a missing field', async ({ request }) => {
+  // `validateTradeRequest` distinguishes two kinds of rejection, and the client
+  // depends on the difference: `ApiError.isConflict` is what lets a view show the
+  // server's own message for a conflict rather than a generic failure.
+  //
+  // 409 is the *conflict* — the request is well-formed and the asset is tradeable,
+  // but it conflicts with the cash source chosen for it. BOVA11 is a BRL-denominated
+  // asset, so buying it out of the USD cash source is the conflict case.
+  const conflict = await request.post('/api/trades', {
+    data: { symbol: 'BOVA11', side: 'buy', qty: 1, price: 169.27, cashSource: 'USD' },
+  });
+  expect(conflict.status()).toBe(409);
+  const conflictBody = await conflict.json();
+  expect(typeof conflictBody.error).toBe('string');
+  expect(conflictBody.error.length).toBeGreaterThan(0);
+  // The message names both sides of the conflict, so it is actionable on its own.
+  expect(conflictBody.error).toContain('BOVA11');
+
+  // 400 is the *malformed* request — a missing quantity. Distinct status, and the
+  // same shape, because the status travels with the message rather than being
+  // derived from its wording.
+  const malformed = await request.post('/api/trades', { data: { symbol: 'BTC', side: 'buy' } });
+  expect(malformed.status()).toBe(400);
+
+  // Neither rejection wrote anything: the seeded trade count is unchanged, so the
+  // 409 path is a refusal and not a partial write.
+  const trades = await request.get('/api/trades').then((r) => r.json());
+  expect(trades.some((t: { symbol: string }) => t.symbol === 'BOVA11' && t.qty === 1)).toBe(false);
+});
+
+test('a malformed backup is refused with 400 naming the row, and nothing is replaced', async ({ request }) => {
+  const before = await request.get('/api/state/export').then((r) => r.json());
+  const tradeCountBefore = (await request.get('/api/trades').then((r) => r.json())).length;
+
+  const response = await request.post('/api/state/import', {
+    data: {
+      trades: [
+        { id: 'ok', symbol: 'BTC', side: 'buy', qty: 1, price: 100, time: '2026-01-01T00:00:00.000Z' },
+        { id: 'bad', symbol: 'BTC', side: 'buy', time: '2026-01-01T00:00:00.000Z' },
+      ],
+    },
+  });
+
+  // 400, not 500. The file is the problem, and a client cannot tell a bad file
+  // apart from a broken server if both answer 500.
+  expect(response.status()).toBe(400);
+  const body = await response.json();
+  expect(body.problems).toEqual([{ table: 'trades', index: 1, reason: '`qty` must be a finite number' }]);
+
+  // The load-bearing half: the restore is refused *before* anything is cleared, so
+  // the good row in the same payload does not land and the existing data survives.
+  const after = await request.get('/api/trades').then((r) => r.json());
+  expect(after.length).toBe(tradeCountBefore);
+  expect(after.some((t: { id: string }) => t.id === 'ok')).toBe(false);
+
+  // The export is unchanged too, which is what makes "a refused restore changed
+  // nothing" true of the tables the payload did not even mention.
+  const now = await request.get('/api/state/export').then((r) => r.json());
+  expect(now.trades.length).toBe(before.trades.length);
+});
+
+test('a backup that is not an object is refused before any table is touched', async ({ request }) => {
+  const response = await request.post('/api/state/import', { data: ['not', 'a', 'backup'] });
+
+  expect(response.status()).toBe(400);
+  expect((await response.json()).problems).toEqual([{ table: '(payload)', index: null, reason: 'must be a JSON object' }]);
+  // A well-formed empty payload is still a 200 no-op — the guard has to be the
+  // payload's *shape*, not "there was nothing to do".
+  expect((await request.post('/api/state/import', { data: {} })).status()).toBe(200);
+});

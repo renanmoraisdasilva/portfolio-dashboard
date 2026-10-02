@@ -929,6 +929,13 @@ tr:hover {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
   z-index: 2000;
   font-weight: 600;
+  /* A rejected backup is reported as one problem per line, and `white-space:
+     normal` is what lets those newlines exist at all — without it the whole list
+     renders as one run-on sentence and is unreadable. `pre-line` rather than
+     `pre-wrap` so a long reason still wraps instead of scrolling sideways. */
+  white-space: pre-line;
+  max-width: min(560px, calc(100vw - 48px));
+  text-align: left;
 }
 .toast.success {
   background: linear-gradient(90deg, #10b981, #06b6d4);

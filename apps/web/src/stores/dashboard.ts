@@ -57,6 +57,53 @@ export interface DashboardTrade {
   _tmpId?: string;
 }
 
+/** One entry from a `POST /api/state/import` 400 body. Mirrors `statePayload.ts` on the server. */
+interface ImportProblem {
+  table: string;
+  index: number | null;
+  reason: string;
+}
+
+/**
+ * How many problems to render in one toast.
+ *
+ * The server caps its own report at 20 and sends `omitted` for the rest, so this is
+ * a display limit rather than a safety one. Six is chosen because the toast is a
+ * corner panel and the point is to make the failure legible, not to reproduce the
+ * response body in a box the user has to dismiss.
+ */
+const MAX_RENDERED_PROBLEMS = 6;
+
+/**
+ * Turns a failed import into something a person can act on.
+ *
+ * A rejected backup used to read `POST /api/state/import failed with 500: Failed
+ * to import state` — a status that blamed the server for a bad file, and a message
+ * naming nothing about it. Restoring a backup is a recovery operation, so the one
+ * moment the message matters most is the moment it was least useful.
+ *
+ * A 400 carries the problem list; anything else falls back to the error's own
+ * message. `null` means "not an ApiError", which the caller turns into a generic
+ * failure rather than pretending to have detail.
+ */
+export function importErrorMessage(err: unknown): string | null {
+  if (!(err instanceof ApiError)) return null;
+  const details = err.details as { problems?: unknown; omitted?: unknown } | null;
+  const problems = Array.isArray(details?.problems) ? (details.problems as ImportProblem[]) : null;
+  if (err.status !== 400 || !problems?.length) return err.message;
+
+  const shown = problems.slice(0, MAX_RENDERED_PROBLEMS);
+  const lines = shown.map((p) => `${p.index === null ? p.table : `${p.table}[${p.index}]`}: ${p.reason}`);
+  // Two separate shortfalls: this function's own display cap, and the server's
+  // report cap. Both have to be counted, or a capped list reads as complete.
+  const omitted = typeof details?.omitted === 'number' ? details.omitted : 0;
+  const notShown = problems.length - shown.length + omitted;
+  if (notShown > 0) lines.push(`…and ${notShown} more`);
+
+  const total = problems.length + omitted;
+  return [`Backup rejected — ${total} problem${total === 1 ? '' : 's'}:`, ...lines].join('\n');
+}
+
 export const ALLOCATION_PALETTE = [
   '#dc2626',
   '#15803d',
@@ -953,19 +1000,28 @@ export const useDashboardStore = defineStore(
     }
 
     async function importData(file: File): Promise<string | null> {
-      let parsed: Record<string, unknown>;
+      let parsed: unknown;
       try {
-        parsed = JSON.parse(await file.text()) as Record<string, unknown>;
+        parsed = JSON.parse(await file.text());
       } catch {
         return 'Invalid JSON.';
       }
-      if (!Array.isArray(parsed.trades) || !Array.isArray(parsed.history)) return 'Invalid file format.';
+
+      // Only "is this an object" is checked here. The shape rules live in
+      // `statePayload.ts` on the server and nowhere else.
+      //
+      // This used to require `trades` *and* `history` to be arrays before sending,
+      // which contradicted the endpoint's own contract: an absent key deliberately
+      // leaves its table alone so a partial backup cannot empty a table, and
+      // `state.test.ts` tests exactly that. A legitimate partial restore was
+      // rejected here and never reached the server that would have handled it.
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return 'Not a backup file.';
 
       try {
         await request(api.POST('/state/import', { body: parsed }), 'POST', '/state/import');
       } catch (err) {
         console.warn('[dashboard] import failed:', err);
-        return err instanceof ApiError ? err.message : 'Server import failed';
+        return importErrorMessage(err);
       }
       await reloadState();
       return 'Data imported to server!';

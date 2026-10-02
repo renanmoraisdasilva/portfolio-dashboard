@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { all, get, runSync, transaction } from '../db';
 import { randomUUID } from 'node:crypto';
+import { validateImportPayload } from './statePayload';
 
 /**
  * Backup and restore for `portfolio.db`.
@@ -91,6 +92,31 @@ stateRouter.get('/export', async (req, res) => {
 });
 
 stateRouter.post('/import', async (req, res) => {
+  // Validation runs before the transaction, and returns before it opens.
+  //
+  // Three reasons, in order of how much damage each prevents:
+  //
+  // 1. **The status is now the right one.** A malformed file used to throw out of
+  //    `runSync`, roll back, and answer `500 Failed to import state` - the file was
+  //    the problem, and the client cannot tell that apart from a broken server.
+  // 2. **The report names the row.** Every problem is returned, not the first, so
+  //    one attempt tells the user everything to fix. Restoring a backup is a
+  //    recovery operation; "failed" is not a useful answer to it.
+  // 3. **Rows that would restore *silently wrong* are refused rather than
+  //    written.** These were the real hazard, because they reported success: a
+  //    `price_cache` row with a null price left a symbol valuing at zero, a `cash`
+  //    entry in a third currency is summed by no query, and a missing `scenarios
+  //    .data` stored the string `"undefined"`. See `statePayload.ts`.
+  const { problems, omitted } = validateImportPayload(req.body);
+  if (problems.length > 0) {
+    res.status(400).json({
+      error: 'Import payload is not a valid backup',
+      problems,
+      omitted,
+    });
+    return;
+  }
+
   try {
     const payload = req.body;
 

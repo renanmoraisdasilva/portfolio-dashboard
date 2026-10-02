@@ -60,8 +60,17 @@ paths:
         Replaces, it does not merge. Every table the payload carries is cleared
         before it is written, so a row absent from the backup is removed - which
         is what makes restoring an older backup able to undo a later mistake. A
-        key that is absent or not an array leaves its table untouched, so a
-        partial payload cannot empty a table. All of it runs in one transaction.
+        key that is absent leaves its table untouched, so a partial payload cannot
+        empty a table. All of it runs in one transaction.
+
+        The payload is validated first, and a payload that would restore a row
+        *silently wrong* is refused rather than written - a `price_cache` row with
+        a null price, a `cash` entry in a currency the balance query does not sum,
+        a scenario whose `data` is not a JSON string. Those are accepted by the
+        database and report success, which is worse than a refusal: nothing throws
+        and the balance is simply wrong. Validation completes before the
+        transaction opens, so nothing is written and no table is cleared, and every
+        problem is reported at once rather than one per attempt.
       requestBody:
         required: true
         content:
@@ -78,6 +87,43 @@ paths:
                 properties:
                   ok:
                     type: boolean
+        '400':
+          description: |
+            The payload is not a valid backup. Reported as a client error because
+            the file is the problem, not the server - this was a 500 with the body
+            `{"error":"Failed to import state"}`, which named nothing.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  problems:
+                    type: array
+                    description: |
+                      One entry per thing wrong with the payload. `index` is the
+                      row's zero-based position in its array, or `null` when the
+                      problem is with the payload as a whole.
+                    items:
+                      type: object
+                      properties:
+                        table:
+                          type: string
+                          description: The payload key the row came from.
+                        index:
+                          nullable: true
+                          type: integer
+                        reason:
+                          type: string
+                  omitted:
+                    type: integer
+                    description: |
+                      Problems found beyond the reported cap. The list is capped so
+                      a malformed file cannot produce an unbounded response; the
+                      count is always sent so a short list never reads as complete.
+        '500':
+          description: The restore failed for a reason that is not the payload's shape
   /cash:
     get:
       tags: [Cash]

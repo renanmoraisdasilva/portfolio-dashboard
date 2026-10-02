@@ -358,6 +358,122 @@ describe('POST /api/state/import — atomicity', () => {
   });
 });
 
+describe('POST /api/state/import — a malformed payload is refused, not attempted', () => {
+  const goodTrade = { id: 't-1', symbol: 'BTC', side: 'buy', qty: 1, price: 1, time: '2026-01-01T00:00:00.000Z' };
+
+  test('a bad row answers 400 naming the table, the index and the field', async () => {
+    // This used to be a 500 with the body `{ error: "Failed to import state" }`:
+    // the file was the problem, and a client cannot tell that apart from a broken
+    // server. It also named nothing, so restoring a backup — a recovery
+    // operation — produced one useless message per attempt.
+    const { status, body } = await restore({ trades: [{ ...goodTrade, id: 't-1', qty: undefined }] });
+
+    expect(status).toBe(400);
+    expect(body.error).toBe('Import payload is not a valid backup');
+    expect(body.problems).toEqual([{ table: 'trades', index: 0, reason: '`qty` must be a finite number' }]);
+    expect(body.omitted).toBe(0);
+  });
+
+  test('nothing is written and no table is deleted: validation runs before the transaction', async () => {
+    // The order is the assertion. Validating inside the transaction would still
+    // roll back, but it would open one to find out — and the guard that matters is
+    // that `mockedTransaction` was never called at all.
+    await restore({ trades: [{ ...goodTrade, id: 't-1', symbol: undefined }] });
+
+    expect(mockedTransaction).not.toHaveBeenCalled();
+    expect(mockedRunSync).not.toHaveBeenCalled();
+    expect(deletedFrom).toEqual([]);
+  });
+
+  test('every bad row is reported in one response, not just the first', async () => {
+    const { status, body } = await restore({
+      trades: [
+        { ...goodTrade, id: 't-1', qty: undefined },
+        { ...goodTrade, id: 't-2', symbol: undefined },
+      ],
+      priceCache: [{ symbol: 'BTC', price: null }],
+    });
+
+    expect(status).toBe(400);
+    expect((body.problems as Array<{ table: string; index: number }>).map((p) => `${p.table}[${p.index}]`)).toEqual([
+      'trades[0]',
+      'trades[1]',
+      'priceCache[0]',
+    ]);
+  });
+
+  test('a key that is present but not an array is refused rather than silently ignored', async () => {
+    // Every table is guarded by `Array.isArray(payload[key])` and left untouched
+    // otherwise — right for a partial backup, wrong for a typo. `{"trades": {}}`
+    // used to restore everything except the trades and report success.
+    const { status, body } = await restore({ trades: {}, history: [historyRow()] });
+
+    expect(status).toBe(400);
+    expect(body.problems).toEqual([{ table: 'trades', index: null, reason: 'must be an array' }]);
+    expect(mockedTransaction).not.toHaveBeenCalled();
+  });
+
+  test('a body that is not an object is refused', async () => {
+    const { status, body } = await restore(['not', 'a', 'backup']);
+
+    expect(status).toBe(400);
+    expect(body.problems).toEqual([{ table: '(payload)', index: null, reason: 'must be a JSON object' }]);
+  });
+
+  test('the overflow count is reported so a capped list never reads as complete', async () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({ ...goodTrade, id: `t-${i}`, qty: undefined }));
+    const { status, body } = await restore({ trades: rows });
+
+    expect(status).toBe(400);
+    expect(body.problems).toHaveLength(20);
+    expect(body.omitted).toBe(20);
+  });
+
+  test('a row that would restore silently wrong is refused, not written', async () => {
+    // A null `price_cache.price` is accepted by the database and leaves the symbol
+    // valuing at zero until the worker's next fetch, with nothing to indicate a
+    // restore caused it. This is the class that reported success.
+    const { status, body } = await restore({ priceCache: [{ symbol: 'BTC', price: null, ts: 1 }] });
+
+    expect(status).toBe(400);
+    expect(body.problems).toEqual([{ table: 'priceCache', index: 0, reason: '`price` must be a finite number' }]);
+    expect(mockedRunSync).not.toHaveBeenCalled();
+  });
+
+  test('a duplicate month is refused: `INSERT OR REPLACE` would drop a month of income', async () => {
+    // `idx_interest_month_currency` is unique, and the write replaces rather than
+    // errors — so the constraint never fires and the second row silently
+    // overwrites the first.
+    const { status, body } = await restore({
+      interestReaisMonths: [
+        { month: '2026-01', amount: 100 },
+        { month: '2026-01', amount: 250 },
+      ],
+    });
+
+    expect(status).toBe(400);
+    expect(body.problems[0].table).toBe('interestReaisMonths');
+    expect(body.problems[0].index).toBe(1);
+    expect(interest).toHaveLength(0);
+  });
+
+  test('a well-formed payload is still a 200', async () => {
+    // The guard against over-rejecting: a file the exporter itself produced has to
+    // keep importing, or the validation has broken the only backup path there is.
+    const { status, body } = await restore({
+      trades: [goodTrade],
+      history: [historyRow()],
+      interestReaisMonths: [{ month: '2026-01', amount: 100 }],
+      interestDollarsMonths: [{ month: '2026-01', amount: 5 }],
+      cashEntries: [{ id: 'c-1', currency: 'USD', amount: 10, description: '', ts: 1 }],
+    });
+
+    expect(status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(trades).toHaveLength(1);
+  });
+});
+
 describe('POST /api/state/import — the columns a restore must not drop', () => {
   test('carries trades.cash_entry_id, so a restored trade still reverses its cash', async () => {
     // Without this, a trade restored from a backup has no link to the cash

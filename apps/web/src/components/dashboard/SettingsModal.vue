@@ -56,7 +56,15 @@ async function onImportFile(event: Event): Promise<void> {
     return;
   }
   const message = await store.importData(file);
-  show(message ?? 'Data restored from backup', message ? 'error' : 'success');
+  if (message) {
+    // A rejected backup is one line per problem, so the default 4s timeout is not
+    // enough to read it — and the user cannot act on a list they did not see. The
+    // time scales with the length, bounded so a long list does not leave a toast
+    // parked on screen indefinitely.
+    show(message, 'error', Math.min(20000, 4000 + message.length * 60));
+  } else {
+    show('Data restored from backup', 'success');
+  }
   input.value = '';
 }
 </script>
