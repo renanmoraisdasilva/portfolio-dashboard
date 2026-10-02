@@ -252,7 +252,23 @@ export function computeValuation(input: ValuationInput): ValuationResult {
   total += brlToUSD(cash.cashReais, rate) + cash.cashDollars;
 
   const realized = input.realizedFromSells + brlToUSD(interest.brlTotal, rate) + interest.usdTotal;
-  const investedNet = Math.max(0, invested - realized);
+  /**
+   * Cost basis still held, net of what has been realized back out of it.
+   *
+   * This was `Math.max(0, invested - realized)`, and the clamp made the number
+   * wrong in the user's favour at exactly the moment it mattered: realized
+   * exceeding invested means more came out of the portfolio than ever went in, and
+   * reporting that as `0` says "nothing is at risk" when the true figure is a loss.
+   * Nothing else in the codebase depended on the floor — no consumer divides by it,
+   * and the one ratio that exists (`investedShareOfTotal`) uses gross `invested` —
+   * so removing it changes the reported figure and no invariant.
+   *
+   * The duplicate of this line in `portfolio.ts` and in the simulator store had the
+   * same clamp; all three now report the real figure. Two of those three are
+   * separate implementations of one rule, which is the drift this whole package
+   * exists to end — that duplication is 3.2 and is still open.
+   */
+  const investedNet = invested - realized;
   const unrealized = total - invested;
   const unrealizedPct = invested > 0 ? (unrealized / invested) * 100 : 0;
 

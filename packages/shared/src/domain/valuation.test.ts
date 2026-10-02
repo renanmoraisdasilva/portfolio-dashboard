@@ -73,9 +73,25 @@ describe('computeValuation totals', () => {
     expect(result.realized).toBeCloseTo(0 + 20 * 0.2 + 7, 8);
   });
 
-  test('investedNet is never negative, however much was realized', () => {
+  test('investedNet goes negative when realized exceeds invested', () => {
+    // It used to be `Math.max(0, invested - realized)`, which reported `0` here —
+    // "nothing is at risk" — when more had come out of the portfolio than ever
+    // went in. The honest figure is a loss, and this test now says so.
     const result = valuation({ realizedFromSells: 10_000_000, interest: { brlTotal: 0, usdTotal: 0 } });
-    expect(result.investedNet).toBe(0);
+    expect(result.investedNet).toBe(result.invested - result.realized);
+    expect(result.investedNet).toBeLessThan(0);
+  });
+
+  test('investedNet is exactly `invested - realized` at both signs', () => {
+    // The invariant the clamp broke, pinned on both sides so the arithmetic cannot
+    // drift either way. `valuation()` is the 150-invested / 140-realized fixture,
+    // which lands positive.
+    const positive = valuation();
+    expect(positive.investedNet).toBeCloseTo(positive.invested - positive.realized, 8);
+    expect(positive.investedNet).toBeGreaterThan(0);
+
+    const negative = valuation({ realizedFromSells: 10_000_000 });
+    expect(negative.investedNet).toBeCloseTo(negative.invested - negative.realized, 8);
   });
 
   test('unrealizedPct is measured against invested and is zero when nothing is invested', () => {

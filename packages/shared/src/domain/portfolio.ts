@@ -153,7 +153,21 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
     invested += cashDollars;
 
     const realized = realizedFromSells + brlToUSD(interestBRLMonthsTotal, brlUsdRate) + interestUSDMonthsTotal;
-    const investedNet = Math.max(0, invested - realized);
+    /**
+     * Not floored at zero.
+     *
+     * This clamp existed in three places — here, in `computeValuation`, and in the
+     * simulator store — and reported `0` where the honest figure was a loss, with
+     * no log and nothing on screen to say so. All three now report
+     * `invested - realized` unchanged.
+     *
+     * `computePortfolioValue` and `computeValuation` are two implementations of
+     * the same rules; keeping this line in step with `valuation.ts` is a manual
+     * obligation until that duplication is resolved (3.2, still open). Both are
+     * covered by their own test pinning the same negative figure, so a future
+     * change to one and not the other fails the build rather than shipping.
+     */
+    const investedNet = invested - realized;
 
     let total = 0;
     for (const symbol of Object.keys(lots)) {

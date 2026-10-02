@@ -216,7 +216,16 @@ export const useSimulationStore = defineStore(
       const st = portfolio.value;
       const v = valuation.value;
       const rate = brlUsdRate.value || 0;
-      const investedNet = Math.max(0, st.invested - st.realized);
+      // Not floored at zero — the same clamp existed here, in `computeValuation` and in
+      // `computePortfolioValue`, and reported `0` where the honest figure was a
+      // loss. All three now report the difference unchanged.
+      //
+      // Recomputed rather than read from `v.investedNet`, and that is deliberate:
+      // the simulator's `realized` is sell-only (its `computeValuation` call
+      // passes `interest: { brlTotal: 0, usdTotal: 0 }`), because simulated
+      // trades have no interest attached to them. Substituting the server's
+      // figure here would fold twelve months of real interest into a what-if.
+      const investedNet = st.invested - st.realized;
 
       return {
         totalValue: st.totalValue,

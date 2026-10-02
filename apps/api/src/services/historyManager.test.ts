@@ -116,20 +116,32 @@ describe('recomputeHistoryAt – result shape', () => {
     expect(result.brlusd_rate).toBeCloseTo(0.19);
   });
 
-  test('interest amounts are summed (BRL) and reduce investedNet', async () => {
+  test('interest amounts are summed per currency and reduce investedNet', async () => {
     const ts = Date.now();
     const brlusd = 0.2;
 
     mockedDb.all.mockImplementation((sql: string) => {
       if (sql.includes('FROM trades')) return Promise.resolve([]);
       if (sql.includes('FROM price_ticks')) return Promise.resolve([tick('BRLUSD', brlusd)]);
-      if (sql.includes('FROM interest')) return Promise.resolve([{ amount: 1000 }, { amount: 500 }]);
+      if (sql.includes("currency = 'BRL'")) return Promise.resolve([{ amount: 1000 }, { amount: 500 }]);
+      if (sql.includes("currency = 'USD'")) return Promise.resolve([{ amount: 200 }]);
       return Promise.resolve([]);
     });
     mockedDb.get.mockResolvedValue(undefined);
 
     const withInterest = await recomputeHistoryAt(ts);
-    expect(withInterest.i).toBe(0);
+
+    // No trades and no cash, so `invested` is 0 and `investedNet` is exactly
+    // minus the realized interest: BRL 1500 at 0.2 is 300, USD 200 is 200.
+    //
+    // **This test used to assert `toBe(0)` and so verified nothing.** With
+    // `investedNet` clamped at zero and nothing invested, the answer was 0 whether
+    // interest was summed correctly or not — it passed with the BRL conversion
+    // removed, the currencies swapped, or the sum dropped entirely. Splitting the
+    // two currency queries apart is part of that: the old stub answered both with
+    // the same rows, so it could not have detected a currency mix-up either.
+    // Removing the clamp is what made the assertion possible.
+    expect(withInterest.i).toBeCloseTo(-(1500 * brlusd + 200), 8);
   });
 });
 

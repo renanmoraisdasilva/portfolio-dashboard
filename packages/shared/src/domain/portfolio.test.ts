@@ -313,7 +313,15 @@ describe('computePortfolioValue', () => {
     expect(investedNet).toBeCloseTo(40000);
   });
 
-  test('investedNet is floored at 0 (never negative)', () => {
+  test('investedNet goes negative rather than being floored at 0', () => {
+    // The clamp was `Math.max(0, invested - realized)`, so a portfolio that
+    // realized more than it invested reported `0` — nothing at risk — where the
+    // honest figure is a loss. Here nothing was ever invested, so the answer is
+    // exactly `-realized`.
+    //
+    // `computePortfolioValue` and `computeValuation` are separate implementations
+    // of the same rule, so each is pinned to the same negative figure. Changing
+    // one and not the other fails the build instead of shipping.
     const lots = {};
     const prices = { BRLUSD: 0.2 };
 
@@ -325,7 +333,7 @@ describe('computePortfolioValue', () => {
       interestBRLMonthsTotal: 0,
       interestUSDMonthsTotal: 0,
     });
-    expect(investedNet).toBe(0);
+    expect(investedNet).toBe(-999999);
   });
 
   test('p = total - invested (unrealized P/L)', () => {
