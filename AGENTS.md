@@ -481,6 +481,22 @@ symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
   file as a _parsing error_, not a lint failure — so a new test directory silently
   loses type-aware linting unless `allowDefaultProject` names it. That option
   rejects `**`, hence one explicit glob per directory.
+- **A closed-out position produces no row, no allocation slice and no
+  `plByAsset` entry.** `replayFIFOLots` `shift()`s a fully-consumed lot but leaves
+  the key in `lots`, so `positions` legitimately holds `SPY: 0` after you sell all
+  of it — that is what keeps the arithmetic right, since every total is
+  bit-identical either way. `computeValuation` therefore keeps `positions` and
+  `symbols_` untouched and filters a separate `openSymbols` for the three
+  consumers a caller sees. The reason this is worth stating: nothing was _wrong_,
+  only _shown_ — a zero row reading `$0.00`, and a zero allocation slice that
+  diluted every real percentage because those are computed over
+  `allocationTotal`. One closed position moved a correct `85.71%` onto a larger
+  denominator.
+  - **The per-row division guards are still load-bearing.** The filter is
+    `qty !== 0`, and `NaN !== 0` is `true`, so a trade with a non-finite quantity
+    reaches `avgCost: qty > 0 ? cost / qty : 0`. `valuation.test.ts` drives that
+    case; do not conclude the guards are dead because closed positions no longer
+    get rows.
 - **The maintenance backfills are gone: `routes/migrations.ts`, `services/cashBackfill.ts` and both endpoints.** Backfill Cash History ran `DELETE FROM cash` and rebuilt the balance from estimates, so one unconfirmed click in the UI zeroed the entire USD balance and destroyed every cash entry belonging to a trade; it had already done its one-time job. (Do not quote the real balance here, or anywhere else in the tree: this document is published, and a figure from the live account is not a detail a showcase needs. The scale of the loss is the point, not the number.) Backfill Price History was additive and idempotent, but `price_ticks` refills itself from the worker's own fetcher. `DELETE /api/history` ("Clear History") and `DELETE /api/state` ("Erase All") went with them, since a restore is now a true replace. The Settings modal is down to three tools: Export, Import, Test Notify.
 
 - **The app serves no arbitrary-SQL endpoint.** There is no route that takes a

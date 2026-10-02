@@ -232,7 +232,33 @@ export function computeValuation(input: ValuationInput): ValuationResult {
   for (const symbol of Object.keys(lots)) {
     positions[symbol] = sum(lots[symbol].map((lot) => lot.qty));
   }
+
+  /**
+   * Symbols with a position still open, for everything the user is shown.
+   *
+   * `positions` deliberately keeps a key for a symbol whose lots have all been
+   * consumed: `replayFIFOLots` `shift()`s the last lot off but leaves the key, so
+   * a closed-out position reads as `qty: 0` rather than as absent. That is right
+   * for the arithmetic — `nativeCost` over an empty lot list is `0`, and every
+   * total is unchanged either way — and wrong for presentation, where it produced
+   * a permanent row reading `0` quantity and `$0.00`, plus a zero allocation slice
+   * that diluted every real percentage.
+   *
+   * So the filter is here, at the boundary between the arithmetic and everything
+   * rendered, and `positions` itself is untouched. Two things depend on that:
+   *
+   * - `symbols_` is still `Object.keys(positions)`, so `invested`, `total` and the
+   *   BRL conversions keep summing over every symbol ever traded. Filtering it
+   *   would be a no-op today, because a closed position contributes zero to each —
+   *   which is exactly why the bug survived: nothing was *wrong*, just shown.
+   * - `plByAsset` uses the filtered list too, since a `0` there is the same lie in
+   *   a different chart.
+   *
+   * `qty === 0` exactly, not "was ever traded": a partial sale leaves a non-zero
+   * remainder and must still be listed.
+   */
   const symbols_ = Object.keys(positions);
+  const openSymbols = symbols_.filter((symbol) => positions[symbol] !== 0);
 
   /** Lot cost in the symbol's own currency, before any BRL conversion. */
   // Safe without a guard: every key of `positions` came from `lots`, so a closed
@@ -276,7 +302,7 @@ export function computeValuation(input: ValuationInput): ValuationResult {
   const tickerValue = sum(tickerSymbols.map((s) => toUSD(s, nativeValue(s))));
   const investedPct = total > 0 ? (tickerValue / total) * 100 : 0;
 
-  const rows: PositionRow[] = symbols_.map((symbol) => {
+  const rows: PositionRow[] = openSymbols.map((symbol) => {
     const qty = positions[symbol];
     const cost = nativeCost(symbol);
     const current = prices[symbol] ?? 0;
@@ -371,8 +397,10 @@ export function computeValuation(input: ValuationInput): ValuationResult {
     }
   }
 
-  const labels = [...symbols_];
-  const slices = symbols_.map((s) => toUSD(s, nativeValue(s)));
+  // Filtered like `rows` — a zero slice dilutes every percentage, and a closed-out
+  // position has nothing to allocate.
+  const labels = [...openSymbols];
+  const slices = openSymbols.map((s) => toUSD(s, nativeValue(s)));
   if (input.includeCashInAllocation) {
     if (cash.cashReais > 0) {
       labels.push('BRL');
@@ -390,7 +418,7 @@ export function computeValuation(input: ValuationInput): ValuationResult {
     pct: allocationTotal > 0 ? (slices[i] / allocationTotal) * 100 : 0,
   }));
 
-  const plByAsset = symbols_.map((symbol) => ({
+  const plByAsset = openSymbols.map((symbol) => ({
     symbol,
     pl: toUSD(symbol, nativeValue(symbol) - nativeCost(symbol)),
   }));

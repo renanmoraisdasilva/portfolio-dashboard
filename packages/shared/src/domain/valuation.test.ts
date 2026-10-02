@@ -338,6 +338,82 @@ describe('computeValuation allocation', () => {
     const result = valuation({ cash: { cashReais: 0, cashDollars: 0 }, includeCashInAllocation: true });
     expect(result.allocation.map((s) => s.label)).toEqual(['BTC', 'SPY']);
   });
+
+  test('a closed-out position gets no allocation slice', () => {
+    // Buy 10 SPY and sell all 10. `replayFIFOLots` `shift()`s the consumed lot
+    // but leaves the key in `lots`, so `positions.SPY` is `0` — and a slice worth
+    // nothing is not a slice. It also dilutes every other percentage, because the
+    // percentages are over `allocationTotal`.
+    const result = valuation({
+      trades: [...baseInput.trades, { symbol: 'SPY', side: 'sell', qty: 10, price: 500 }],
+    });
+
+    expect(result.allocation.map((s) => s.label)).toEqual(['BTC']);
+    // 100% of the portfolio, not 85.7% with the remainder on a dead slice.
+    expect(result.allocation[0].pct).toBeCloseTo(100, 8);
+  });
+});
+
+describe('computeValuation — a closed-out position', () => {
+  /** Buy and then fully sell SPY, leaving only BTC open. */
+  const closed = () =>
+    valuation({
+      trades: [...baseInput.trades, { symbol: 'SPY', side: 'sell', qty: 10, price: 500 }],
+      // `realizedFromSells` is an input: every server-side caller passes it from
+      // `computeRealizedFromSales`, which owns the FIFO walk. 10 sold at 500
+      // against a 400 basis is 1000.
+      realizedFromSells: 1_000,
+    });
+
+  test('does not leave a zero-quantity row in the positions table', () => {
+    // The symptom: a permanent row reading `0` quantity, `$0.00` value and `$0.00`
+    // P/L, indistinguishable from a real position that happens to be worthless.
+    const rows = closed().rows;
+    expect(rows.map((r) => r.symbol)).not.toContain('SPY');
+    expect(rows.map((r) => r.symbol)).toContain('BTC');
+    expect(rows.every((r) => r.qty !== 0)).toBe(true);
+  });
+
+  test('keeps the realized P/L it booked', () => {
+    // The point of a closed position is that the gain is still reported. Filtering
+    // the *row* must not filter the sale.
+    //
+    // `realizedFromSells` is an input, not something `computeValuation` derives —
+    // every server-side caller passes it from `computeRealizedFromSales`, which is
+    // the single FIFO walk. So the fixture supplies it, as the routes do.
+    const result = closed();
+    expect(result.realized).toBeCloseTo(10 * (500 - 400), 8);
+  });
+
+  test('stops counting it as invested, which it already did', () => {
+    // The arithmetic was always right — an empty lot list sums to zero cost — so
+    // `invested` is unaffected. This pins that the fix is presentation only.
+    const open = valuation();
+    const shut = closed();
+    expect(shut.invested).toBeCloseTo(open.invested - 10 * 400, 8);
+    expect(shut.total).toBeCloseTo(open.total - 5_000, 8);
+  });
+
+  test('plByAsset omits it too', () => {
+    // A `0` entry in the P/L-by-asset list is the same lie in a different chart.
+    expect(closed().plByAsset.map((p) => p.symbol)).toEqual(['BTC']);
+  });
+
+  test('a genuinely unsold position is untouched', () => {
+    // The guard has to be `qty === 0`, not "was ever traded".
+    const result = valuation();
+    expect(result.rows.map((r) => r.symbol)).toEqual(['BTC', 'SPY']);
+    expect(result.allocation.map((s) => s.label)).toEqual(['BTC', 'SPY']);
+  });
+
+  test('partially sold still appears, with the remaining quantity', () => {
+    const result = valuation({
+      trades: [...baseInput.trades, { symbol: 'SPY', side: 'sell', qty: 4, price: 500 }],
+    });
+    const spy = result.rows.find((r) => r.symbol === 'SPY');
+    expect(spy).toBeDefined();
+    expect(spy?.qty).toBeCloseTo(6, 8);
+  });
 });
 
 describe('computeValuation plByAsset', () => {
@@ -360,9 +436,17 @@ describe('computeValuation plByAsset', () => {
 
 describe('degenerate inputs', () => {
   /**
-   * A position whose lots are all consumed still appears in `positions`, at
-   * quantity zero. Every per-row division has a zero denominator there, and the
-   * alternative is `NaN` in a table cell.
+   * A position whose lots are all consumed.
+   *
+   * It used to still appear in `rows`, at quantity zero, and these tests pinned
+   * that its per-row divisions reported `0` rather than `NaN`. It no longer
+   * appears at all — see `openSymbols` in `valuation.ts` — so what is asserted now
+   * is the invariant the old tests were reaching for, at the level it actually
+   * holds: **no row the caller receives ever carries a NaN.**
+   *
+   * The division guards are still load-bearing rather than dead, because the
+   * filter is `qty !== 0` and `NaN !== 0` is `true` — so a trade carrying a
+   * non-finite quantity passes straight through it. That is the case below.
    */
   const closedOut = (symbol: string) => ({
     trades: [
@@ -373,18 +457,40 @@ describe('degenerate inputs', () => {
     cash: { cashReais: 0, cashDollars: 0 },
   });
 
+  /** Every numeric field of every row, so a NaN cannot hide in an unasserted column. */
+  const numbersIn = (rows: Array<Record<string, unknown>>): number[] =>
+    Object.values(rows).flatMap((row) => Object.values(row).filter((v): v is number => typeof v === 'number'));
+
   test.each([
     ['a USD symbol', 'BTC'],
     ['a BRL non-bond', 'BOVA11'],
     ['a bond', 'BOVB11'],
-  ])('a closed-out %s reports zero averages rather than NaN', (_label, symbol) => {
+  ])('a closed-out %s contributes no row and no NaN', (_label, symbol) => {
     const result = valuation(closedOut(symbol));
-    const row = result.rows.find((r) => r.symbol === symbol);
+
+    expect(result.rows.map((r) => r.symbol)).not.toContain(symbol);
+    expect(result.allocation.map((s) => s.label)).not.toContain(symbol);
+    for (const value of numbersIn(result.rows as unknown as Array<Record<string, unknown>>)) {
+      expect(Number.isNaN(value)).toBe(false);
+    }
+  });
+
+  test('a non-finite quantity still yields a zero-valued row, not a NaN and not a vanished row', () => {
+    // The guards `qty > 0 ? cost / qty : 0` are reachable precisely because
+    // `NaN !== 0`, so the filter lets this through. Without the guards this row
+    // would carry `NaN` averages — which is the failure the original tests were
+    // written to prevent, and it is still reachable after the filter.
+    const result = valuation({
+      trades: [{ symbol: 'BTC', side: 'buy', qty: Number.NaN, price: 10 }],
+      prices: { BTC: 12, BRLUSD: 0.2 },
+      cash: { cashReais: 0, cashDollars: 0 },
+    });
+
+    const row = result.rows.find((r) => r.symbol === 'BTC');
     expect(row).toBeDefined();
-    expect(row?.qty).toBe(0);
-    expect(row?.avgCost).toBe(0);
     expect(Number.isNaN(row?.avgCost ?? NaN)).toBe(false);
     expect(Number.isNaN(row?.plPct ?? NaN)).toBe(false);
+    expect(row?.avgCost).toBe(0);
     expect(row?.plPct).toBe(0);
   });
 
