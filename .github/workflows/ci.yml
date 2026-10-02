@@ -123,16 +123,32 @@ jobs:
           curl -fsS -o /dev/null -w 'dashboard %{http_code}\n' http://127.0.0.1:3300/
           curl -fsS -o /dev/null -w 'valuation %{http_code}\n' http://127.0.0.1:3300/api/portfolio/valuation
 
-          # `docker stop` sends SIGTERM and waits out the grace period. The exit
-          # code has to be 0: a non-zero exit is what a crashed container returns
-          # too, so without this a broken shutdown would look identical to a
-          # clean one.
-          stop=$(docker stop -w 20 -t 20 pd && echo stopped)
-          echo "$stop"
+          # `docker stop` sends SIGTERM and waits out the grace period, so this is
+          # exactly what a deploy issues. Only `-t/--timeout` is valid here: `-w`
+          # belongs to `docker run`, and passing it fails the step with exit 125
+          # before the container is ever signalled.
+          docker stop -t 20 pd
+
+          # The exit code has to be 0. A crashed container also ends with a
+          # non-zero code, so without this a broken shutdown would look identical
+          # to a clean one.
           code=$(docker inspect -f '{{.State.ExitCode}}' pd)
-          echo "exit code: $code"
-          test "$code" = "0"
+          echo "exit code after stop: $code"
+          if [ "$code" != "0" ]; then
+            echo "::error::container exited $code on SIGTERM; the shutdown path did not run cleanly"
+            docker logs pd
+            exit 1
+          fi
 
           # And the handler has to have run, not just the process to have ended.
-          docker logs pd 2>&1 | grep -E 'SIGTERM received|WAL checkpointed|shutdown complete'
+          # `process.exit(0)` on an unhandled path would satisfy the exit code
+          # while skipping the WAL checkpoint.
+          docker logs pd 2>&1 | grep -E 'SIGTERM received' || {
+            echo "::error::no SIGTERM handler ran"
+            exit 1
+          }
+          docker logs pd 2>&1 | grep -E 'WAL checkpointed and connection closed' || {
+            echo "::error::the database was not closed cleanly, so the WAL was not checkpointed"
+            exit 1
+          }
           docker rm -f pd
