@@ -52,9 +52,26 @@ export interface ReplayResult {
   realizedByTradeIndex: number[];
 }
 
+/**
+ * The calculator as a set of independent functions.
+ *
+ * Every member is declared `this: void`, and that is load-bearing rather than
+ * decoration. `apps/api/src/services/portfolioCalculator.ts` re-exports these by
+ * detaching them from the returned object — `export const replayFIFOLots =
+ * calculator.replayFIFOLots` — which is the whole point of a factory that closes
+ * over a symbol map instead of a class. It works because none of them touch
+ * `this`, and saying so in the type is what makes it *stay* working: convert a
+ * declaration to a method that reads `this` and these three re-exports break
+ * silently, at runtime, on the first call.
+ *
+ * `unbound-method` is what surfaced this. It is a true positive about the shape
+ * and a false positive about the intent, so the fix was to state the invariant
+ * rather than to restructure the module.
+ */
 export interface PortfolioCalculator {
-  isBRLNonBond(symbol: string): boolean;
+  isBRLNonBond(this: void, symbol: string): boolean;
   replayFIFOLots(
+    this: void,
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
     fallbackPrices?: Record<string, number>,
   ): Record<string, LotEntry[]>;
@@ -65,10 +82,11 @@ export interface PortfolioCalculator {
    * which every server-side consumer of realized P/L goes through.
    */
   replayTradesWithRealized(
+    this: void,
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
     fallbackPrices?: Record<string, number>,
   ): ReplayResult;
-  computePortfolioValue(input: PortfolioInput): PortfolioResult;
+  computePortfolioValue(this: void, input: PortfolioInput): PortfolioResult;
 }
 
 /**

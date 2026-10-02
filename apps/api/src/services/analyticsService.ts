@@ -340,7 +340,19 @@ export function computePnLSharpeStats(points: SnapshotPnLPoint[], annualRiskFree
   };
 }
 
-export function periodStartMs(period: Period | string, now = Date.now()): number {
+/**
+ * The timestamp a period starts at, or `0` for "all time".
+ *
+ * The parameter is a plain `string`, not `Period`. It was `Period | string`, which
+ * TypeScript collapses to `string` — so the annotation advertised a closed set
+ * while the switch enumerated five of them and let everything else fall through to
+ * `0`. The fallback is deliberate and tested (`'6M'` and `''` both answer `0`),
+ * because the value arrives from an analytics query parameter the server does not
+ * validate against `PERIODS`. So the type now says what the code does: any string,
+ * unknown ones meaning "no lower bound". `Period` remains the type for a value
+ * that has actually been checked.
+ */
+export function periodStartMs(period: string, now = Date.now()): number {
   switch (period) {
     case '1W':
       return now - 7 * DAY_MS;

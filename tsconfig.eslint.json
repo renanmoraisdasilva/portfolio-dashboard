@@ -1,0 +1,47 @@
+{
+  // Lint-only project. Nothing builds from this file and nothing includes it —
+  // it exists so `projectService` in `eslint.config.mjs` has a program for the
+  // TypeScript that no application tsconfig claims.
+  //
+  // Which files those are, and why they need this:
+  //
+  // - `*.test.ts` under `apps/api`, because `apps/api/tsconfig.json` *excludes*
+  //   them. That exclude is load-bearing — it is what stopped `tsc` compiling the
+  //   suites into `dist/` and breaking `test:docker` — so it is not going away.
+  // - `vitest.config.ts` and `scripts/*.test.ts`, which live at the root or
+  //   outside `src/` and so belong to no app project.
+  //
+  // Without this, `projectService` reports "not found by the project service" on
+  // 35 files, which ESLint surfaces as a *parsing error* rather than a lint
+  // failure — so the type-aware rules silently stop applying to a third of the
+  // codebase. `allowDefaultProject` caps at 8 files by default and
+  // `maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING` is the
+  // escape hatch; a real project is better than both.
+  //
+  // `noEmit` and `checkJs: false` because nothing here compiles. The point is
+  // only that the parser has types to reason about.
+  //
+  // Deliberately **not** strict: `allowDefaultProject` files are the ones no
+  // project claims, and turning on `strict` here would report errors in files
+  // that their real project already governs differently.
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "types": ["node"]
+  },
+  "include": [
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "scripts/**/*.ts",
+    "e2e/**/*.ts",
+    "apps/api/src/**/*.test.ts",
+    "apps/api/*.config.ts",
+    "apps/web/*.config.ts",
+    "packages/shared/src/**/*.test.ts"
+  ]
+}

@@ -449,6 +449,38 @@ symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
   Migration `0007` coalesces both columns during the copy (the generated SQL
   would abort on a NULL row) and the reader still coerces with `?? 0`, because
   the failure mode here is a silently wrong comparison rather than an error.
+- **Express 4 does not await an async route handler, so `async` + `try/catch` is
+  the error-handling strategy here.** Express types a handler as returning `void`
+  and ignores the return value; a rejected promise from an `async` handler is
+  unhandled and the request hangs rather than answering 500. Every route in
+  `routes/` is therefore `async` with its own `try/catch` that answers a failure
+  explicitly. Do not "clean up" an `async` that has no `await` — that is why
+  `require-await` and `no-misused-promises` are both disabled in
+  `eslint.config.mjs`, with the reasoning inline. The trade is real: a handler
+  added without a `try/catch` fails silently, and nothing enforces that. Express 5
+  would fix it by awaiting handlers and rejecting through middleware.
+- **The type-aware ESLint rules are on, and four are deliberately off.**
+  `tseslint.configs.recommendedTypeChecked` is included, so the config's header
+  claim about catching floating promises is now true rather than aspirational.
+  Disabled, each with the reasoning in `eslint.config.mjs`:
+  - the `no-unsafe-*` family — 462 of the first run's 565 findings were downstream
+    of 41 `any`s, i.e. one problem reported 462 times. Re-enable when
+    `no-explicit-any` reaches zero; the lever is `db.ts`, whose helpers are
+    generic but default `T = any`.
+  - `no-misused-promises` and `require-await` — both fire on every Express handler.
+  - `no-unnecessary-type-assertion` — **it has a wrong autofix.** It called
+    `t.symbol as string` unnecessary in `stores/dashboard.ts` where `Trade.symbol`
+    is `symbol?: string` in the generated schema; `--fix` removed the assertions
+    and `npm run build` failed with `TS2322`. Its program resolves the type
+    through the workspace `.d.ts` chain, `vue-tsc` through the generated source,
+    and they disagree. Do dead casts by hand and let `vue-tsc` be the authority.
+- **`projectService` needs `tsconfig.eslint.json`, and it must be kept in sync.**
+  `apps/api/tsconfig.json` excludes `*.test.ts` (load-bearing: it stops `tsc`
+  compiling suites into `dist/` and breaking `test:docker`), so the suites belong
+  to no project and get the default one instead. ESLint reports an unresolvable
+  file as a _parsing error_, not a lint failure — so a new test directory silently
+  loses type-aware linting unless `allowDefaultProject` names it. That option
+  rejects `**`, hence one explicit glob per directory.
 - **The maintenance backfills are gone: `routes/migrations.ts`, `services/cashBackfill.ts` and both endpoints.** Backfill Cash History ran `DELETE FROM cash` and rebuilt the balance from estimates, so one unconfirmed click in the UI zeroed the entire USD balance and destroyed every cash entry belonging to a trade; it had already done its one-time job. (Do not quote the real balance here, or anywhere else in the tree: this document is published, and a figure from the live account is not a detail a showcase needs. The scale of the loss is the point, not the number.) Backfill Price History was additive and idempotent, but `price_ticks` refills itself from the worker's own fetcher. `DELETE /api/history` ("Clear History") and `DELETE /api/state` ("Erase All") went with them, since a restore is now a true replace. The Settings modal is down to three tools: Export, Import, Test Notify.
 
 - **The app serves no arbitrary-SQL endpoint.** There is no route that takes a

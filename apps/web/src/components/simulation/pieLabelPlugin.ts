@@ -1,4 +1,7 @@
 import type { ArcElement, Plugin } from 'chart.js';
+// Shared with the dashboard's plugin, which renders the same labels differently
+// but must agree on what a label *is* — see `labelText`.
+import { labelText } from '../dashboard/pieLabelPlugin';
 
 export interface PieLabelOptions {
   /** Slices below this share go to the side list instead of onto the arc. */
@@ -51,7 +54,7 @@ export const pieLabelPlugin: Plugin<'doughnut'> = {
     meta.data.forEach((element, i) => {
       const value = Number(dataset.data[i]) || 0;
       const pct = total > 0 ? (value / total) * 100 : 0;
-      const label = String(chart.data.labels?.[i] ?? '');
+      const label = labelText(chart.data.labels?.[i]);
       if (pct >= threshold) {
         const arc = element as ArcElement;
         const midAngle = (arc.startAngle + arc.endAngle) / 2;

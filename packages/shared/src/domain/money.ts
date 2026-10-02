@@ -82,12 +82,26 @@ export interface SymbolMeta {
 
 export type SymbolMap = Record<string, SymbolMeta | undefined>;
 
+/**
+ * Symbol predicates bound to one registry.
+ *
+ * `this: void` on every member, for the same reason as `PortfolioCalculator`: the
+ * whole point of these factories is that they close over a symbol map so callers
+ * can take a bare `isBRLBond` out of the object and pass it around. That is safe
+ * because none of them read `this`, and declaring it is what keeps it safe — a
+ * member converted to a method that reads `this` would break every detached
+ * reference at runtime rather than at the type check.
+ *
+ * Every consumer detaches at least one of these: both Vue stores hold a
+ * classifier and call `classifier.isBRLAsset(...)` through it, while
+ * `createPortfolioCalculator` destructures `isBRLNonBond` straight out.
+ */
 export interface SymbolClassifier {
-  isBRLAsset(symbol: string): boolean;
+  isBRLAsset(this: void, symbol: string): boolean;
   /** BRL-denominated and not a bond: prices must be multiplied by BRLUSD to reach USD. */
-  isBRLNonBond(symbol: string): boolean;
+  isBRLNonBond(this: void, symbol: string): boolean;
   /** BRL-denominated bond: the form shows BRL, the database stores USD. */
-  isBRLBond(symbol: string): boolean;
+  isBRLBond(this: void, symbol: string): boolean;
 }
 
 /**

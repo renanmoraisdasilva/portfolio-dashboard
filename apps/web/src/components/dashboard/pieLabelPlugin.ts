@@ -8,6 +8,25 @@ export interface PieLabelOptions {
 }
 
 /**
+ * A doughnut label as text, or an empty string.
+ *
+ * Chart.js types `data.labels` as an array of arbitrary values, and `String()` on
+ * anything that is not a primitive yields `[object Object]` — which is what this
+ * would have drawn on the canvas had a label ever been structured. The two callers
+ * (dashboard and simulator) share the rule rather than each re-deriving it, for
+ * the same reason `formatMoney` is shared: a rendering detail duplicated across
+ * two charts is one that drifts.
+ */
+export function labelText(label: unknown): string {
+  if (typeof label === 'string') return label;
+  if (typeof label === 'number' || typeof label === 'bigint' || typeof label === 'boolean') return String(label);
+  // A date is a legitimate slice name and reads usefully; anything else is a
+  // structure we do not know how to name, so it gets no chip rather than a lie.
+  if (label instanceof Date) return label.toLocaleDateString();
+  return '';
+}
+
+/**
  * Allocation doughnut labels for the dashboard.
  *
  * Same idea as the simulator's plugin but a different rendering: slices above
@@ -60,7 +79,7 @@ export const dashboardPieLabelPlugin: Plugin<'doughnut'> = {
         ctx.lineWidth = 1;
 
         ctx.font = nameFont;
-        const name = String(chart.data.labels?.[i] ?? '');
+        const name = labelText(chart.data.labels?.[i]);
         const nameW = ctx.measureText(name).width;
         ctx.font = pctFont;
         const pctText = `${pct.toFixed(1)}%`;
@@ -78,7 +97,7 @@ export const dashboardPieLabelPlugin: Plugin<'doughnut'> = {
         ctx.fillText(pctText, x, y + (padY / 2 + 6));
         ctx.restore();
       } else {
-        smallItems.push({ label: String(chart.data.labels?.[i] ?? ''), pct });
+        smallItems.push({ label: labelText(chart.data.labels?.[i]), pct });
       }
     });
 
