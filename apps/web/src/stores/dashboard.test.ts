@@ -137,6 +137,35 @@ describe('dashboard store — a healthy server', () => {
     expect(row.pl).toBe('+R$19943.92');
   });
 
+  test('a losing position signs its P/L with a minus, not a doubled sign', async () => {
+    // The two row tests above only ever asserted a *positive* `pl`, which is
+    // why the sign bug survived. `pl` was rendered by prepending
+    // `` `${row.pl >= 0 ? '+' : ''}` `` onto a magnitude that already interpolated
+    // `` `$${row.pl.toFixed(2)}` ``, so a loss came out as `$-1234.56` — the
+    // currency symbol ahead of the minus. The BRL branch of the position table went
+    // through `formatMoney` and was already correct, so only the USD branch and the
+    // cash row were wrong.
+    //
+    // Driven by stubbing a losing valuation rather than by calling the private
+    // `legacySigned` helper, so what is asserted is what the table renders.
+    const losing = {
+      ...VALUATION,
+      rows: VALUATION.rows.map((row) => (row.symbol === 'BTC' ? { ...row, pl: -1_234.56, plPct: -39.28 } : row)),
+    };
+    stubNetwork(defaultRoutes().map((r) => (r.match('/api/portfolio/valuation') ? { ...r, body: losing } : r)));
+
+    const store = await loadStore();
+    await store.load();
+
+    const row = store.positionRows[0];
+    expect(row.pl).toBe('-$1234.56');
+    expect(row.pl.startsWith('+-')).toBe(false);
+    expect(row.positive).toBe(false);
+    // The percentage column is a separate formatter and was always correct;
+    // pinning both together is what makes the pair a regression guard.
+    expect(row.plPct).toBe('-39.28%');
+  });
+
   test('positions and cash rows are separate lists, as the table renders them', async () => {
     const store = await loadStore();
     await store.load();

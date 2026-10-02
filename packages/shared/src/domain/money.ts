@@ -50,17 +50,60 @@ export function usdToBRL(amount: number, brlUsdRate: number): number {
 /**
  * `maxFractionDigits` defaults to the locale default (2). Chart axes and
  * tooltips pass 0 — they render thousands of values and the cents are noise.
+ *
+ * The `Intl.NumberFormat` instances are memoised. Constructing one is
+ * comparatively expensive and these run inside computed properties that are
+ * re-evaluated on every reactive tick — a positions table is hundreds of calls
+ * per render. The key covers every option that changes the output, so two
+ * currencies never share a formatter and `maximumFractionDigits: 0` cannot be
+ * served by the 2-decimal one.
  */
+const formatterCache = new Map<string, Intl.NumberFormat>();
+
+function formatterFor(currency: Currency, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const locale = currency === 'BRL' ? 'pt-BR' : 'en-US';
+  // Built by hand rather than from JSON.stringify(options), so it stays obvious
+  // which options are load-bearing if the set ever grows.
+  const key = `${locale}|${options.style}|${options.currency}|${options.maximumFractionDigits ?? ''}`;
+  let formatter = formatterCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, options);
+    formatterCache.set(key, formatter);
+  }
+  return formatter;
+}
+
 export function formatMoney(val: number | string | null | undefined, currency: Currency, maxFractionDigits?: number): string {
   const value = typeof val === 'number' ? val : Number(val) || 0;
   const options: Intl.NumberFormatOptions =
     maxFractionDigits == null
       ? { style: 'currency', currency }
       : { style: 'currency', currency, maximumFractionDigits: maxFractionDigits };
-  if (currency === 'BRL') {
-    return new Intl.NumberFormat('pt-BR', options).format(value);
-  }
-  return new Intl.NumberFormat('en-US', options).format(value);
+  return formatterFor(currency, options).format(value);
+}
+
+/**
+ * `formatMoney` with an explicit sign: `+$1,234.56` / `-$1,234.56`.
+ *
+ * Both Vue stores carried a local `signedUsd`/`signedBrl` pair doing
+ * `` `${n >= 0 ? '+' : ''}${usd(n)}` `` over a hand-rolled `` `$` + `toLocaleString` ``.
+ * That is right for an ordinary positive, and wrong for two cases the store tests
+ * never asserted:
+ *
+ * - **Negative zero.** `-0 >= 0` is `true`, so it took the `+` branch and then
+ *   formatted `-0`, which `Intl` renders as `-$0.00`. The result was `+$-0.00`: two
+ *   signs. Formatting the magnitude here means `-0` collapses to `+0` first.
+ * - **Anything reaching the legacy `$-` form** — see `legacySigned` in
+ *   `stores/dashboard.ts`, where the same rule was spelled `` `$${x.toFixed(2)}` ``
+ *   and put the symbol ahead of the minus.
+ *
+ * So the magnitude is formatted separately and the sign supplied here, rather than
+ * prepended to a string that may already carry one.
+ */
+export function formatSigned(val: number | string | null | undefined, currency: Currency, maxFractionDigits?: number): string {
+  const value = typeof val === 'number' ? val : Number(val) || 0;
+  const magnitude = formatMoney(Math.abs(value), currency, maxFractionDigits);
+  return value >= 0 ? `+${magnitude}` : `-${magnitude}`;
 }
 
 export function parseMoney(str: number | string | null | undefined, currency: Currency): number {

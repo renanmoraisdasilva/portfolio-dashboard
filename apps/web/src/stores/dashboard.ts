@@ -1,7 +1,14 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
-import { computeProjection, createSymbolClassifier, formatMoney, parseMoney, type SymbolMap } from '@portfolio-dashboard/shared';
+import {
+  computeProjection,
+  createSymbolClassifier,
+  formatMoney,
+  formatSigned,
+  parseMoney,
+  type SymbolMap,
+} from '@portfolio-dashboard/shared';
 import { ApiError, request, useApi } from '../composables/useApi';
 
 export type Trade = components['schemas']['Trade'];
@@ -67,10 +74,61 @@ export const ALLOCATION_PALETTE = [
 
 const CASH_ENTRIES_PAGE_SIZE = 5;
 
-const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const brl = (n: number): string => `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const signedUsd = (n: number): string => `${n >= 0 ? '+' : ''}${usd(n)}`;
-const signedBrl = (n: number): string => `${n >= 0 ? '+' : ''}${brl(n)}`;
+/**
+ * Currency formatting delegates.
+ *
+ * These used to be four re-implementations — byte-identical to the copy
+ * `simulation.ts` carried, and hand-rolled `toLocaleString` calls alongside the
+ * `formatMoney` this very file already imported. Two implementations of one rule
+ * is how the valuation drift happened in the first place (`valuation.ts` explains
+ * why the arithmetic was extracted to `packages/shared`).
+ *
+ * They stay as store members because twenty call sites across four components
+ * reach them as `store.usd(...)`, and the point of this change is a single
+ * *implementation*, not churn in every template. `signedBrl` had no call sites at
+ * all and is gone rather than kept for symmetry.
+ */
+const usd = (n: number): string => formatMoney(n, 'USD');
+const brl = (n: number): string => formatMoney(n, 'BRL');
+const signedUsd = (n: number): string => formatSigned(n, 'USD');
+
+/**
+ * The positions table's own currency format: `R$1.234,56` / `$1234.56`, no
+ * thousands separator.
+ *
+ * This is deliberately NOT `formatMoney`. The legacy table printed amounts
+ * without a separator and `dashboard.test.ts` pins the exact strings
+ * (`'$3200.10'`, `'+R$19943.92'`), so it is a fidelity choice rather than an
+ * oversight — the metric cards above do use `formatMoney`, with separators.
+ *
+ * It exists as one named function because the table used to interpolate
+ * `` `$${x.toFixed(2)}` `` in five places, and each one had to be corrected
+ * separately when the sign was fixed.
+ */
+function legacyAmount(amount: number, currency: Currency): string {
+  return `${currency === 'BRL' ? 'R$' : '$'}${Math.abs(amount).toFixed(2)}`;
+}
+
+/**
+ * `legacyAmount` with an explicit sign, `+R$19943.92` / `-R$19943.92`.
+ *
+ * The bug this replaces was the sign being left to `` `${row.pl >= 0 ? '+' : ''}` ``
+ * prepended onto a *pre-rendered* magnitude, in two spellings:
+ *
+ * - `` pl: `${row.pl >= 0 ? '+' : ''}${pl}` `` with `pl` built as
+ *   `` `$${row.pl.toFixed(2)}` `` for the USD branch, which put the symbol ahead
+ *   of the minus: a losing position read `$-1,234.56`.
+ * - the cash row's `` `${row.pl >= 0 ? '+' : ''}${row.plCurrency === 'BRL' ? `R$${row.pl.toFixed(2)}` : `$${row.pl.toFixed(2)}` }` ``,
+ *   which did the same in both currencies: `R$-19943.92`.
+ *
+ * The BRL branch of the position table went through `formatMoney` and was already
+ * correct, which is why the inconsistency read as deliberate. The old test only
+ * ever asserted a *positive* `pl`; `dashboard.test.ts` now drives a losing
+ * valuation through the store and pins the minus.
+ */
+function legacySigned(amount: number, currency: Currency): string {
+  return `${amount < 0 ? '-' : '+'}${legacyAmount(amount, currency)}`;
+}
 
 export const CHART_DAY_RANGES = [
   { days: 1825, label: '5Y', title: '5 Years' },
@@ -272,15 +330,15 @@ export const useDashboardStore = defineStore(
         .filter((row) => row.kind === 'position')
         .map((row) => {
           const brl = row.valueCurrency === 'BRL';
-          const money = (amount: number): string => (brl ? formatMoney(amount, 'BRL') : `$${amount.toFixed(2)}`);
-          const pl = row.plCurrency === 'BRL' ? formatMoney(row.pl, 'BRL') : `$${row.pl.toFixed(2)}`;
+          const money = (amount: number): string => legacyAmount(amount, brl ? 'BRL' : 'USD');
+          const pl = legacySigned(row.pl, row.plCurrency);
           return {
             symbol: row.symbol,
             qty: row.qty.toFixed(4),
             avg: money(row.avgCost),
             cur: money(row.currentPrice),
             value: money(row.value),
-            pl: `${row.pl >= 0 ? '+' : ''}${pl}`,
+            pl,
             plPct: `${row.plPct >= 0 ? '+' : ''}${row.plPct.toFixed(2)}%`,
             positive: row.pl >= 0,
           };
@@ -300,8 +358,10 @@ export const useDashboardStore = defineStore(
           cur: row.kind === 'brl-cash' ? `$${row.currentPrice.toFixed(4)}` : '-',
           value: `$${row.value.toFixed(2)}`,
           // The BRL balance is valued in USD but earns BRL interest, so the P/L
-          // column is a BRL amount on that row.
-          pl: `${row.pl >= 0 ? '+' : ''}${row.plCurrency === 'BRL' ? `R$${row.pl.toFixed(2)}` : `$${row.pl.toFixed(2)}`}`,
+          // column is a BRL amount on that row. `legacySigned` puts the minus
+          // ahead of the symbol; this used to render `R$-19943.92` when the
+          // interest was a loss.
+          pl: legacySigned(row.pl, row.plCurrency),
           plPct: `${row.plPct >= 0 ? '+' : ''}${row.plPct.toFixed(2)}%`,
           positive: row.pl >= 0,
         })),
@@ -363,7 +423,11 @@ export const useDashboardStore = defineStore(
           total = formatMoney(t.qty * raw, 'BRL');
           profit = { text: '-', positive: null };
           if (t.side === 'sell' && typeof t.profit === 'number') {
-            profit = { text: `${t.profit >= 0 ? '+' : ''}${formatMoney(t.profit, 'BRL')}`, positive: t.profit >= 0 };
+            // `formatSigned`, not `` `${t.profit >= 0 ? '+' : ''}${formatMoney(...)}` ``:
+            // the latter prefixes a `+` onto a value `Intl` has already signed, so
+            // a losing sale rendered as `+-$78.00` — a gain, in a column whose
+            // colour said otherwise.
+            profit = { text: formatSigned(t.profit, 'BRL'), positive: t.profit >= 0 };
           }
         } else if (isBRLBond(symbol)) {
           const rawUSD = t.price || priceOf(symbol);
@@ -373,10 +437,14 @@ export const useDashboardStore = defineStore(
           profit = { text: '-', positive: null };
           if (t.side === 'sell' && typeof t.profit === 'number') {
             const profitBRL = t.profit / rate;
-            profit = { text: `${profitBRL >= 0 ? '+' : ''}${formatMoney(profitBRL, 'BRL')}`, positive: profitBRL >= 0 };
+            profit = { text: formatSigned(profitBRL, 'BRL'), positive: profitBRL >= 0 };
           }
         } else {
           const p = t.price || priceOf(symbol);
+          // Unchanged from the legacy page: no thousands separator, no sign on the
+          // profit (the `positive` flag drives the colour). Only the sign *bug* in
+          // the two BRL branches above was fixed; the formatting convention here
+          // is deliberate.
           price = t.price !== null && t.price !== undefined ? `$${t.price?.toFixed(2)}` : '-';
           total = `$${(t.qty * p).toFixed(2)}`;
           profit = { text: '-', positive: null };
@@ -757,13 +825,16 @@ export const useDashboardStore = defineStore(
     const alertRows = computed(() =>
       alerts.value.map((a) => {
         const brl = isBRLAsset(a.symbol ?? '');
-        const locale = brl ? 'pt-BR' : 'en-US';
-        const symbolPrefix = brl ? 'R$ ' : '$';
+        // The legacy alert rows read `R$ ` + `toLocaleString('pt-BR')`, i.e.
+        // separated and with a plain space. `formatMoney` matches that apart from
+        // using a non-breaking space after `R$`, which is the better rendering
+        // and the same one the metric cards already use.
+        const money = (amount: number): string => formatMoney(amount, brl ? 'BRL' : 'USD');
         const threshold = a.threshold ?? 0;
         const label =
           a.alert_type === 'value'
-            ? `${a.condition === 'below' ? 'Falls Below' : 'Rises Above'} ${symbolPrefix}${threshold.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : `${a.condition === 'below' ? 'Down' : 'Up'} ${threshold.toFixed(2)}% from ${symbolPrefix}${(a.reference_price ?? 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            ? `${a.condition === 'below' ? 'Falls Below' : 'Rises Above'} ${money(threshold)}`
+            : `${a.condition === 'below' ? 'Down' : 'Up'} ${threshold.toFixed(2)}% from ${money(a.reference_price ?? 0)}`;
         return { id: a.id ?? '', symbol: a.symbol ?? '', label, isActive: Boolean(a.is_active) };
       }),
     );
@@ -771,17 +842,15 @@ export const useDashboardStore = defineStore(
     const triggeredRows = computed(() =>
       triggeredAlerts.value.map((t) => {
         const brl = isBRLAsset(t.symbol ?? '');
-        const locale = brl ? 'pt-BR' : 'en-US';
-        const prefix = brl ? 'R$ ' : '$';
+        // Same as the alert labels above.
+        const money = (amount: number, maxDigits?: number): string => formatMoney(amount, brl ? 'BRL' : 'USD', maxDigits);
         const current = t.current_price ?? 0;
         const priceText =
-          t.alert_type === 'value'
-            ? `${prefix}${current.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : `${t.percentage_change ? t.percentage_change.toFixed(2) : '0'}%`;
+          t.alert_type === 'value' ? money(current) : `${t.percentage_change ? t.percentage_change.toFixed(2) : '0'}%`;
         const details =
           t.previous_price && t.percentage_change
-            ? `from ${prefix}${t.previous_price.toLocaleString(locale, { minimumFractionDigits: 2 })} to ${prefix}${current.toLocaleString(locale, { minimumFractionDigits: 2 })} (${t.percentage_change.toFixed(2)}% change)`
-            : `Currently at ${prefix}${current.toLocaleString(locale, { minimumFractionDigits: 2 })}`;
+            ? `from ${money(t.previous_price)} to ${money(current)} (${t.percentage_change.toFixed(2)}% change)`
+            : `Currently at ${money(current)}`;
         return {
           id: t.id ?? '',
           symbol: t.symbol ?? '',
@@ -1165,7 +1234,6 @@ export const useDashboardStore = defineStore(
       usd,
       brl,
       signedUsd,
-      signedBrl,
       totalFromQty,
       qtyFromTotal,
       qtyFromPct,

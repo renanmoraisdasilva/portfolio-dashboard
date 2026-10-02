@@ -6,6 +6,7 @@ import {
   createPortfolioCalculator,
   createSymbolClassifier,
   formatMoney,
+  formatSigned,
   parseMoney,
   type Currency,
   type SymbolMap,
@@ -45,10 +46,19 @@ export type ScenarioData = {
 /** Doughnut colors, unchanged from the legacy page. */
 export const ALLOC_PALETTE = ['#00d9ff', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#22c55e'];
 
-const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const brl = (n: number): string => `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const signedUsd = (n: number): string => `${n >= 0 ? '+' : ''}${usd(n)}`;
-const signedBrl = (n: number): string => `${n >= 0 ? '+' : ''}${brl(n)}`;
+// These four were byte-identical to the copy in `dashboard.ts`, and between them
+// they had two defects: `signedBrl` was never called at all, and `signedUsd`'s
+// `${n >= 0 ? '+' : ''}` put two signs on negative zero (`+$-0.00`), because `-0 >=
+// 0` is true. `formatMoney` / `formatSigned` in `packages/shared` are the single
+// implementation now, and this store already imported `formatMoney` from there
+// while still keeping its own.
+//
+// They stay as store members because `SimulationMetrics.vue` reaches them as
+// `store.usd(...)` / `store.signedUsd(...)`; the point is one implementation, not
+// churn in every template. `signedBrl` had no call sites and is gone.
+const usd = (n: number): string => formatMoney(n, 'USD');
+const brl = (n: number): string => formatMoney(n, 'BRL');
+const signedUsd = (n: number): string => formatSigned(n, 'USD');
 
 /**
  * Portfolio Simulation state.
@@ -233,7 +243,7 @@ export const useSimulationStore = defineStore(
         .filter((row) => row.kind === 'position')
         .map((row) => {
           const brl = row.valueCurrency === 'BRL';
-          const money = (amount: number): string => (brl ? formatMoney(amount, 'BRL') : usd(amount));
+          const money = (amount: number): string => (brl ? formatMoney(amount, 'BRL') : formatMoney(amount, 'USD'));
           return {
             symbol: row.symbol,
             qty: row.qty.toFixed(4),
@@ -242,7 +252,7 @@ export const useSimulationStore = defineStore(
             value: money(row.value),
             // `$-492.66`, not `-$492.66`: the sign stays inside the currency, as
             // `signedUsd` and `formatMoney` have always rendered it.
-            pl: row.plCurrency === 'BRL' ? `${row.pl >= 0 ? '+' : ''}${formatMoney(row.pl, 'BRL')}` : signedUsd(row.pl),
+            pl: formatSigned(row.pl, row.plCurrency),
             positive: row.pl >= 0,
           };
         }),
@@ -262,7 +272,12 @@ export const useSimulationStore = defineStore(
     const tradeRows = computed(() =>
       simTrades.value.map((t) => {
         const price = t.price || priceOf(t.symbol);
-        const totalDisplay = t.total !== undefined ? (t.currency === 'BRL' ? brl(t.total) : usd(t.total)) : usd(price * t.qty);
+        // `t.currency` is optional on the stored shape, and the original
+        // `t.currency === 'BRL' ? brl(..) : usd(..)` defaulted to USD. Passing it
+        // straight through would have thrown on a row with no currency set, so the
+        // fallback is explicit rather than incidental.
+        const currency: Currency = t.currency === 'BRL' ? 'BRL' : 'USD';
+        const totalDisplay = t.total !== undefined ? formatMoney(t.total, currency) : formatMoney(price * t.qty, currency);
         return {
           time: new Date(t.time).toLocaleString(),
           symbol: t.symbol,
@@ -781,7 +796,6 @@ export const useSimulationStore = defineStore(
       usd,
       brl,
       signedUsd,
-      signedBrl,
       // actions
       load,
       setPrice,
