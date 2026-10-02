@@ -287,6 +287,13 @@ ROLLBACK` as prepared statements. That was the driver's own mechanism spelled ou
     `TerminateProcess`, so JS handlers never run there and a local `SIGTERM` test
     proves nothing. `npm run test:docker` and the CI `docker` job both build the
     image and assert the shutdown log and the exit code.
+  - **The CI job runs under `bash -e`, so read shell steps under bash.** Two
+    mistakes survive a PowerShell review: an invalid CLI flag only fails when
+    executed, and a `grep`/`test` assertion that cannot fail is not an assertion.
+    `docker stop` accepts only `-s/--signal` and `-t/--timeout`; `-w/--wait`
+    belongs to `docker run`, and passing it aborts the step with exit 125 before
+    the container is signalled at all. To run a snippet under real bash locally:
+    `docker run --rm -v "$PWD:/repo" -w /repo alpine sh -c "apk add --no-cache bash >/dev/null && bash your.sh"`.
 - **`npm run test:docker` runs the suite inside the builder stage, and it needs
   `vitest.config.ts` in the image.** Two things had to line up for it to work at
   all, and it was silently broken until both were fixed:
