@@ -2,46 +2,18 @@ import { randomUUID } from 'node:crypto';
 import { all, run, get } from '../db';
 import { sendAlertNotification } from './homeAssistantService';
 import { SYMBOLS as SYMBOL_CONFIGS, getStockSymbols, getCurrencySymbols } from '../config/symbols';
+// The freshness numbers live in `config/priceFreshness.ts` rather than here,
+// because `routes/prices.ts` needs `STALE_AFTER_MS` for the wire contract and
+// this module is the worker's — importing it for a constant meant a dynamic
+// `import()` inside a request handler, wrapped in a `catch` that substituted a
+// different number without logging.
+import { MIN_INTERVAL, ASSET_HISTORY_CACHE_TTL_MS } from '../config/priceFreshness';
 
 const COINGECKO_IDS: Record<string, string> = Object.fromEntries(
   Object.entries(SYMBOL_CONFIGS)
     .filter(([, cfg]) => cfg.coingeckoId)
     .map(([id, cfg]) => [id, cfg.coingeckoId!]),
 );
-/**
- * How long a fetched price is served from cache before we refetch it.
- *
- * This is a *fetching* decision, not a freshness promise, and it is deliberately
- * shorter than the interval at which the banner below trips. They used to be the
- * same constant, which meant a perfectly healthy worker tripped the "prices may be
- * stale" warning at the end of every single cycle — the one moment the data is
- * exactly as fresh as it is ever going to be.
- */
-export const CACHE_TTL = 8 * 60 * 1000;
-
-/**
- * How old a price has to be before the UI warns about it. Three refresh cycles,
- * so one missed or slow run does not light up the dashboard.
- */
-export const STALE_AFTER_MS = 3 * CACHE_TTL;
-
-/**
- * Skip refetching a symbol only if it was written moments ago.
- *
- * This used to equal `CACHE_TTL`, and that is the same mistake as above in the
- * other direction: the worker refreshes every 8 minutes, so a guard at 8 minutes
- * raced the schedule. Any drift — the loop firing a second late, the previous
- * fetch taking time — made `now - prev.ts` land just under the guard and the
- * symbol was skipped, which pushed equities and BRLUSD to 16 minutes while
- * crypto (unguarded) sat at 8. The guard exists to avoid two fetches of one
- * symbol in quick succession; half a minute covers that without vetoing the next
- * scheduled run.
- */
-const MIN_INTERVAL = 30 * 1000;
-const ASSET_HISTORY_CACHE_TTL_MS = {
-  '1h': 15 * 60 * 1000,
-  '1d': 60 * 60 * 1000,
-} as const;
 
 const TEST_MODE = process.env.NODE_ENV === 'test';
 const DEFAULT_RETRY_DELAY = TEST_MODE ? 1 : 500;

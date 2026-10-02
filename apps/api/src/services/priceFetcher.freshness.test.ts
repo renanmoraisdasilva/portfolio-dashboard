@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CACHE_TTL, STALE_AFTER_MS } from './priceFetcher';
+import { CACHE_TTL, STALE_AFTER_MS } from '../config/priceFreshness';
 import { startPriceRefreshJob } from '../jobs/priceRefresh';
 
 /**
