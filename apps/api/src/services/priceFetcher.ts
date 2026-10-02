@@ -55,17 +55,100 @@ async function appendPriceTick(symbol: string, price: number, ts: number, source
   }
 }
 
+/**
+ * An HTTP response that was not ok, carrying its status as data.
+ *
+ * This exists because `retry` used to decide whether to back off five times longer
+ * by testing whether the error *message* contained `429`:
+ *
+ * ```ts
+ * const is429 = e instanceof Error && e.message.includes('429');
+ * ```
+ *
+ * `routes/trades.ts` carries a post-mortem for exactly this shape — *"a status
+ * that depends on message wording breaks the moment someone rewords the message"* —
+ * and this was the same anti-pattern in the same codebase, unremarked. It also
+ * misfired in both directions: a proxy or CDN error page mentioning `429` in its
+ * body would be classified as rate limiting, and a real rate limit whose message
+ * was reworded would not be.
+ *
+ * The message is unchanged (`CoinGecko 429`), so logs read the same. Only the
+ * classification is now structural.
+ */
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly source: string,
+    /** Seconds from a `Retry-After` header, when the server sent a usable one. */
+    readonly retryAfterSeconds?: number,
+  ) {
+    super(`${source} ${status}`);
+    this.name = 'HttpError';
+  }
+}
+
+/**
+ * `Retry-After` is either delta-seconds or an HTTP date; only the former is worth
+ * honouring.
+ *
+ * Exported for `priceFetcher.test.ts`. The delay it produces is unobservable from
+ * a test — `DEFAULT_RETRY_DELAY` is 1ms under `NODE_ENV=test`, so a 7-second
+ * back-off and a 1-second one finish at the same wall-clock time. That makes the
+ * *parsing* the only part of this worth testing directly, and it is the part that
+ * can go wrong silently: `Number('Wed, 21 Oct 2026 07:28:00 GMT')` is `NaN`, and a
+ * `NaN` delay resolves immediately on some timers and hangs on others.
+ */
+export function parseRetryAfter(header: string | null): number | undefined {
+  if (!header) return undefined;
+  const seconds = Number(header);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+}
+
+/**
+ * The most a `Retry-After` header is allowed to extend a wait.
+ *
+ * Without a cap, honouring the header is a denial-of-service risk against *this*
+ * worker: one `Retry-After: 3600` on a rate-limited response, times three attempts
+ * times three fallback tickers, is nine hours of sleeping inside a single
+ * `fetchAndCacheAssetHistory` call — and the worker's symbol loop is serial, so
+ * every other asset waits behind it.
+ *
+ * The cap is set to the largest delay the exponential schedule *already* used for
+ * a 429, which gives a clean invariant: **honouring `Retry-After` can never make a
+ * request slower than the rate-limit back-off did before this existed.** It can
+ * only replace a guess with the server's own answer, within the budget already
+ * being spent.
+ */
+export const MAX_RETRY_AFTER_MS = 10_000;
+
+/**
+ * How long to wait before attempt `attempt` (zero-based).
+ *
+ * A rate limit backs off five times harder than any other error, and a usable
+ * `Retry-After` raises the wait to what the server asked for - bounded by
+ * `MAX_RETRY_AFTER_MS`.
+ *
+ * Exported for the test because the delay is otherwise unobservable:
+ * `DEFAULT_RETRY_DELAY` is 1ms under `NODE_ENV=test`, so every branch finishes at
+ * the same wall-clock time and only the arithmetic can be checked.
+ */
+export function backoffMs(error: unknown, attempt: number, baseDelay = DEFAULT_RETRY_DELAY): number {
+  const isRateLimited = error instanceof HttpError && error.status === 429;
+  const backoff = (isRateLimited ? baseDelay * 5 : baseDelay) * 2 ** attempt;
+  if (!isRateLimited || error.retryAfterSeconds === undefined) return backoff;
+  const advised = Math.min(error.retryAfterSeconds * 1000, MAX_RETRY_AFTER_MS);
+  return Math.max(backoff, advised);
+}
+
 async function retry<T>(fn: () => Promise<T>, attempts = 3, baseDelay = DEFAULT_RETRY_DELAY): Promise<T> {
-  let err: any;
+  let err: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
       return await fn();
     } catch (e) {
       err = e;
-      const is429 =
-        (e instanceof Error && e.message && e.message.includes('429')) || (typeof e === 'string' && e.includes('429'));
-      const delay = is429 ? baseDelay * 5 * Math.pow(2, i) : baseDelay * Math.pow(2, i);
-      await sleep(delay);
+      // Branch on the status, not on the wording.
+      await sleep(backoffMs(e, i, baseDelay));
     }
   }
   throw err;
@@ -75,7 +158,7 @@ async function fetchCoinGeckoSimple(ids: string[]) {
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`;
   const res = await retry(() =>
     fetchWithTimeout(url).then((r) => {
-      if (!r.ok) throw new Error(`CoinGecko ${r.status}`);
+      if (!r.ok) throw new HttpError(r.status, 'CoinGecko', parseRetryAfter(r.headers.get('retry-after')));
       return r.json();
     }),
   );
@@ -93,7 +176,7 @@ async function fetchYahooClose(symbol: string) {
     try {
       const data = await retry(() =>
         fetchWithTimeout(url).then((r) => {
-          if (!r.ok) throw new Error(`YF ${r.status}`);
+          if (!r.ok) throw new HttpError(r.status, 'Yahoo', parseRetryAfter(r.headers.get('retry-after')));
           return r.json();
         }),
       );
@@ -104,7 +187,12 @@ async function fetchYahooClose(symbol: string) {
         }
       }
     } catch (e) {
-      if (e instanceof Error && /YF 404/.test(e.message)) continue;
+      // A 404 for one ticker means "wrong symbol", not "try again" — move to the
+      // next fallback candidate quietly. This was `/YF 404/.test(e.message)`,
+      // the same message-substring classification as the 429 above, and renaming
+      // the source to `Yahoo` would have broken it silently: a 404 would start
+      // logging a warning and, worse, stop advancing to the next ticker.
+      if (e instanceof HttpError && e.status === 404) continue;
       console.warn(`Yahoo fetch failed for ${yf}:`, e);
     }
   }
@@ -115,7 +203,7 @@ async function fetchBRLUSD() {
   const url = 'https://api.exchangerate-api.com/v4/latest/BRL';
   const data = await retry(() =>
     fetchWithTimeout(url).then((r) => {
-      if (!r.ok) throw new Error(`Exchange ${r.status}`);
+      throw new HttpError(r.status, 'Exchange', parseRetryAfter(r.headers.get('retry-after')));
       return r.json();
     }),
   );
@@ -251,7 +339,7 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
       try {
         const data = await retry(() =>
           fetchWithTimeout(url).then((r) => {
-            if (!r.ok) throw new Error(`YF ${r.status}`);
+            if (!r.ok) throw new HttpError(r.status, 'Yahoo', parseRetryAfter(r.headers.get('retry-after')));
             return r.json();
           }),
         );
@@ -269,7 +357,9 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
           break;
         }
       } catch (e) {
-        if (e instanceof Error && /YF 404/.test(e.message)) continue;
+        // Same as `fetchYahooClose`: a 404 means this ticker is wrong, so try the
+        // next candidate. Branched on the status, not on the message.
+        if (e instanceof HttpError && e.status === 404) continue;
         console.warn(`Yahoo history fetch failed for candidate ${yf}:`, e);
       }
     }

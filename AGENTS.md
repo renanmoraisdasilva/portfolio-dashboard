@@ -481,6 +481,28 @@ symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
   file as a _parsing error_, not a lint failure — so a new test directory silently
   loses type-aware linting unless `allowDefaultProject` names it. That option
   rejects `**`, hence one explicit glob per directory.
+- **HTTP status is data, never message text.** `priceFetcher.ts` classifies failures
+  with an `HttpError` carrying `status`, `source` and a parsed `Retry-After`. It
+  used to test `e.message.includes('429')`, and `fetchYahooClose` /
+  `fetchAndCacheAssetHistory` used `/YF 404/.test(e.message)` — the same
+  anti-pattern `routes/trades.ts` carries a post-mortem for, twice in one file.
+  The messages are unchanged (`Yahoo 429`), so logs read the same; only the
+  classification moved.
+  - **A subtle trap, verified by mutation:** `HttpError`'s message is
+    `"<source> <status>"`, so it _contains_ "429". Any test that only feeds real
+    `HttpError`s passes equally well under the old substring check — mutating back
+    to it left 31 tests green. The tests that actually distinguish carry the status
+    while the message says something else (`"rate limited, slow down"`), and the
+    reverse case where a 503's message merely _mentions_ 429.
+  - **`Retry-After` is capped at `MAX_RETRY_AFTER_MS` (10s), and the cap is the
+    exponential schedule's own worst case.** Uncapped it is a DoS against this
+    worker: one `Retry-After: 3600` × 3 attempts × 3 fallback tickers is nine
+    hours inside a single `fetchAndCacheAssetHistory` call, and the worker's symbol
+    loop is serial. The invariant is that honouring the header can never make a
+    request slower than the rate-limit back-off already did.
+  - The back-off is a pure exported function (`backoffMs`) because the delay is
+    otherwise unobservable: `DEFAULT_RETRY_DELAY` is 1ms under `NODE_ENV=test`, so
+    every branch finishes at the same wall-clock time.
 - **A closed-out position produces no row, no allocation slice and no
   `plByAsset` entry.** `replayFIFOLots` `shift()`s a fully-consumed lot but leaves
   the key in `lots`, so `positions` legitimately holds `SPY: 0` after you sell all
