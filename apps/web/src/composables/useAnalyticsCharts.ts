@@ -8,7 +8,6 @@ import {
 } from '@portfolio-dashboard/shared';
 import { CASH_CHART_MODE, EMERGENCY_FUND_USD, useAnalyticsStore } from '../stores/analytics';
 
-/** Per-asset colors, unchanged from the legacy page so charts keep their look. */
 export const ASSET_COLORS: Record<string, string> = {
   BTC: '#f97316',
   ETH: '#7c3aed',
@@ -32,16 +31,6 @@ const xTicks = { color: '#64748b', maxTicksLimit: 8, maxRotation: 0 } as const;
 const xGrid = { color: 'rgba(45,55,72,0.5)' } as const;
 const legend = { labels: { color: '#94a3b8', boxWidth: 12, font: { size: 12 } } } as const;
 
-/**
- * The three Analytics Lab charts, as Chart.js configurations.
- *
- * The options are the legacy page's, moved here unchanged; only the canvas
- * lookup and the imperative `destroy()` calls are gone — `ChartCanvas.vue`
- * owns that lifecycle now.
- *
- * A `null` configuration means "no data for this period", which the canvas
- * renders as a message instead of an empty grid.
- */
 export function useAnalyticsCharts() {
   const store = useAnalyticsStore();
 
@@ -189,8 +178,6 @@ export function useAnalyticsCharts() {
     if (points.length === 0) return null;
 
     const labels = points.map((p) => dayLabel(Number(p.ts ?? 0)));
-    // Prefer unrealized P/L to avoid deposits being visualized as "performance".
-    // `null` keeps Chart.js drawing a gap instead of dropping to zero.
     const values = points.map((p) => (typeof p.p === 'number' ? p.p : (p.v ?? null)));
 
     return {

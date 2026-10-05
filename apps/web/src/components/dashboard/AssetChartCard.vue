@@ -24,7 +24,6 @@ let resizeObserver: ResizeObserver | null = null;
 const isAlias = computed(() => props.symbol === 'BRL');
 const isBond = computed(() => !isAlias.value && store.symbolDetails[props.symbol]?.type === 'bond');
 
-/** The price in the asset's own currency, plus any bond yield badge. */
 const priceText = computed(() => {
   const current = isAlias.value ? (store.brlUsdRate ? 1 / store.brlUsdRate : null) : (store.prices[props.symbol] ?? null);
   if (typeof current !== 'number' || isNaN(current)) return '';
@@ -42,7 +41,6 @@ const priceText = computed(() => {
   return formatMoney(current, 'USD');
 });
 
-/** Move across the visible window, as the legacy header showed it. */
 const change = computed(() => {
   const first = props.candles.find((c) => (c.open ?? 0) > 0);
   const last = [...props.candles].reverse().find((c) => (c.close ?? 0) > 0);

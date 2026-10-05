@@ -50,10 +50,6 @@ function render(): void {
 }
 
 onMounted(render);
-// The chart is constructed before the store finishes loading, so it starts with
-// an empty dataset. Assign the fresh slices onto the *live* chart, the way the
-// vanilla page did (`chart.data.labels = …; chart.data.datasets = …; update()`):
-// a bare `update()` would keep re-rendering the empty snapshot it was built with.
 watch(
   config,
   (next) => {
@@ -66,7 +62,6 @@ watch(
 );
 onBeforeUnmount(() => chart.value?.destroy());
 
-/** Side list values honor the USD/BRL toggle; the doughnut always shows shares. */
 const rows = computed(() =>
   store.allocation.labels.map((label, i) => {
     const usdValue = store.allocation.values[i] || 0;

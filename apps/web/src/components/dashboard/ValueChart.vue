@@ -57,8 +57,6 @@ function build(): void {
 
   projectionSeries.value = chart.value.addLineSeries({
     color: 'rgba(0, 217, 255, 0.85)',
-    // lightweight-charts v4 types line width as 1|2|3|4; the vanilla page asked
-    // for 1.8, which the same library would have rounded internally anyway.
     lineWidth: 2,
     lineStyle: LineStyle.Dashed,
     visible: false,
@@ -66,12 +64,6 @@ function build(): void {
     crosshairMarkerVisible: true,
   });
 
-  // Width AND height. This only ever synced width, so a chart created while its
-  // container was short kept that height forever: lightweight-charts does not
-  // observe its own container, and the container here grows when the row it sits
-  // in is stretched by a taller sibling (the allocation panel beside it). The
-  // canvas ended up 452px tall inside a 480px box inside a 575px card, which is
-  // the empty band under the chart on a wide screen.
   resizeObserver = new ResizeObserver(() => {
     if (!chart.value || !el.value) return;
     const w = el.value.clientWidth;
@@ -100,7 +92,6 @@ function sync(): void {
   }));
   candleSeries.value?.setData(candles);
 
-  // The projection only makes sense against portfolio value, never against P/L.
   if (store.projectionEnabled && store.activeMetric === 'value') {
     const line: Array<{ time: UTCTimestamp; value: number }> = store.projection.map((p: { ts: number; v: number }) => ({
       time: Math.floor(p.ts / 1000) as UTCTimestamp,
@@ -126,13 +117,5 @@ onBeforeUnmount(destroy);
 </script>
 
 <template>
-  <!--
-    Absolutely positioned, not `height: 100%`. The container is a flex item with
-    `height: auto`, and a percentage height against an auto-height parent does not
-    resolve - it falls back to auto, so this div took its height from the canvas
-    and left a gap at the bottom of the card. `inset: 0` fills the container
-    whatever height the flex layout gives it. `.chart-container` is already
-    `position: relative`, so this is the containing block.
-  -->
   <div ref="el" style="position: absolute; inset: 0"></div>
 </template>

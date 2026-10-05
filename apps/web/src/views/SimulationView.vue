@@ -16,7 +16,6 @@ const store = useSimulationStore();
 
 useDocumentTitle('Portfolio Simulation');
 
-/** The vanilla page collapsed this layout below 430px with a body class. */
 function applyCompactMode(): void {
   document.body.classList.toggle('compact-sim', window.innerWidth <= 430);
 }
@@ -50,12 +49,6 @@ function reset(): void {
   <div class="simulation-page">
     <PageHeader title="Portfolio Simulation" subtitle="What-if scenarios, allocation and trade planning" />
 
-    <!--
-      These three belong to the page, not to the shell: they act on this view's own
-      state and mean nothing anywhere else, which is the difference between a page
-      control and navigation. The header row - the links and the settings gear -
-      lives in `App.vue`.
-    -->
     <div class="page-actions">
       <button class="btn" @click="reset">Reset to Real Values</button>
       <button class="btn" @click="store.openScenariosModal()">Open Scenario</button>

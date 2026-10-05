@@ -49,9 +49,6 @@ function render(): void {
 }
 
 onMounted(render);
-// Assign onto the live chart like the vanilla page did: the chart is built
-// before the first data arrives, so a bare update() would keep re-rendering the
-// empty snapshot it was constructed with.
 watch(
   config,
   (next) => {

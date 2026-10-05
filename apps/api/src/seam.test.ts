@@ -20,9 +20,6 @@ async function request(pathname: string): Promise<{ status: number; location: st
 
 describe('strangler seam', () => {
   test('/legacy/ falls through to the Vue shell rather than serving a file', async () => {
-    // Nothing is mounted under `/legacy/`, so a request there must reach the SPA
-    // fallback and answer with the shell. A 200 from static would mean the mount
-    // is back and serving something outside the Vue app's control.
     for (const pathname of ['/legacy/', '/legacy/index.html', '/legacy/anything.html']) {
       const res = await request(pathname);
       expect(res.status === 200 && res.body.includes('id="app"')).toBe(true);
@@ -30,8 +27,6 @@ describe('strangler seam', () => {
   });
 
   test('a bookmark with no matching page lands on the dashboard', async () => {
-    // The redirect table only knows migrated pages. Anything else goes to `/` so
-    // an old bookmark stays useful rather than 404ing.
     for (const pathname of ['/dashboard.html', '/pages/unknown.html', '/unknown.html']) {
       const res = await request(pathname);
       expect([301, 302]).toContain(res.status);
@@ -66,8 +61,6 @@ describe('strangler seam', () => {
       expect(res.body).toContain('id="app"');
       expect(res.body).not.toContain('metrics-grid');
     } else {
-      // No build yet (bare `npm test`): the root must still not fall back to
-      // the legacy page, which is what the seam is for.
       expect(res.status).toBe(404);
     }
   });
@@ -78,8 +71,6 @@ describe('strangler seam', () => {
   });
 
   test('the repository is no longer served from the root', async () => {
-    // Unknown paths fall through to the Vue shell, so assert the file itself
-    // never leaks rather than asserting a 404.
     const leaks: Array<[string, string]> = [
       ['/package.json', 'portfolio-dashboard'],
       ['/apps/api/src/app.ts', 'mountWebRoutes'],

@@ -1,6 +1,3 @@
-// ESM, not CommonJS: under Vitest 5 a require() of a workspace package is
-// externalised, so this suite still passed while its coverage landed on
-// packages/shared/dist instead of the source and money.ts read as untested.
 import { formatMoney, parseMoney, brlToUSD, usdToBRL, createSymbolClassifier } from '@portfolio-dashboard/shared';
 
 const KNOWN_SYMBOLS = {
@@ -261,8 +258,6 @@ describe('isBRLAsset / isBRLNonBond / isBRLBond', () => {
 });
 
 describe('brlToUSD / usdToBRL (BRL bond price conversion)', () => {
-  // RENDA2065: form shows BRL, DB stores USD.
-
   test('brlToUSD(11.1111, 0.18) ≈ 2.00', () => {
     expect(brlToUSD(11.1111, RATE)).toBeCloseTo(2.0, 3);
   });
@@ -309,7 +304,6 @@ describe('computeTotalUSD — portfolio ticker value', () => {
   });
 
   test('BRL non-bond would be ~5.56× too large if rate is not applied', () => {
-    // Demonstrates the original bug: treating BRL price as USD inflated the total
     const correct = computeTotalUSD({ BOVA11: 100 }, { BOVA11: 50 }, RATE);
     const inflated = 100 * 50;
     expect(inflated / correct).toBeCloseTo(1 / RATE, 2);
@@ -415,7 +409,6 @@ describe('computeTradeAmounts — add trade cash deduction', () => {
     expect(usdAmount).toBeCloseTo(540, 4);
   });
 
-  // BRL bond: form shows BRL but price was already converted to USD before calling this fn
   test('BRL bond buy: price is USD, deducts USD directly', () => {
     const { brlAmount, usdAmount } = computeTradeAmounts('RENDA2065', 2, 1000, RATE);
     expect(usdAmount).toBeCloseTo(2000, 4);

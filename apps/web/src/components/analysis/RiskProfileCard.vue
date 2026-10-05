@@ -3,12 +3,6 @@ import { computed } from 'vue';
 import { computeRiskProfile } from '@portfolio-dashboard/shared';
 import { useAnalyticsStore } from '../../stores/analytics';
 
-/**
- * Portfolio Risk Profile.
- *
- * The score itself is `computeRiskProfile` from `packages/shared` — this
- * component only feeds it the current numbers and renders the breakdown.
- */
 const store = useAnalyticsStore();
 
 const view = computed(() => {

@@ -1,15 +1,3 @@
-/**
- * Least-squares trend of the portfolio history, extended forward.
- *
- * This was moved out of the dashboard store: it is domain maths, it was the
- * one place where the browser derived a value no other surface could check, and
- * it is now covered by tests instead of only being reachable through a toggle.
- *
- * Pure: no DOM, no chart library, no clock of its own — the caller passes the
- * horizon, so the same function answers "60 days" and "182.5 days".
- */
-
-/** Default horizon in days, the half-year the dashboard projects by default. */
 export const PROJECTION_DAYS = 182.5;
 
 export interface HistorySample {
@@ -28,24 +16,10 @@ const MIN_POINTS = 10;
 const MAX_POINTS = 200;
 
 export interface ProjectionOptions {
-  /** Horizon in days. */
   days?: number;
-  /** Fewer samples than this and there is no line to fit. */
   minSamples?: number;
 }
 
-/**
- * Fits `value = slope * hours + intercept` over the samples and returns the
- * forward extension of that line.
- *
- * Timestamps are normalised to hours *before* fitting: raw millisecond values
- * lose the precision that keeps the least-squares denominator stable, so a fit
- * over ~10⁹ would be dominated by rounding. The result is clamped at zero —
- * a negative projected portfolio is a modelling artefact, not a forecast.
- *
- * Returns an empty array for fewer than two samples or a degenerate fit, which
- * is what the chart treats as "nothing to draw".
- */
 export function computeProjection(history: readonly HistorySample[], options: ProjectionOptions = {}): ProjectedPoint[] {
   const days = options.days ?? PROJECTION_DAYS;
   const minSamples = options.minSamples ?? 2;

@@ -4,10 +4,8 @@ export interface TooltipContent {
   title: string;
   body: string;
   value?: { text: string; color: string };
-  /** Lines between the value and the scale. */
   hints?: string[];
   scale?: { label: string; kind: 'bad' | 'ok' | 'good' | 'great' }[];
-  /** Lines after the scale. */
   footer?: string[];
 }
 

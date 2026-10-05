@@ -2,13 +2,6 @@
 import { describe, expect, test } from 'vitest';
 import { ApiError, request, useApi } from './useApi';
 
-/**
- * The typed error contract, without a browser or a server.
- *
- * The client is built at module load against `baseUrl: '/api'`; these tests
- * hand `request` a resolved call rather than making one, so what is under test
- * is the unwrapping and the error it throws — not the transport.
- */
 describe('request()', () => {
   const ok = <T>(data: T) => Promise.resolve({ data, response: new Response(null, { status: 200 }) });
 
@@ -17,7 +10,6 @@ describe('request()', () => {
   });
 
   test('treats a 2xx response with no body as success, not as an error', async () => {
-    // A 204 is what DELETE answers with: `data` is undefined, and that is fine.
     const result = await request(
       Promise.resolve({ data: undefined, response: new Response(null, { status: 204 }) }),
       'DELETE',
@@ -77,8 +69,6 @@ describe('ApiError', () => {
 
 describe('useApi()', () => {
   test('returns a stable client, so every page shares one baseUrl', () => {
-    // Two pages importing the module must get the same client; a `baseUrl`
-    // change that applied to only some of them would be invisible until runtime.
     expect(useApi()).toBe(useApi());
   });
 

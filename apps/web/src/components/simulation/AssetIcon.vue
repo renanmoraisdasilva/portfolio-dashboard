@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/** The legacy page's inline SVG marks, plus the generated fallback badge. */
 const ICONS: Record<string, string> = {
   BTC: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <circle cx="12" cy="12" r="12" fill="#F7931A" />
@@ -34,11 +33,6 @@ const ICONS: Record<string, string> = {
 
 const props = defineProps<{ symbol: string }>();
 
-/**
- * Rendered as markup rather than through Vue's template compiler: these are
- * hand-written SVG strings from the legacy page, and escaping them into the
- * DOM would be a regression, not an improvement.
- */
 function iconFor(symbol: string): string {
   if (ICONS[symbol]) return ICONS[symbol];
   const fs = symbol.length > 4 ? '7' : '9';

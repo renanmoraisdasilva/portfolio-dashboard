@@ -9,7 +9,6 @@ const store = useSimulationStore();
 
 const rows = computed(() => store.assetList);
 
-/** "BRL per USD" is the inverse of the rate, which is what the slider moves. */
 const brlRow = computed(() => {
   const pct = Number(store.simPricePcts['BRLUSD']) || 0;
   const shown = (v: number): string => (v ? formatMoney(v, 'BRL') : '');

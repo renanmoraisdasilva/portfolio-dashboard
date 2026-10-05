@@ -2,21 +2,6 @@ import express from 'express';
 import { all, get, runSync, getSync, transaction } from '../db';
 import { tradesRouter } from './trades';
 
-/**
- * `POST /api/trades` writes a cash movement for every trade. `DELETE` used to
- * remove only the trade, so a deleted trade's proceeds stayed in the balance
- * forever — cash, `invested` and `total` were each inflated by the sale amount
- * and never came back down. `trades.cash_entry_id` closes that; these tests pin
- * the behaviour, because a regression here is silent and permanent: the numbers
- * are wrong, and nothing throws.
- *
- * The routes write through `runSync`/`transaction` now (a driver transaction
- * cannot await), so the fake implements those rather than the promise-returning
- * helpers. That makes the rollback assertions real: `transaction` here snapshots
- * `tables` and restores it if the body throws, so a half-applied reversal is
- * observable. The previous fake only ignored `ROLLBACK` and never undid
- * anything, so "the reversal is atomic" was untestable against it.
- */
 vi.mock('../db', () => ({
   all: vi.fn(),
   get: vi.fn(),
@@ -51,29 +36,13 @@ interface StubTradeRow {
   cash_entry_id: string | null;
 }
 
-/** The rows the mocked `db` pretends to hold, keyed by table. */
 let tables: { trades: StubTradeRow[]; cash: StubCashRow[] };
 
-/**
- * A SQL bind parameter. Narrowed once here rather than as `any`, so the stub
- * spends none of the repository's `no-explicit-any` budget.
- */
 type Bind = string | number | null;
 const binds = (params: unknown[]): Bind[] => params as Bind[];
 
-/**
- * Reads the bind parameter at `index` as the column's type. SQLite's driver
- * hands these over untyped, so the cast happens once, here, instead of at every
- * use and without falling back to `any`.
- */
 const at = <T>(params: Bind[], index: number): T => params[index] as T;
 
-/**
- * A tiny in-memory stand-in for the statements these routes issue.
- *
- * `transaction` snapshots `tables` and restores it if the body throws, which is
- * what makes the atomicity assertions real rather than decorative.
- */
 function implementDb(): void {
   mockedTransaction.mockImplementation((fn: () => unknown) => {
     const backup = { trades: [...tables.trades], cash: [...tables.cash] };
@@ -209,15 +178,10 @@ describe('POST /api/trades', () => {
     expect(status).toBe(400);
     expect(tables.trades).toHaveLength(0);
     expect(tables.cash).toHaveLength(1);
-    // Validation runs before the transaction opens, so a rejected request must
-    // not open one.
     expect(mockedTransaction).not.toHaveBeenCalled();
   });
 
   test('a currency mismatch is a 409, which is what the client is documented to handle', async () => {
-    // This was `error.includes('currency') ? 409 : 400`, and the message is
-    // "Asset BOVA11 uses BRL, but USD selected as cash source" - no "currency"
-    // in it, so the 409 could never fire and `ApiError.isConflict` was dead.
     const { status, body } = await call('post', '/', {
       symbol: 'BOVA11',
       side: 'buy',
@@ -233,13 +197,6 @@ describe('POST /api/trades', () => {
   });
 
   test('a failing trade INSERT leaves no cash row behind', async () => {
-    // The POST handler had no transaction while DELETE had one, so a throw from
-    // the `trades` INSERT - and every one of its NOT NULL columns can throw -
-    // stranded the cash entry the handler had already written. Same defect class
-    // as the deleted-trade leak, and permanent: nothing reverses it.
-    //
-    // `transaction` restores the snapshot on throw, so this asserts a real
-    // rollback rather than the absence of a COMMIT string.
     mockedRunSync.mockImplementationOnce(() => undefined); // the cash INSERT
     mockedRunSync.mockImplementationOnce(() => {
       throw new Error('trades table locked');
@@ -249,31 +206,22 @@ describe('POST /api/trades', () => {
 
     expect(status).toBe(500);
     expect(tables.trades).toHaveLength(0);
-    // Only the opening balance is left; the trade's own movement is not.
     expect(tables.cash).toHaveLength(1);
     expect(cashTotal('USD')).toBe(5_000);
   });
 
   test('both writes happen inside one transaction', async () => {
-    // The failure test proves the rollback; this pins that the two writes are in
-    // the *same* scope. A cash INSERT outside the transaction strands the row
-    // while still passing any test that only exercises the error path.
     await call('post', '/', { symbol: 'BTC', side: 'buy', qty: 0.1, price: 50_000 });
 
     expect(mockedTransaction).toHaveBeenCalledTimes(1);
 
-    // Every write the handler issued was made while the transaction was open.
     const written = mockedRunSync.mock.calls.map((c) => String(c[0]));
     expect(written.some((s) => /^INSERT INTO cash/.test(s))).toBe(true);
     expect(written.some((s) => /^INSERT INTO trades/.test(s))).toBe(true);
-    // And the read-back happens inside it too, so the response cannot describe a
-    // state the commit did not produce.
     expect(mockedGetSync.mock.calls.some((c) => /^SELECT \* FROM trades WHERE id/.test(String(c[0])))).toBe(true);
   });
 
   test('a failed trade INSERT rolls back rather than committing', async () => {
-    // Paired with the scoping test: the writes have to be in the transaction, and
-    // the transaction has to actually roll back when one of them throws.
     mockedRunSync.mockImplementationOnce(() => undefined); // the cash INSERT
     mockedRunSync.mockImplementationOnce(() => {
       throw new Error('trades table locked');
@@ -282,7 +230,6 @@ describe('POST /api/trades', () => {
     const { status } = await call('post', '/', { symbol: 'BTC', side: 'buy', qty: 0.1, price: 50_000 });
 
     expect(status).toBe(500);
-    // The snapshot restore is the rollback: neither row survives.
     expect(tables.trades).toHaveLength(0);
     expect(tables.cash).toHaveLength(1);
   });
@@ -296,7 +243,6 @@ describe('DELETE /api/trades/:id', () => {
     const { status } = await call('delete', `/${created.body.trade.id}`);
 
     expect(status).toBe(204);
-    // The bug this closes: the -5,000 stayed behind and the balance read 0 forever.
     expect(cashTotal('USD')).toBe(5_000);
     expect(tables.cash.filter((c) => c.id === created.body.cashEntry.id)).toHaveLength(0);
   });
@@ -332,7 +278,6 @@ describe('DELETE /api/trades/:id', () => {
   });
 
   test('a trade with no cash entry of its own deletes cleanly and reverses nothing', async () => {
-    // The shape the fixture import and pre-column backups produce.
     tables.trades.push({
       id: 'imported-1',
       symbol: 'BTC',
@@ -357,9 +302,6 @@ describe('DELETE /api/trades/:id', () => {
 
   test('the whole reversal is one transaction, so a failure cannot half-apply it', async () => {
     const created = await call('post', '/', { symbol: 'BTC', side: 'buy', qty: 0.1, price: 50_000 });
-    // The *cash* delete fails, after the trade delete has already run. Without a
-    // rollback the trade would be gone and its cash entry still charged to the
-    // balance: the ledger and the trade list would disagree permanently.
     mockedRunSync.mockImplementationOnce(() => undefined); // DELETE FROM trades
     mockedRunSync.mockImplementationOnce(() => {
       throw new Error('cash table locked');
@@ -368,10 +310,6 @@ describe('DELETE /api/trades/:id', () => {
     const { status } = await call('delete', `/${created.body.trade.id}`);
 
     expect(status).toBe(500);
-    // The trade delete is rolled back with it: the trade and its cash entry must
-    // never disagree about whether the money moved. Both assertions together are
-    // the point - a rollback that kept the cash entry but dropped the trade would
-    // satisfy the first and fail the second.
     expect(tables.trades).toHaveLength(1);
     expect(cashTotal('USD')).toBe(0); // the buy's -5,000 is still applied
   });

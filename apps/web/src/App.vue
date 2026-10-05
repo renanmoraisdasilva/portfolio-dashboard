@@ -4,18 +4,6 @@ import AppNav from './components/AppNav.vue';
 import SettingsModal from './components/dashboard/SettingsModal.vue';
 import { useDashboardStore } from './stores/dashboard';
 
-/**
- * The shell. It owns the header, and it is the only thing that does.
- *
- * The header used to be assembled twice: `AppNav` rendered the page links at the
- * top, and each view rendered its own `PageHeader` with its own buttons. The
- * dashboard then grew a second row of tab buttons under its title, so navigating
- * meant looking in two places for the same question.
- *
- * One row, here, for every page: the links, then the settings gear last on the
- * right. A page contributes content only. That is a layout concern, and layout
- * concerns belong to the layout.
- */
 const store = useDashboardStore();
 </script>
 

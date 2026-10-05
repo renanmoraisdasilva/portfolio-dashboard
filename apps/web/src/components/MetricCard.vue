@@ -4,12 +4,10 @@ import type { TooltipContent } from '../composables/useAnalyticsTooltips';
 defineProps<{
   icon: string;
   label: string;
-  /** Extra card modifier from `analytics.css` (`danger`, `neutral-accent`). */
   variant?: string;
   value: string;
   valueClass?: string;
   valueStyle?: Record<string, string>;
-  /** Renders the value as the `null-badge` chip instead of plain text. */
   valueIsBadge?: boolean;
   sub: string;
   subClass?: string;

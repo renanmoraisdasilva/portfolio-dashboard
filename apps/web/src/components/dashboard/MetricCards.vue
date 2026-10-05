@@ -5,7 +5,6 @@ import { useDashboardStore } from '../../stores/dashboard';
 const store = useDashboardStore();
 const m = computed(() => store.metrics);
 
-/** Every BRL sub-line divides by the rate; the legacy did it unguarded. */
 function brlOf(usdValue: number): string {
   return store.brlUsdRate > 0 ? store.brl(usdValue / store.brlUsdRate) : '';
 }
@@ -69,7 +68,6 @@ function brlOf(usdValue: number): string {
 </template>
 
 <style scoped>
-/* The legacy page inlined this style on every BRL sub-line. */
 .metric-sub-line {
   font-size: 10px;
   color: #64748b;

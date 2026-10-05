@@ -21,10 +21,6 @@ interestRouter.post('/months', async (req: Request, res: Response) => {
     const { month, amount, currency = 'BRL' } = req.body;
     if (!month || typeof amount !== 'number') return res.status(400).json({ error: 'month and amount required' });
     if (!['BRL', 'USD'].includes(currency as string)) return res.status(400).json({ error: 'currency must be BRL or USD' });
-    // `interest` has no primary key and no unique index, so `INSERT OR REPLACE`
-    // appended a second row for a month that already existed: editing an amount
-    // listed the month twice and counted it twice in the totals. Delete first,
-    // inside a transaction, so a month is one row.
     transaction(() => {
       runSync('DELETE FROM interest WHERE month = ? AND currency = ?', [month, currency]);
       runSync('INSERT INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [

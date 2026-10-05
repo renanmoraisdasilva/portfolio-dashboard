@@ -6,7 +6,6 @@ import { useDashboardStore } from '../stores/dashboard';
 const route = useRoute();
 const store = useDashboardStore();
 
-/** The dashboard's sub-view lives in the URL, so read it from there. */
 const currentTab = (): string | undefined => {
   if (route.path !== '/') return undefined;
   const tab = route.query.tab;

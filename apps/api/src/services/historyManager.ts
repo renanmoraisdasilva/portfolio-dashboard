@@ -14,9 +14,6 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
 
   const trades: any[] = await all('SELECT * FROM trades ORDER BY time ASC');
   const lots = replayFIFOLots(trades, prices);
-  // The same derivation `GET /api/portfolio/valuation` uses. These two must
-  // agree: one draws the live card, the other writes the history the chart
-  // behind it is drawn from.
   const realizedFromSells = computeRealizedFromSales(trades, SYMBOLS, prices['BRLUSD'] ?? 1, prices).totalUsd;
 
   const cashRow: any = await get(`
@@ -44,7 +41,6 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
     interestUSDMonthsTotal,
   });
 
-  // Dedup guard: skip scheduled insertions if a point already exists within the last 25 minutes
   const last: any = await get('SELECT * FROM portfolio_snapshots ORDER BY ts DESC LIMIT 1');
   const now = Date.now();
   if (!options.manual && last && now - (last.ts || 0) < 25 * 60 * 1000) {
@@ -113,10 +109,6 @@ export async function recomputeHistoryAt(ts: number) {
     lots,
     prices,
     cash,
-    // Same derivation as the live valuation, over the trades that existed at `ts`
-    // and converted at the BRLUSD tick from `ts` — a recomputed point must not
-    // book a sale using today's exchange rate. Deliberately after `prices` is
-    // built, which is where that rate comes from.
     realizedFromSells: computeRealizedFromSales(trades, SYMBOLS, prices['BRLUSD'] ?? 1, prices).totalUsd,
     interestBRLMonthsTotal,
     interestUSDMonthsTotal,

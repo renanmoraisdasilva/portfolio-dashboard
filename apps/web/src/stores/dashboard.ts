@@ -37,55 +37,25 @@ export interface PriceMeta {
   taxaCompra?: number;
 }
 
-/**
- * A trade as this page uses it.
- *
- * The OpenAPI schema types every field as optional, so this is the normalized
- * shape the store works in; `reloadState` maps the API rows onto it. `profit` is
- * the server's derived realized P/L for a sell, in the symbol's own currency.
- */
 export interface DashboardTrade {
   id?: string;
   symbol: string;
   side: Side;
   qty: number;
   price?: number | null;
-  /** Realized P/L, recorded by the server on sells. */
   profit?: number;
   time: string;
-  /** Present only while an optimistic add is in flight. */
   _tmpId?: string;
 }
 
-/** One entry from a `POST /api/state/import` 400 body. Mirrors `statePayload.ts` on the server. */
 interface ImportProblem {
   table: string;
   index: number | null;
   reason: string;
 }
 
-/**
- * How many problems to render in one toast.
- *
- * The server caps its own report at 20 and sends `omitted` for the rest, so this is
- * a display limit rather than a safety one. Six is chosen because the toast is a
- * corner panel and the point is to make the failure legible, not to reproduce the
- * response body in a box the user has to dismiss.
- */
 const MAX_RENDERED_PROBLEMS = 6;
 
-/**
- * Turns a failed import into something a person can act on.
- *
- * A rejected backup used to read `POST /api/state/import failed with 500: Failed
- * to import state` — a status that blamed the server for a bad file, and a message
- * naming nothing about it. Restoring a backup is a recovery operation, so the one
- * moment the message matters most is the moment it was least useful.
- *
- * A 400 carries the problem list; anything else falls back to the error's own
- * message. `null` means "not an ApiError", which the caller turns into a generic
- * failure rather than pretending to have detail.
- */
 export function importErrorMessage(err: unknown): string | null {
   if (!(err instanceof ApiError)) return null;
   const details = err.details as { problems?: unknown; omitted?: unknown } | null;
@@ -94,8 +64,6 @@ export function importErrorMessage(err: unknown): string | null {
 
   const shown = problems.slice(0, MAX_RENDERED_PROBLEMS);
   const lines = shown.map((p) => `${p.index === null ? p.table : `${p.table}[${p.index}]`}: ${p.reason}`);
-  // Two separate shortfalls: this function's own display cap, and the server's
-  // report cap. Both have to be counted, or a capped list reads as complete.
   const omitted = typeof details?.omitted === 'number' ? details.omitted : 0;
   const notShown = problems.length - shown.length + omitted;
   if (notShown > 0) lines.push(`…and ${notShown} more`);
@@ -121,58 +89,14 @@ export const ALLOCATION_PALETTE = [
 
 const CASH_ENTRIES_PAGE_SIZE = 5;
 
-/**
- * Currency formatting delegates.
- *
- * These used to be four re-implementations — byte-identical to the copy
- * `simulation.ts` carried, and hand-rolled `toLocaleString` calls alongside the
- * `formatMoney` this very file already imported. Two implementations of one rule
- * is how the valuation drift happened in the first place (`valuation.ts` explains
- * why the arithmetic was extracted to `packages/shared`).
- *
- * They stay as store members because twenty call sites across four components
- * reach them as `store.usd(...)`, and the point of this change is a single
- * *implementation*, not churn in every template. `signedBrl` had no call sites at
- * all and is gone rather than kept for symmetry.
- */
 const usd = (n: number): string => formatMoney(n, 'USD');
 const brl = (n: number): string => formatMoney(n, 'BRL');
 const signedUsd = (n: number): string => formatSigned(n, 'USD');
 
-/**
- * The positions table's own currency format: `R$1.234,56` / `$1234.56`, no
- * thousands separator.
- *
- * This is deliberately NOT `formatMoney`. The legacy table printed amounts
- * without a separator and `dashboard.test.ts` pins the exact strings
- * (`'$3200.10'`, `'+R$19943.92'`), so it is a fidelity choice rather than an
- * oversight — the metric cards above do use `formatMoney`, with separators.
- *
- * It exists as one named function because the table used to interpolate
- * `` `$${x.toFixed(2)}` `` in five places, and each one had to be corrected
- * separately when the sign was fixed.
- */
 function legacyAmount(amount: number, currency: Currency): string {
   return `${currency === 'BRL' ? 'R$' : '$'}${Math.abs(amount).toFixed(2)}`;
 }
 
-/**
- * `legacyAmount` with an explicit sign, `+R$19943.92` / `-R$19943.92`.
- *
- * The bug this replaces was the sign being left to `` `${row.pl >= 0 ? '+' : ''}` ``
- * prepended onto a *pre-rendered* magnitude, in two spellings:
- *
- * - `` pl: `${row.pl >= 0 ? '+' : ''}${pl}` `` with `pl` built as
- *   `` `$${row.pl.toFixed(2)}` `` for the USD branch, which put the symbol ahead
- *   of the minus: a losing position read `$-1,234.56`.
- * - the cash row's `` `${row.pl >= 0 ? '+' : ''}${row.plCurrency === 'BRL' ? `R$${row.pl.toFixed(2)}` : `$${row.pl.toFixed(2)}` }` ``,
- *   which did the same in both currencies: `R$-19943.92`.
- *
- * The BRL branch of the position table went through `formatMoney` and was already
- * correct, which is why the inconsistency read as deliberate. The old test only
- * ever asserted a *positive* `pl`; `dashboard.test.ts` now drives a losing
- * valuation through the store and pins the minus.
- */
 function legacySigned(amount: number, currency: Currency): string {
   return `${amount < 0 ? '-' : '+'}${legacyAmount(amount, currency)}`;
 }
@@ -188,25 +112,11 @@ export const CHART_DAY_RANGES = [
   { days: 5, label: '5D', title: '5 Days' },
 ] as const;
 
-/**
- * Dashboard state.
- *
- * The vanilla page held ~20 module-level variables and re-read the DOM on every
- * recalculation. Here they are reactive state, so `refresh()` is a data action
- * and every card, table and chart is a computed property off the same numbers.
- *
- * Arithmetic is deliberately unchanged: FIFO comes from
- * `createPortfolioCalculator(...).replayFIFOLots`, and each formula below is the
- * legacy line for line. Realized P/L and the per-sale Profit column both come
- * from the server, which derives them with `computeRealizedFromSales`; the store
- * does not replay lots to second-guess them.
- */
 export const useDashboardStore = defineStore(
   'dashboard',
   () => {
     const api = useApi();
 
-    // --- Server-owned data -----------------------------------------------------
     const prices = ref<Record<string, number>>({});
     const priceMeta = ref<Record<string, PriceMeta>>({});
     const priceTimestamps = ref<Record<string, number>>({});
@@ -227,19 +137,12 @@ export const useDashboardStore = defineStore(
     const symbolDetails = ref<SymbolMap>({});
     const currencySymbols = ref<string[]>([]);
 
-    // --- UI preferences (persisted) -------------------------------------------
     const allocationShowCash = ref(true);
     const allocCurrency = ref<Currency>('USD');
     const interestMonthsCollapsed = ref(true);
     const interestUSDMonthsCollapsed = ref(true);
 
-    // --- Transient UI state ----------------------------------------------------
     const tab = ref<Tab>('dashboard');
-    /**
-     * Which chart chip is lit. `all` and `value` both plot portfolio value, but
-     * the chip that was clicked stays highlighted — the vanilla page's three
-     * buttons were two views plus a shortcut, not three views.
-     */
     const activeSeries = ref<'all' | 'value' | 'pnl'>('value');
     const activeMetric = computed<Metric>(() => (activeSeries.value === 'pnl' ? 'pnl' : 'value'));
     const projectionEnabled = ref(false);
@@ -255,7 +158,6 @@ export const useDashboardStore = defineStore(
     const deleteTradeIndex = ref<number | null>(null);
     const loading = ref(false);
 
-    // --- Trade form ------------------------------------------------------------
     const formSide = ref<Side>('buy');
     const formSymbol = ref('BTC');
     const formCashSource = ref<CashSource>('USD');
@@ -270,24 +172,14 @@ export const useDashboardStore = defineStore(
     const isBRLNonBond = (s: string): boolean => classifier.value.isBRLNonBond(s);
     const isBRLBond = (s: string): boolean => classifier.value.isBRLBond(s);
 
-    /** Open quantity for a symbol, as the server's FIFO walk left it. */
     const positionQty = (symbol: string): number => valuation.value?.positions?.[symbol] ?? 0;
 
-    /** Assets a user can trade: everything except pure currency pairs. */
     const tradeableSymbols = computed(() =>
       symbolList.value.filter((s) => symbolDetails.value[s] && symbolDetails.value[s]?.type !== 'currency'),
     );
 
     const priceOf = (s: string): number => prices.value[s] ?? 0;
 
-    /**
-     * Maps an API trade row onto `DashboardTrade`.
-     *
-     * The spec types every field optional, so this is the one place that
-     * looseness is absorbed. Rows without a symbol or quantity cannot be
-     * replayed and are dropped by the caller. `profit` is the server's derived
-     * realized P/L for a sell, in the symbol's own currency.
-     */
     function normalizeTrade(t: Trade): DashboardTrade {
       return {
         id: t.id,
@@ -300,20 +192,6 @@ export const useDashboardStore = defineStore(
       };
     }
 
-    // --- Server-computed valuation --------------------------------------------
-
-    /**
-     * Totals, invested cost, per-position P/L and the allocation split, as
-     * `GET /api/portfolio/valuation` computed them.
-     *
-     * This is computed by the server, not the browser. It used to be ~180 lines of
-     * `metrics`, `positionRows`, `cashPositionRows`, `allocation` and
-     * `plByAsset` computeds in this file, a second copy of the rules that
-     * `historyManager` applies when it writes snapshots. The page now renders
-     * these numbers and formats them; it does not derive them. The simulator is
-     * the one place that still values positions itself, because its prices are
-     * hypothetical — and it calls the same shared module.
-     */
     const valuation = ref<PortfolioValuation | null>(null);
 
     async function loadValuation(): Promise<void> {
@@ -339,39 +217,17 @@ export const useDashboardStore = defineStore(
         unrealizedPct: v?.unrealizedPct ?? 0,
         tickerValue: v?.tickerValue ?? 0,
         investedPct: v?.investedPct ?? 0,
-        /**
-         * The cost basis as a share of what the portfolio is worth now, for the
-         * "Total Invested" card's sub-line.
-         *
-         * Not the server's `investedPct`, which is a different and separately
-         * tested quantity: that one is the share of the portfolio sitting in
-         * tickers, excluding cash and the BRLUSD pair. This is cost basis over
-         * total, which is what makes the card legible next to "Net invested" -
-         * the two then differ by exactly the realized figure.
-         */
         investedShareOfTotal: total > 0 ? (invested / total) * 100 : 0,
         breakEven: v?.breakEven ?? true,
         salesCount: v?.salesCount ?? 0,
       };
     });
 
-    /** A price fetch with a zero or missing price means the whole UI is wrong. */
     const zeroPriceAssets = computed(() =>
       Object.keys(prices.value).filter((k) => prices.value[k] == null || prices.value[k] === 0),
     );
     const hasPriceError = computed(() => priceError.value !== null || zeroPriceAssets.value.length > 0);
 
-    // --- Position rows ---------------------------------------------------------
-
-    /**
-     * The positions table, as the valuation's rows formatted for display.
-     *
-     * Every amount arrives from the server already in the right currency — that
-     * choice is domain knowledge, and it is made once, in `computeValuation`.
-     * What is left here is printing: which currency's formatter, a sign, and how
-     * many decimals. The row shapes are unchanged, so the table did not have to
-     * be touched.
-     */
     const positionRows = computed(() =>
       (valuation.value?.rows ?? [])
         .filter((row) => row.kind === 'position')
@@ -392,38 +248,21 @@ export const useDashboardStore = defineStore(
         }),
     );
 
-    /** Cash rows are part of the positions table, exactly as the legacy page had it. */
     const cashPositionRows = computed(() =>
       (valuation.value?.rows ?? [])
         .filter((row) => row.kind !== 'position')
         .map((row) => ({
           symbol: row.symbol,
-          // A balance reads better to the cent than a fractional position does.
           qty: row.qty.toFixed(2),
-          // USD cash has no purchase price, so both rate columns are a dash.
           avg: row.kind === 'brl-cash' ? `$${row.avgCost.toFixed(4)}` : '-',
           cur: row.kind === 'brl-cash' ? `$${row.currentPrice.toFixed(4)}` : '-',
           value: `$${row.value.toFixed(2)}`,
-          // The BRL balance is valued in USD but earns BRL interest, so the P/L
-          // column is a BRL amount on that row. `legacySigned` puts the minus
-          // ahead of the symbol; this used to render `R$-19943.92` when the
-          // interest was a loss.
           pl: legacySigned(row.pl, row.plCurrency),
           plPct: `${row.plPct >= 0 ? '+' : ''}${row.plPct.toFixed(2)}%`,
           positive: row.pl >= 0,
         })),
     );
 
-    // --- Allocation and P/L ----------------------------------------------------
-
-    /**
-     * The doughnut's slices, as the server computed them.
-     *
-     * Which slices exist and what share of the portfolio each one is — including
-     * whether the cash balances are part of the split — is the server's answer,
-     * so flipping the "with cash" toggle refetches the valuation instead of
-     * re-deriving the percentages here.
-     */
     const allocation = computed(() => {
       const slices = valuation.value?.allocation ?? [];
       return {
@@ -443,18 +282,7 @@ export const useDashboardStore = defineStore(
       };
     });
 
-    /**
-     * Least-squares trend of the history, extended forward.
-     *
-     * The fit is `computeProjection` from packages/shared — it used to sit here
-     * as forty untested lines, and it is the only place where the browser derived
-     * a value nothing else could check. It stays client-side because the series
-     * it fits is already in hand, and a request per toggle would be slower for
-     * no extra correctness.
-     */
     const projection = computed(() => (projectionEnabled.value ? computeProjection(history.value) : []));
-
-    // --- Trade history ---------------------------------------------------------
 
     const tradeRows = computed(() => {
       const rate = brlUsdRate.value || 1;
@@ -470,10 +298,6 @@ export const useDashboardStore = defineStore(
           total = formatMoney(t.qty * raw, 'BRL');
           profit = { text: '-', positive: null };
           if (t.side === 'sell' && typeof t.profit === 'number') {
-            // `formatSigned`, not `` `${t.profit >= 0 ? '+' : ''}${formatMoney(...)}` ``:
-            // the latter prefixes a `+` onto a value `Intl` has already signed, so
-            // a losing sale rendered as `+-$78.00` — a gain, in a column whose
-            // colour said otherwise.
             profit = { text: formatSigned(t.profit, 'BRL'), positive: t.profit >= 0 };
           }
         } else if (isBRLBond(symbol)) {
@@ -488,10 +312,6 @@ export const useDashboardStore = defineStore(
           }
         } else {
           const p = t.price || priceOf(symbol);
-          // Unchanged from the legacy page: no thousands separator, no sign on the
-          // profit (the `positive` flag drives the colour). Only the sign *bug* in
-          // the two BRL branches above was fixed; the formatting convention here
-          // is deliberate.
           price = t.price !== null && t.price !== undefined ? `$${t.price?.toFixed(2)}` : '-';
           total = `$${(t.qty * p).toFixed(2)}`;
           profit = { text: '-', positive: null };
@@ -524,8 +344,6 @@ export const useDashboardStore = defineStore(
         close: c.close ?? 0,
       }));
     });
-
-    // --- Trade form ------------------------------------------------------------
 
     const parsedQty = computed(() => parseFloat(qtyInput.value) || 0);
     const parsedPrice = computed(() => parseFloat(priceInput.value) || 0);
@@ -560,7 +378,6 @@ export const useDashboardStore = defineStore(
       return String(+(totalUSD / price).toFixed(4));
     }
 
-    /** Share of the available cash (or of the open position, when selling). */
     function qtyFromPct(pct: number): number {
       const symbol = formSymbol.value;
       const price = parsedPrice.value || priceOf(symbol);
@@ -579,7 +396,6 @@ export const useDashboardStore = defineStore(
       return +((availableUsd * (pct / 100)) / price).toFixed(4);
     }
 
-    /** The reverse: what share of the budget the typed quantity represents. */
     function pctFromQty(qty: number): number {
       const symbol = formSymbol.value;
       const price = parsedPrice.value || priceOf(symbol);
@@ -621,7 +437,6 @@ export const useDashboardStore = defineStore(
       if (qty) qtyInput.value = qty;
     }
 
-    /** Seeds the price field when the asset changes: bonds quote in R$. */
     function syncPriceToSymbol(): void {
       const s = formSymbol.value;
       if (!isBRLAsset(s)) {
@@ -647,7 +462,6 @@ export const useDashboardStore = defineStore(
       qtyPct.value = pctFromQty(parsedQty.value);
     }
 
-    /** Converting the cash source converts whatever total is already typed. */
     function setCashSource(source: CashSource): void {
       const previous = formCashSource.value;
       formCashSource.value = source;
@@ -664,7 +478,6 @@ export const useDashboardStore = defineStore(
       qtyPct.value = pctFromQty(parsedQty.value);
     }
 
-    /** Bonds quote in R$ but store USD, so the form converts on submit. */
     function resolvedTradePrice(): number | null {
       const typed = priceInput.value ? parseFloat(priceInput.value) : null;
       const s = formSymbol.value;
@@ -692,10 +505,6 @@ export const useDashboardStore = defineStore(
       qtyPct.value = 0;
     }
 
-    /**
-     * Adds the trade locally first, then persists — the optimistic path the
-     * legacy page used, so the UI never waits on the network.
-     */
     async function addTrade(): Promise<string | null> {
       const trade: DashboardTrade = {
         symbol: formSymbol.value,
@@ -711,7 +520,6 @@ export const useDashboardStore = defineStore(
       try {
         const data = await request(
           api.POST('/trades', {
-            // Only the fields the API stores: `_tmpId` and `profit` are local.
             body: {
               symbol: trade.symbol,
               side: trade.side,
@@ -744,8 +552,6 @@ export const useDashboardStore = defineStore(
       } catch (err) {
         console.warn('[dashboard] add trade failed:', err);
         await reloadState().catch(() => undefined);
-        // A rejected trade (409 currency mismatch, 400 missing sell price) comes
-        // back with the server's own message, which is what the user needs.
         return err instanceof ApiError ? err.message : `Error: ${String(err)}`;
       }
     }
@@ -769,8 +575,6 @@ export const useDashboardStore = defineStore(
       deleteTradeIndex.value = null;
       await reloadState().catch((err) => console.warn('[dashboard] reload after delete failed:', err));
     }
-
-    // --- Interest --------------------------------------------------------------
 
     async function addInterestMonth(currency: Currency, month: string, raw: string): Promise<string | null> {
       const amount = +parseMoney(raw, currency).toFixed(2) || 0;
@@ -813,8 +617,6 @@ export const useDashboardStore = defineStore(
       );
       await reloadState();
     }
-
-    // --- Cash ledger -----------------------------------------------------------
 
     async function loadCashEntries(page?: number): Promise<void> {
       if (page !== undefined) cashEntriesPage.value = page;
@@ -867,15 +669,9 @@ export const useDashboardStore = defineStore(
       return null;
     }
 
-    // --- Alerts ----------------------------------------------------------------
-
     const alertRows = computed(() =>
       alerts.value.map((a) => {
         const brl = isBRLAsset(a.symbol ?? '');
-        // The legacy alert rows read `R$ ` + `toLocaleString('pt-BR')`, i.e.
-        // separated and with a plain space. `formatMoney` matches that apart from
-        // using a non-breaking space after `R$`, which is the better rendering
-        // and the same one the metric cards already use.
         const money = (amount: number): string => formatMoney(amount, brl ? 'BRL' : 'USD');
         const threshold = a.threshold ?? 0;
         const label =
@@ -889,7 +685,6 @@ export const useDashboardStore = defineStore(
     const triggeredRows = computed(() =>
       triggeredAlerts.value.map((t) => {
         const brl = isBRLAsset(t.symbol ?? '');
-        // Same as the alert labels above.
         const money = (amount: number, maxDigits?: number): string => formatMoney(amount, brl ? 'BRL' : 'USD', maxDigits);
         const current = t.current_price ?? 0;
         const priceText =
@@ -960,15 +755,6 @@ export const useDashboardStore = defineStore(
       await loadTriggeredAlerts().catch((err) => console.warn('[dashboard] reload triggered alerts failed:', err));
     }
 
-    // --- Settings and maintenance ---------------------------------------------
-
-    /**
-     * Downloads a backup.
-     *
-     * Prefers the server export — it spans cash entries, alerts and scenarios
-     * as well as what is on screen — and falls back to assembling the blob from
-     * loaded state, which is all the page can offer if the request fails.
-     */
     async function exportData(): Promise<void> {
       let payload: unknown;
       try {
@@ -1007,14 +793,6 @@ export const useDashboardStore = defineStore(
         return 'Invalid JSON.';
       }
 
-      // Only "is this an object" is checked here. The shape rules live in
-      // `statePayload.ts` on the server and nowhere else.
-      //
-      // This used to require `trades` *and* `history` to be arrays before sending,
-      // which contradicted the endpoint's own contract: an absent key deliberately
-      // leaves its table alone so a partial backup cannot empty a table, and
-      // `state.test.ts` tests exactly that. A legitimate partial restore was
-      // rejected here and never reached the server that would have handled it.
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return 'Not a backup file.';
 
       try {
@@ -1041,8 +819,6 @@ export const useDashboardStore = defineStore(
       }
     }
 
-    // --- Loading ---------------------------------------------------------------
-
     async function loadSymbols(): Promise<void> {
       if (symbolList.value.length > 0) return;
       const data = await request(api.GET('/config/symbols'), 'GET', '/config/symbols');
@@ -1051,7 +827,6 @@ export const useDashboardStore = defineStore(
         symbolDetails.value = (data.detailed ?? {}) as SymbolMap;
         currencySymbols.value = data.currencies ?? [];
       } else {
-        // Fall back to the vanilla page's defaults so the form is still usable.
         symbolList.value = ['BTC', 'ETH', 'SOL', 'SPY', 'GLD', 'IBIT', 'BRLUSD'];
         symbolDetails.value = {};
         currencySymbols.value = ['BRLUSD'];
@@ -1064,10 +839,6 @@ export const useDashboardStore = defineStore(
       const nextPrices: Record<string, number> = {};
       const nextMeta: Record<string, PriceMeta> = {};
       const nextTs: Record<string, number> = {};
-      // 24 min: three worker refresh cycles. The server sends the authoritative
-      // value as `cacheTTLms` on the next line; this is only the fallback for when
-      // it is missing, and it must not be the fetch cache's 8 minutes or the
-      // banner fires on every cycle.
       let ttl = 1_440_000;
 
       for (const [key, value] of Object.entries(data ?? {})) {
@@ -1093,7 +864,6 @@ export const useDashboardStore = defineStore(
       if (typeof nextPrices.BRLUSD === 'number') brlUsdRate.value = nextPrices.BRLUSD;
       if (typeof nextPrices.CDI === 'number') cdiRate.value = nextPrices.CDI;
 
-      // Prices are cached server-side with a TTL; flag anything past it.
       const stale: string[] = [];
       for (const s of symbolList.value.length > 0 ? symbolList.value : Object.keys(nextPrices)) {
         const ts = nextTs[s];
@@ -1112,15 +882,6 @@ export const useDashboardStore = defineStore(
       }
     }
 
-    /**
-     * Trades, cash and interest, read from the granular endpoints.
-     *
-     * `GET /api/state` was retired: `/trades` carries the
-     * ledger, `/cash` already sums both balances *and* both interest totals,
-     * and the two `/interest/months` calls carry the month lists. Four small
-     * queries instead of one cached blob, and no endpoint that duplicates what
-     * the routes already say.
-     */
     async function reloadState(): Promise<void> {
       const [tradeRows, cash, brlMonths, usdMonths] = await Promise.all([
         request(api.GET('/trades'), 'GET', '/trades'),
@@ -1161,12 +922,10 @@ export const useDashboardStore = defineStore(
       if (Array.isArray(pnlCandles) && pnlCandles.length > 0) pnlOHLC.value = pnlCandles;
     }
 
-    /** One cycle of the legacy `refresh()`: symbols, prices, history, valuation. */
     async function refresh(): Promise<void> {
       await loadSymbols();
       await fetchPrices();
       await loadHistorySeries();
-      // Prices are the valuation's main input, so it is recomputed after them.
       await loadValuation();
     }
 
@@ -1178,16 +937,12 @@ export const useDashboardStore = defineStore(
         await Promise.all([loadAlerts(), loadTriggeredAlerts(), loadCashEntries()]);
         if (!tradeDate.value) tradeDate.value = new Date().toISOString().slice(0, 10);
       } catch (err) {
-        // One failed call must not blank the page: whatever loaded stays on
-        // screen, and the log names the endpoint that failed.
         console.warn('[dashboard] load failed:', err);
         priceError.value = err instanceof ApiError ? err.message : 'Could not load the dashboard';
       } finally {
         loading.value = false;
       }
     }
-
-    // --- UI actions ------------------------------------------------------------
 
     function setTab(next: Tab): void {
       tab.value = next;
@@ -1196,8 +951,6 @@ export const useDashboardStore = defineStore(
     function setAllocationMode(mode: 'withCash' | 'investments'): void {
       if (allocationShowCash.value === (mode === 'withCash')) return;
       allocationShowCash.value = mode === 'withCash';
-      // Whether the cash balances are part of the split is the server's call, so
-      // the toggle asks for that variant rather than recomputing the percentages.
       loadValuation().catch((err) => console.warn('[dashboard] allocation valuation failed:', err));
     }
 
@@ -1218,7 +971,6 @@ export const useDashboardStore = defineStore(
     }
 
     return {
-      // server data
       prices,
       priceMeta,
       trades,
@@ -1236,12 +988,10 @@ export const useDashboardStore = defineStore(
       symbolList,
       symbolDetails,
       currencySymbols,
-      // preferences
       allocationShowCash,
       allocCurrency,
       interestMonthsCollapsed,
       interestUSDMonthsCollapsed,
-      // ui
       tab,
       activeSeries,
       activeMetric,
@@ -1261,7 +1011,6 @@ export const useDashboardStore = defineStore(
       settingsOpen,
       deleteTradeIndex,
       loading,
-      // form
       formSide,
       formSymbol,
       formCashSource,
@@ -1270,7 +1019,6 @@ export const useDashboardStore = defineStore(
       tradeDate,
       totalInput,
       qtyPct,
-      // derived
       tradeableSymbols,
       metrics,
       hasPriceError,
@@ -1282,7 +1030,6 @@ export const useDashboardStore = defineStore(
       plByAsset,
       projection,
       valueCandles,
-      // helpers
       isBRLAsset,
       isBRLNonBond,
       isBRLBond,
@@ -1295,7 +1042,6 @@ export const useDashboardStore = defineStore(
       qtyFromPct,
       pctFromQty,
       resolvedTradePrice,
-      // actions
       load,
       refresh,
       reloadState,

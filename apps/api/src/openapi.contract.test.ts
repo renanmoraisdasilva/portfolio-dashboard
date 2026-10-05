@@ -18,10 +18,6 @@ interface MountedRoute {
 const SPEC_FILE = path.resolve(__dirname, '..', 'openapi.yaml');
 const API_BASE = '/api';
 
-/**
- * Express 4 builds a mounted-router layer regexp from path-to-regexp, e.g.
- * app.use('/api/state', router) -> ^\/api\/state\/?(?=\/|$)
- */
 function decodeMountPrefix(regexp: RegExp | undefined): string {
   if (!regexp) return '';
   const source = regexp.source;
@@ -41,7 +37,6 @@ function joinPath(prefix: string, routePath: string): string {
   return combined === '' ? '/' : combined;
 }
 
-/** Express `:id` and OpenAPI `{id}` both become `{param}` so the comparison is about shape. */
 function normalizePath(p: string): string {
   const trimmed = p.replace(/\/$/, '') || '/';
   return trimmed
@@ -120,16 +115,6 @@ describe('OpenAPI contract', () => {
   });
 
   test('introspection finds the mounted API routers', () => {
-    // A silent regression here would make the two assertions below vacuous — an
-    // empty `mounted` makes "every route is documented" and "every documented
-    // operation is still mounted" both pass while checking nothing.
-    //
-    // These are floors, deliberately well below the real counts (37 operations
-    // across 13 routers). They used to be pinned to the exact current numbers,
-    // which made them a change detector rather than the sanity check they claim to
-    // be: any endpoint added or removed turned this red, which says nothing about
-    // whether the contract holds. Mounting a router is what has to keep working;
-    // the totals are the two bidirectional assertions' job.
     expect(mounted.length).toBeGreaterThanOrEqual(25);
     expect(new Set(mounted.map((r) => r.path.split('/')[2])).size).toBeGreaterThanOrEqual(10);
   });

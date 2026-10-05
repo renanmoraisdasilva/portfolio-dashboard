@@ -53,7 +53,6 @@ const THEMES = {
   },
 } as const;
 
-/** The legacy page's verdicts, verbatim: same thresholds, same wording. */
 const signals = computed<Signal[]>(() => {
   const ret = props.snap?.return_pct ?? null;
   const dd = props.snap?.max_drawdown_pct ?? null;

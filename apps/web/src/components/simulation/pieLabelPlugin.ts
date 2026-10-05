@@ -1,27 +1,13 @@
 import type { ArcElement, Plugin } from 'chart.js';
-// Shared with the dashboard's plugin, which renders the same labels differently
-// but must agree on what a label *is* — see `labelText`.
 import { labelText } from '../dashboard/pieLabelPlugin';
 
 export interface PieLabelOptions {
-  /** Slices below this share go to the side list instead of onto the arc. */
   threshold?: number;
   textColor?: string;
   nameFont?: string;
   pctFont?: string;
 }
 
-/**
- * Draws the allocation doughnut's labels.
- *
- * Ported verbatim from the legacy page, minus the `canvas.id` guard: there the
- * plugin was registered globally and had to ignore other charts, here it is
- * registered per chart (see `AllocationPanel.vue`) so it cannot run anywhere
- * else.
- *
- * Slices of at least `threshold` get a rounded label box on the arc; the rest
- * are collected and listed in the middle (at most 8, then "+N more").
- */
 export const pieLabelPlugin: Plugin<'doughnut'> = {
   id: 'pieLabelPlugin',
   afterDraw(chart, _args, options) {

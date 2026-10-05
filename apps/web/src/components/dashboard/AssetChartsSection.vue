@@ -9,7 +9,6 @@ const api = useApi();
 
 const candles = ref<Record<string, OhlcCandle[]>>({});
 
-/** Tradable assets, plus BRL as a frontend alias for the BRLUSD pair. */
 const assets = computed(() =>
   store.currencySymbols.includes('BRLUSD') ? [...store.tradeableSymbols, 'BRL'] : store.tradeableSymbols,
 );
@@ -18,11 +17,6 @@ const rangeTitle = computed(
   () => CHART_DAY_RANGES.find((r) => r.days === store.selectedDays)?.title ?? `${store.selectedDays} Days`,
 );
 
-/**
- * Candles from `/api/asset/:symbol/ohlc`, falling back to the rolling price
- * cache for tickers the server has no OHLC for yet — the only path that renders
- * anything for a freshly added symbol.
- */
 async function load(symbol: string): Promise<OhlcCandle[]> {
   const days = store.selectedDays;
   const backendSymbol = symbol === 'BRL' ? 'BRLUSD' : symbol;

@@ -26,7 +26,6 @@ export interface MaxDrawdown {
 
 export interface CashFlowEvent {
   ts: number;
-  /** Signed amount in USD. Positive = deposit into portfolio; negative = withdrawal. */
   amountUSD: number;
 }
 
@@ -132,7 +131,6 @@ export function computeTWR(points: SnapshotPoint[], cashFlows: CashFlowEvent[] =
     const curr = points[i];
     if (prev.v <= 0) continue;
 
-    // Sum cash flows strictly in (prev.ts, curr.ts]
     let cfSum = 0;
     for (const f of sortedFlows) {
       if (f.ts <= prev.ts) continue;
@@ -340,18 +338,6 @@ export function computePnLSharpeStats(points: SnapshotPnLPoint[], annualRiskFree
   };
 }
 
-/**
- * The timestamp a period starts at, or `0` for "all time".
- *
- * The parameter is a plain `string`, not `Period`. It was `Period | string`, which
- * TypeScript collapses to `string` — so the annotation advertised a closed set
- * while the switch enumerated five of them and let everything else fall through to
- * `0`. The fallback is deliberate and tested (`'6M'` and `''` both answer `0`),
- * because the value arrives from an analytics query parameter the server does not
- * validate against `PERIODS`. So the type now says what the code does: any string,
- * unknown ones meaning "no lower bound". `Period` remains the type for a value
- * that has actually been checked.
- */
 export function periodStartMs(period: string, now = Date.now()): number {
   switch (period) {
     case '1W':
@@ -495,7 +481,6 @@ export async function refreshAllPeriods(): Promise<void> {
     const year = Number(m[1]);
     const mon = Number(m[2]);
     if (!Number.isFinite(year) || !Number.isFinite(mon) || mon < 1 || mon > 12) return fallbackTs;
-    // Use end-of-month UTC so monthly interest is attributed to the month it belongs to.
     return Date.UTC(year, mon, 0, 23, 59, 59, 999);
   }
 
@@ -567,7 +552,6 @@ export async function refreshAllPeriods(): Promise<void> {
     const drawdown = computeMaxDrawdown(drawdownSeries);
     const sharpe = computePnLSharpeRatio(pnlPoints, 0.045);
 
-    // Reuse existing id for the same period so INSERT OR REPLACE stays idempotent
     const existing: any = await get('SELECT id FROM analytics_snapshots WHERE period = ?', [period]);
     const id = existing?.id ?? randomUUID();
 

@@ -1,19 +1,3 @@
-/**
- * `GET /api/portfolio/valuation` — the portfolio's derived values, computed
- * server-side.
- *
- * The dashboard used to recompute
- * invested cost, totals, BRL conversion, per-position P/L and the allocation
- * split in the browser, from a second copy of the rules that `historyManager`
- * and `analyticsService` already apply when they write snapshots. Two copies of
- * one rule drift: the live dashboard and the chart behind it could disagree
- * about the same portfolio, and nothing would fail.
- *
- * The maths is `computeValuation` from `@portfolio-dashboard/shared` — the same
- * function the browser calls when it has to value something the server cannot
- * know about yet (the simulator's what-if prices). The route's job is to gather
- * the inputs the database already holds and hand them over.
- */
 import { Router, Request, Response } from 'express';
 import { all, get } from '../db';
 import { SYMBOLS } from '../config/symbols';
@@ -34,30 +18,21 @@ interface PriceRow {
   meta?: string | null;
 }
 
-/** `price_cache.meta` holds `{ priceBRL }` for symbols quoted in BRL. */
 function parsePriceMeta(raw: string | null | undefined): { priceBRL?: number } | undefined {
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw) as { priceBRL?: number };
     return typeof parsed?.priceBRL === 'number' ? { priceBRL: parsed.priceBRL } : undefined;
   } catch {
-    // A malformed cache entry is a price-fetch problem, not a request failure:
-    // the symbol still has its USD price, and the bond row falls back to that.
     return undefined;
   }
 }
 
 portfolioRouter.get('/valuation', async (req: Request, res: Response) => {
   try {
-    // Which split the allocation chart is showing. Defaults to the dashboard's
-    // own default; the view refetches when the user flips the toggle rather than
-    // receiving both variants, so the percentages and the request cannot drift.
     const includeCashInAllocation = req.query.cash !== 'investments';
 
     const [trades, priceRows, cash, brlInterest, usdInterest] = await Promise.all([
-      // `ORDER BY time ASC` is load-bearing, not tidiness: the FIFO walk that
-      // derives realized P/L below is only correct over trades in the order they
-      // happened, and on this database rowid order is *not* that order.
       all<{ symbol: string; side: string; qty: number; price: number | null }>(
         'SELECT symbol, side, qty, price FROM trades ORDER BY time ASC',
       ),
@@ -76,10 +51,6 @@ portfolioRouter.get('/valuation', async (req: Request, res: Response) => {
     }
 
     const brlUsdRate = prices['BRLUSD'] ?? 1;
-    // Realized P/L from sales, derived once here and used by the two snapshot
-    // paths in `historyManager` the same way. The `trades.profit` column that
-    // used to carry it was dropped in migration 0003, so for a while this was a
-    // hardcoded 0 and the figure was interest only.
     const realizedFromSales = computeRealizedFromSales(trades ?? [], SYMBOLS, brlUsdRate);
     const input: ValuationInput = {
       trades: trades ?? [],
@@ -98,8 +69,6 @@ portfolioRouter.get('/valuation', async (req: Request, res: Response) => {
     res.json({
       ...valuation,
       brlUsdRate,
-      // The "from N sales" line on the realized-P/L card. A count of the trades
-      // table, not a valuation, but it belongs with the figure it explains.
       salesCount: (trades ?? []).filter((t) => t.side === 'sell').length,
     });
   } catch (err) {

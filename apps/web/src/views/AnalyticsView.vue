@@ -13,8 +13,6 @@ import { useAnalyticsTooltips } from '../composables/useAnalyticsTooltips';
 import { daysBetween, fmtDate, fmtPct } from '../composables/useMoney';
 import { useDocumentTitle } from '../composables/useDocumentTitle';
 
-// Page styles, still served from static/css while the page lives here — the
-// shell links the global ones from /static instead of bundling them.
 import '../../../../static/css/analytics.css';
 
 const store = useAnalyticsStore();

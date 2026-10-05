@@ -7,7 +7,6 @@ const SYMBOLS = {
   SPY: { type: 'stock' },
   BRLUSD: { type: 'currency' },
   BOVA11: { type: 'stock', denominatedInBRL: true },
-  /** A bond: BRL-denominated for display, stored in USD. */
   BOVB11: { type: 'bond', denominatedInBRL: true },
 };
 
@@ -29,7 +28,6 @@ const valuation = (overrides: Partial<ValuationInput> = {}) => computeValuation(
 describe('computeValuation totals', () => {
   test('total is holdings at market value plus both cash balances', () => {
     const result = valuation({ cash: { cashReais: 1000, cashDollars: 500 } });
-    // 0.5 BTC at 60k + 10 SPY at 500 + 1000 BRL at 0.18 + 500 USD
     expect(result.total).toBeCloseTo(0.5 * 60_000 + 5_000 + 180 + 500, 8);
   });
 
@@ -48,7 +46,6 @@ describe('computeValuation totals', () => {
     expect(rallied.unrealized).toBeCloseTo(6_000, 8);
 
     const sold_off = valuation({ prices: { BTC: 40_000, SPY: 300, BRLUSD: 0.18 } });
-    // 0.5 BTC down 10k, 10 SPY down 100.
     expect(sold_off.unrealized).toBeCloseTo(-6_000, 8);
   });
 
@@ -59,7 +56,6 @@ describe('computeValuation totals', () => {
       brlUsdRate: 0.2,
       cash: { cashReais: 0, cashDollars: 0 },
     });
-    // 100 shares at 10 BRL bought, 12 BRL now, at 0.2 USD per BRL.
     expect(result.total).toBeCloseTo(240, 8);
     expect(result.invested).toBeCloseTo(200, 8);
     expect(result.unrealized).toBeCloseTo(40, 8);
@@ -75,18 +71,12 @@ describe('computeValuation totals', () => {
   });
 
   test('investedNet goes negative when realized exceeds invested', () => {
-    // It used to be `Math.max(0, invested - realized)`, which reported `0` here —
-    // "nothing is at risk" — when more had come out of the portfolio than ever
-    // went in. The honest figure is a loss, and this test now says so.
     const result = valuation({ realizedFromSells: 10_000_000, interest: { brlTotal: 0, usdTotal: 0 } });
     expect(result.investedNet).toBe(result.invested - result.realized);
     expect(result.investedNet).toBeLessThan(0);
   });
 
   test('investedNet is exactly `invested - realized` at both signs', () => {
-    // The invariant the clamp broke, pinned on both sides so the arithmetic cannot
-    // drift either way. `valuation()` is the 150-invested / 140-realized fixture,
-    // which lands positive.
     const positive = valuation();
     expect(positive.investedNet).toBeCloseTo(positive.invested - positive.realized, 8);
     expect(positive.investedNet).toBeGreaterThan(0);
@@ -117,27 +107,15 @@ describe('computeValuation totals', () => {
   });
 
   test('breakEven compares against `CENT`, not against zero', () => {
-    // The one place in the domain where a monetary value is compared to a bound,
-    // and the reason the policy needs a named tolerance: `unrealized` is a sum
-    // over lots plus two currency conversions, so an exact-zero comparison would
-    // read a rounding residual as a real loss and colour the dashboard red on a
-    // portfolio that has not moved.
-    //
-    // Driven by nudging a price by a fraction of a cent rather than by asserting
-    // the constant, so it fails if `breakEven` goes back to `unrealized === 0` or
-    // the threshold moves.
     const base = { BTC: 50_000, SPY: 400, BRLUSD: 0.18 };
     const cash = { cashReais: 0, cashDollars: 0 };
 
     const at = (price: number) => valuation({ prices: { ...base, BTC: price }, cash });
 
-    // A 0.05 share of BTC is $2.50 of exposure; a $0.0001 nudge is well under a
-    // cent of the total and must still read as break-even.
     const nudged = at(base.BTC + 0.0001);
     expect(Math.abs(nudged.unrealized)).toBeLessThan(CENT);
     expect(nudged.breakEven).toBe(true);
 
-    // Half a dollar is a real move and must not be called break-even.
     const moved = at(base.BTC + 0.5);
     expect(Math.abs(moved.unrealized)).toBeGreaterThan(CENT);
     expect(moved.breakEven).toBe(false);
@@ -164,7 +142,6 @@ describe('computeValuation positions and FIFO', () => {
       prices: { BTC: 70_000, BRLUSD: 0.18 },
     });
     expect(result.positions['BTC']).toBeCloseTo(0.5, 8);
-    // The remaining half-lot is the 60k one, not a 55k average.
     expect(result.lots['BTC']).toEqual([{ qty: 0.5, price: 60_000 }]);
   });
 
@@ -177,8 +154,6 @@ describe('computeValuation positions and FIFO', () => {
   });
 
   test('lot fallback prices are separate from the prices a position is valued at', () => {
-    // The simulator's zeroed override: the lot is costed at 0, while a position
-    // with no scenario price still reads its market price.
     const result = valuation({
       trades: [{ symbol: 'BTC', side: 'buy', qty: 2 }],
       prices: { BTC: 25_000, BRLUSD: 0.18 },
@@ -233,7 +208,6 @@ describe('computeValuation rows', () => {
   });
 
   test('a bond row quotes priceBRL from the price metadata, and says so', () => {
-    // Bought 10 at 0.5 USD = 5 USD = 25 BRL; quoted at 2.5 BRL, so 25 BRL today.
     const result = valuation({
       trades: [{ symbol: 'BOVB11', side: 'buy', qty: 10, price: 0.5 }],
       prices: { BOVB11: 0.6, BRLUSD: 0.2 },
@@ -340,34 +314,23 @@ describe('computeValuation allocation', () => {
   });
 
   test('a closed-out position gets no allocation slice', () => {
-    // Buy 10 SPY and sell all 10. `replayFIFOLots` `shift()`s the consumed lot
-    // but leaves the key in `lots`, so `positions.SPY` is `0` — and a slice worth
-    // nothing is not a slice. It also dilutes every other percentage, because the
-    // percentages are over `allocationTotal`.
     const result = valuation({
       trades: [...baseInput.trades, { symbol: 'SPY', side: 'sell', qty: 10, price: 500 }],
     });
 
     expect(result.allocation.map((s) => s.label)).toEqual(['BTC']);
-    // 100% of the portfolio, not 85.7% with the remainder on a dead slice.
     expect(result.allocation[0].pct).toBeCloseTo(100, 8);
   });
 });
 
 describe('computeValuation — a closed-out position', () => {
-  /** Buy and then fully sell SPY, leaving only BTC open. */
   const closed = () =>
     valuation({
       trades: [...baseInput.trades, { symbol: 'SPY', side: 'sell', qty: 10, price: 500 }],
-      // `realizedFromSells` is an input: every server-side caller passes it from
-      // `computeRealizedFromSales`, which owns the FIFO walk. 10 sold at 500
-      // against a 400 basis is 1000.
       realizedFromSells: 1_000,
     });
 
   test('does not leave a zero-quantity row in the positions table', () => {
-    // The symptom: a permanent row reading `0` quantity, `$0.00` value and `$0.00`
-    // P/L, indistinguishable from a real position that happens to be worthless.
     const rows = closed().rows;
     expect(rows.map((r) => r.symbol)).not.toContain('SPY');
     expect(rows.map((r) => r.symbol)).toContain('BTC');
@@ -375,19 +338,11 @@ describe('computeValuation — a closed-out position', () => {
   });
 
   test('keeps the realized P/L it booked', () => {
-    // The point of a closed position is that the gain is still reported. Filtering
-    // the *row* must not filter the sale.
-    //
-    // `realizedFromSells` is an input, not something `computeValuation` derives —
-    // every server-side caller passes it from `computeRealizedFromSales`, which is
-    // the single FIFO walk. So the fixture supplies it, as the routes do.
     const result = closed();
     expect(result.realized).toBeCloseTo(10 * (500 - 400), 8);
   });
 
   test('stops counting it as invested, which it already did', () => {
-    // The arithmetic was always right — an empty lot list sums to zero cost — so
-    // `invested` is unaffected. This pins that the fix is presentation only.
     const open = valuation();
     const shut = closed();
     expect(shut.invested).toBeCloseTo(open.invested - 10 * 400, 8);
@@ -395,12 +350,10 @@ describe('computeValuation — a closed-out position', () => {
   });
 
   test('plByAsset omits it too', () => {
-    // A `0` entry in the P/L-by-asset list is the same lie in a different chart.
     expect(closed().plByAsset.map((p) => p.symbol)).toEqual(['BTC']);
   });
 
   test('a genuinely unsold position is untouched', () => {
-    // The guard has to be `qty === 0`, not "was ever traded".
     const result = valuation();
     expect(result.rows.map((r) => r.symbol)).toEqual(['BTC', 'SPY']);
     expect(result.allocation.map((s) => s.label)).toEqual(['BTC', 'SPY']);
@@ -435,19 +388,6 @@ describe('computeValuation plByAsset', () => {
 });
 
 describe('degenerate inputs', () => {
-  /**
-   * A position whose lots are all consumed.
-   *
-   * It used to still appear in `rows`, at quantity zero, and these tests pinned
-   * that its per-row divisions reported `0` rather than `NaN`. It no longer
-   * appears at all — see `openSymbols` in `valuation.ts` — so what is asserted now
-   * is the invariant the old tests were reaching for, at the level it actually
-   * holds: **no row the caller receives ever carries a NaN.**
-   *
-   * The division guards are still load-bearing rather than dead, because the
-   * filter is `qty !== 0` and `NaN !== 0` is `true` — so a trade carrying a
-   * non-finite quantity passes straight through it. That is the case below.
-   */
   const closedOut = (symbol: string) => ({
     trades: [
       { symbol, side: 'buy', qty: 1, price: 10 },
@@ -457,7 +397,6 @@ describe('degenerate inputs', () => {
     cash: { cashReais: 0, cashDollars: 0 },
   });
 
-  /** Every numeric field of every row, so a NaN cannot hide in an unasserted column. */
   const numbersIn = (rows: Array<Record<string, unknown>>): number[] =>
     Object.values(rows).flatMap((row) => Object.values(row).filter((v): v is number => typeof v === 'number'));
 
@@ -476,10 +415,6 @@ describe('degenerate inputs', () => {
   });
 
   test('a non-finite quantity still yields a zero-valued row, not a NaN and not a vanished row', () => {
-    // The guards `qty > 0 ? cost / qty : 0` are reachable precisely because
-    // `NaN !== 0`, so the filter lets this through. Without the guards this row
-    // would carry `NaN` averages — which is the failure the original tests were
-    // written to prevent, and it is still reachable after the filter.
     const result = valuation({
       trades: [{ symbol: 'BTC', side: 'buy', qty: Number.NaN, price: 10 }],
       prices: { BTC: 12, BRLUSD: 0.2 },
@@ -552,8 +487,6 @@ describe('degenerate inputs', () => {
     const replay = createPortfolioCalculator(SYMBOLS).replayTradesWithRealized(trades, { BTC: 120 });
     const result = valuation({ trades, prices: { BTC: 120, BRLUSD: 0.18 } });
     expect(result.positions).toEqual(replay.positions);
-    // The simulator's realized P/L comes from that walk; the API's does not,
-    // because the column it used to read was dropped in migration 0003.
     expect(replay.realized).toBeCloseTo(10, 8);
     expect(result.realized).toBe(0);
   });
@@ -566,8 +499,6 @@ describe('degenerate inputs', () => {
     const replay = createPortfolioCalculator(SYMBOLS).replayTradesWithRealized(trades, { BTC: 120 });
     const result = valuation({ trades, prices: { BTC: 120, BRLUSD: 0.18 }, realizedFromSells: replay.realized });
     expect(result.realized).toBeCloseTo(10, 8);
-    // Realized P/L does not change what the portfolio is worth today: 1.5 BTC
-    // is still open, at 120 each, and the 0.5 sold left the ledger.
     expect(result.total).toBeCloseTo(180, 8);
     expect(result.invested).toBeCloseTo(150, 8);
     expect(result.investedNet).toBeCloseTo(150 - 10, 8);

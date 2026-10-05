@@ -1,18 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-// `chart.js/auto` registers the scale/category controllers. The bare `chart.js`
-// entry does not, and fails at runtime with `"category" is not a registered
-// scale` — the CDN build the legacy page loaded was the auto one.
 import Chart from 'chart.js/auto';
 import type { ChartConfiguration } from 'chart.js';
 
-/**
- * Chart.js lifecycle in one place.
- *
- * The legacy page kept six module-level `let chart` variables and called
- * `destroy()` before each redraw; here the config is a prop and this component
- * owns create/destroy, so a chart can never leak when the period changes.
- */
 const props = defineProps<{
   config: ChartConfiguration<'line'> | ChartConfiguration<'bar'> | null;
   emptyMessage: string;

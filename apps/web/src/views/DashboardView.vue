@@ -24,17 +24,6 @@ const route = useRoute();
 
 useDocumentTitle('Portfolio Dashboard');
 
-/**
- * Which of the two dashboard views is showing, from `?tab=`.
- *
- * This is the only page with two views, and the header row reaches both of them
- * from any page, so the selection has to live in the URL rather than in the
- * store. Anything else cannot be linked to and does not survive a reload — and
- * the header is shared, so it cannot know which one you arrived from.
- *
- * An absent or unrecognised `tab` means the overview, which is also what a bare
- * `/` means.
- */
 function tabFromUrl(): 'dashboard' | 'assetCharts' {
   return route.query.tab === 'assetCharts' ? 'assetCharts' : 'dashboard';
 }
@@ -47,7 +36,6 @@ watch(
   { immediate: true },
 );
 
-/** The legacy page polled every 60s; so does this one. */
 const REFRESH_MS = 60_000;
 let timer: ReturnType<typeof setInterval> | undefined;
 
@@ -66,13 +54,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="dashboard-page">
-    <!--
-      Content only. The header row - Dashboard, Asset Charts, Simulation, Analytics
-      and the settings gear - is the shell's, in `App.vue`, because it is the same on
-      every page and this view used to render a second row of its own.
-      Which of the two dashboard views is showing comes from `?tab=` in the URL, so
-      a reload and a shared link both land on the right one.
-    -->
     <PageHeader title="Holdings" subtitle="Cash, positions, trades and alerts in one view" />
 
     <template v-if="store.tab === 'dashboard'">
@@ -82,13 +63,6 @@ onBeforeUnmount(() => {
       <MetricCards />
 
       <div class="content-grid">
-        <!--
-          `card-chart` makes this a flex column so the chart fills whatever height
-          the row ends up at. It sits beside the allocation panel, and that panel
-          is taller because its legend has ten rows; with a fixed-height container
-          the row stretched to the taller card and left an empty band under the
-          chart. Only visible on a wide screen, where the two are side by side.
-        -->
         <div class="card card-chart">
           <div class="card-header">
             <div class="card-title"><span class="card-icon">📈</span>Portfolio Value Over Time</div>
@@ -186,12 +160,6 @@ onBeforeUnmount(() => {
         <TradeHistoryTable />
       </div>
 
-      <!--
-        Alerts last. It used to sit above the metric cards, where it pushed the
-        numbers a visitor came for below the fold and made a configuration panel
-        look like the most important thing on the page. The alert form and the
-        triggered list belong after the portfolio they are watching.
-      -->
       <AlertsPanel />
     </template>
 

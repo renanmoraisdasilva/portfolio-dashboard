@@ -34,8 +34,6 @@ describe('replayTradesWithRealized', () => {
   });
 
   test('books realized P/L as sells consume the oldest lots first', () => {
-    // The sell of 1.5 takes the whole first lot, then half of the second:
-    // 1.0 × (300−100) + 0.5 × (300−200) = 200 + 50.
     const out = replayTradesWithRealized([
       { symbol: 'BTC', side: 'buy', qty: 1, price: 100 },
       { symbol: 'BTC', side: 'buy', qty: 1, price: 200 },
@@ -314,14 +312,6 @@ describe('computePortfolioValue', () => {
   });
 
   test('investedNet goes negative rather than being floored at 0', () => {
-    // The clamp was `Math.max(0, invested - realized)`, so a portfolio that
-    // realized more than it invested reported `0` — nothing at risk — where the
-    // honest figure is a loss. Here nothing was ever invested, so the answer is
-    // exactly `-realized`.
-    //
-    // `computePortfolioValue` and `computeValuation` are separate implementations
-    // of the same rule, so each is pinned to the same negative figure. Changing
-    // one and not the other fails the build instead of shipping.
     const lots = {};
     const prices = { BRLUSD: 0.2 };
 

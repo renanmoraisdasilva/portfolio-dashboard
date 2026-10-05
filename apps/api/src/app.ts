@@ -19,18 +19,9 @@ import analyticsRouter from './routes/analytics';
 import { portfolioRouter } from './routes/portfolio';
 import { observeHttpRequest } from './metrics';
 import { invalidateResponseCaches } from './services/responseCache';
-// __dirname is apps/api/src (dev) or apps/api/dist (compiled), so repo root is three levels up.
-// This must mirror the container layout, where WORKDIR is /app/apps/api and pages/static live at /app.
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 export function createApp(): Express {
   const app = express();
-  // Unrestricted CORS is a deliberate trade, not an oversight: this is a
-  // single-user dashboard on a private network, and the API answers no cookies
-  // and carries no per-user authorization, so a cross-origin `GET` can read
-  // nothing the operator's own browser could not. The one thing worth remembering
-  // is that it stays open *only* while that is true — if this ever becomes
-  // multi-user, or any endpoint takes a credential, `cors()` has to become an
-  // origin allowlist before that endpoint is deployed.
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
   app.use(observeHttpRequest);
@@ -42,23 +33,11 @@ export function createApp(): Express {
     });
     next();
   });
-  // There is no `/metrics` endpoint. Metrics go to SigNoz over OTLP from
-  // `telemetry.ts`; a second, Prometheus-shaped surface served the same counters
-  // on this port and nothing ever scraped it.
   return app;
 }
 export function mountWebRoutes(app: Express): void {
-  // Strangler seam: the Vue app owns `/`. Static assets stay at the root because
-  // the app references them by absolute path (/static/..., /icon.png). Nothing
-  // else in the repository is served any more — the old `express.static(repoRoot)`
-  // also exposed node_modules and .git.
-  //
-  // The Vue app owns every route the header links to; only these three kinds of
-  // path are served from the repository itself.
   app.use('/static', express.static(path.join(repoRoot, 'static')));
   app.get('/icon.png', (_req, res) => res.sendFile(path.join(repoRoot, 'icon.png')));
-  // Old bookmarks keep resolving: /pages/x.html and /x.html follow the page to
-  // wherever it ended up. Anything not in the table lands on the dashboard.
   const migratedPages: Record<string, string> = { analytics: '/analytics', simulation: '/simulation' };
   const pageTarget = (file: string): string => migratedPages[file.replace(/\.html$/, '')] ?? '/';
   app.get('/pages/:file', (req, res) => res.redirect(pageTarget(req.params.file)));

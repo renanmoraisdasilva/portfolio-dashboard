@@ -3,16 +3,6 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { network, stubNetwork, valuationCalls, type StubRoute } from '../test/networkHarness';
 
-/**
- * The dashboard store, driven against a stubbed API.
- *
- * Before Vitest there was no way to test this file at all: no runner could
- * import a Pinia store, let alone create one. What is worth asserting is the
- * part that is easy to get wrong — which endpoints a refresh depends on, how the
- * server's rows are formatted, and what happens when a call fails. The numbers
- * themselves are the server's job now, so there is nothing to re-derive here
- * and nothing to assert twice.
- */
 const SYMBOLS = {
   BTC: { id: 'BTC', name: 'Bitcoin', type: 'crypto' },
   SPY: { id: 'SPY', name: 'S&P 500 ETF', type: 'stock' },
@@ -20,7 +10,6 @@ const SYMBOLS = {
   BOVA11: { id: 'BOVA11', name: 'Ibovespa', type: 'stock', denominatedInBRL: true },
 };
 
-/** The valuation payload `GET /api/portfolio/valuation` returns, trimmed. */
 const VALUATION = {
   total: 42_635.13,
   invested: 42_507.89,
@@ -65,7 +54,6 @@ const VALUATION = {
   plByAsset: [{ symbol: 'BTC', pl: 1_628.1 }],
 };
 
-/** A healthy server. A test overrides the one route it cares about. */
 function defaultRoutes(): StubRoute[] {
   return [
     {
@@ -105,20 +93,11 @@ describe('dashboard store — a healthy server', () => {
     expect(store.metrics.investedNet).toBe(38_548.88);
     expect(store.metrics.realized).toBe(3_959.01);
     expect(store.metrics.salesCount).toBe(0);
-    // "Total Invested" is the cost basis, and it has to sit above "Net invested"
-    // by exactly the realized figure. It used to render `tickerValue` here, which
-    // made the card read $20,283.13 beside a "Net invested" of $38,548.88 - a net
-    // figure 190% of the gross one, which cannot both be true.
     expect(store.metrics.invested).toBe(42_507.89);
     expect(store.metrics.invested - store.metrics.investedNet).toBeCloseTo(store.metrics.realized, 6);
     expect(store.metrics.investedShareOfTotal).toBeCloseTo((42_507.89 / 42_635.13) * 100, 6);
-    // ...and it is not the server's `investedPct`, which is the share at risk in
-    // tickers: a different quantity, separately tested in the shared package.
     expect(store.metrics.investedPct).toBe(47.57);
     expect(store.metrics.investedShareOfTotal).not.toBeCloseTo(store.metrics.investedPct, 1);
-    // The legacy table printed position amounts without a thousands separator —
-    // `formatMoney` is for the metric cards. What matters here is the sign and
-    // the two decimals, so the exact string is pinned to that behaviour.
     expect(store.positionRows).toEqual([
       expect.objectContaining({ symbol: 'BTC', value: '$3200.10', pl: '+$1628.10', plPct: '+103.60%' }),
     ]);
@@ -130,24 +109,12 @@ describe('dashboard store — a healthy server', () => {
 
     const row = store.cashPositionRows[0];
     expect(row.symbol).toBe('BRL (100% CDI)');
-    // The balance is part of a USD-valued portfolio...
     expect(row.value).toBe('$2352.00');
     expect(row.avg).toBe('$0.1960');
-    // ...but the interest earned on it is a BRL amount.
     expect(row.pl).toBe('+R$19943.92');
   });
 
   test('a losing position signs its P/L with a minus, not a doubled sign', async () => {
-    // The two row tests above only ever asserted a *positive* `pl`, which is
-    // why the sign bug survived. `pl` was rendered by prepending
-    // `` `${row.pl >= 0 ? '+' : ''}` `` onto a magnitude that already interpolated
-    // `` `$${row.pl.toFixed(2)}` ``, so a loss came out as `$-1234.56` — the
-    // currency symbol ahead of the minus. The BRL branch of the position table went
-    // through `formatMoney` and was already correct, so only the USD branch and the
-    // cash row were wrong.
-    //
-    // Driven by stubbing a losing valuation rather than by calling the private
-    // `legacySigned` helper, so what is asserted is what the table renders.
     const losing = {
       ...VALUATION,
       rows: VALUATION.rows.map((row) => (row.symbol === 'BTC' ? { ...row, pl: -1_234.56, plPct: -39.28 } : row)),
@@ -161,8 +128,6 @@ describe('dashboard store — a healthy server', () => {
     expect(row.pl).toBe('-$1234.56');
     expect(row.pl.startsWith('+-')).toBe(false);
     expect(row.positive).toBe(false);
-    // The percentage column is a separate formatter and was always correct;
-    // pinning both together is what makes the pair a regression guard.
     expect(row.plPct).toBe('-39.28%');
   });
 
@@ -178,7 +143,6 @@ describe('dashboard store — a healthy server', () => {
     await store.load();
     expect(store.allocation.labels).toEqual(['BTC']);
     expect(store.allocation.pcts).toEqual([100]);
-    // The palette is presentation, so the store still assigns it.
     expect(store.allocation.colors).toHaveLength(1);
   });
 
@@ -214,8 +178,6 @@ describe('dashboard store — a failing server', () => {
     const store = await loadStore();
     await store.load();
 
-    // The valuation is fetched after prices, so it never ran: the page is empty
-    // rather than showing a wrong number, and the failure is not swallowed.
     expect(store.priceError).toContain('GET /prices');
     expect(valuationCalls()).toHaveLength(0);
   });
@@ -226,7 +188,6 @@ describe('dashboard store — a failing server', () => {
     const store = await loadStore();
     await store.load();
 
-    // Status 0 means "no response at all", and the message says which call.
     expect(store.priceError).toMatch(/\/(config\/symbols|trades|cash|prices)/);
   });
 });

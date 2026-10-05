@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { runSync, init, transaction } from '../db';
 
 export async function migrateFromJson() {
-  // __dirname is apps/api/{src,dist}/services, so the repository root is four
   const candidates = [
     path.resolve(__dirname, '..', '..', '..', '..', 'fixtures', 'portfolio_data.json'),
     path.resolve(__dirname, '..', '..', '..', '..', 'portfolio_data.json'),
@@ -19,10 +18,7 @@ export async function migrateFromJson() {
 
   await init();
 
-  // The counts are derived from the parsed payload rather than read back, so the
-  // transaction's return value is not needed here.
   transaction(() => {
-    // Trades
     if (Array.isArray(json.trades)) {
       for (const t of json.trades) {
         const id = randomUUID();
@@ -53,7 +49,6 @@ export async function migrateFromJson() {
       }
     }
 
-    // Interest months — interest.currency defaults to BRL, so tag USD explicitly.
     if (Array.isArray(json.interestReaisMonths)) {
       for (const m of json.interestReaisMonths) {
         runSync('INSERT OR REPLACE INTO interest (month, currency, amount, created_at) VALUES (?, ?, ?, ?)', [
@@ -75,7 +70,6 @@ export async function migrateFromJson() {
       }
     }
 
-    // Cash — append-only ledger; the balance is SUM(amount) per currency. There
     if (Array.isArray(json.cashEntries) && json.cashEntries.length > 0) {
       for (const e of json.cashEntries) {
         runSync('INSERT OR REPLACE INTO cash (id, currency, amount, description, ts) VALUES (?, ?, ?, ?, ?)', [

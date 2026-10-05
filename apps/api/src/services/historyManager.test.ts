@@ -131,16 +131,6 @@ describe('recomputeHistoryAt – result shape', () => {
 
     const withInterest = await recomputeHistoryAt(ts);
 
-    // No trades and no cash, so `invested` is 0 and `investedNet` is exactly
-    // minus the realized interest: BRL 1500 at 0.2 is 300, USD 200 is 200.
-    //
-    // **This test used to assert `toBe(0)` and so verified nothing.** With
-    // `investedNet` clamped at zero and nothing invested, the answer was 0 whether
-    // interest was summed correctly or not — it passed with the BRL conversion
-    // removed, the currencies swapped, or the sum dropped entirely. Splitting the
-    // two currency queries apart is part of that: the old stub answered both with
-    // the same rows, so it could not have detected a currency mix-up either.
-    // Removing the clamp is what made the assertion possible.
     expect(withInterest.i).toBeCloseTo(-(1500 * brlusd + 200), 8);
   });
 });

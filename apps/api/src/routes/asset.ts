@@ -16,11 +16,8 @@ assetRouter.get('/:symbol/history', async (req: Request, res: Response) => {
   }
 });
 
-// Computes OHLC candlestick data from price_ticks for a given symbol and day range.
-// Bucket granularity adapts to the range: ≤7d → 4h candles, ≤365d → daily, else → weekly.
 assetRouter.get('/:symbol/ohlc', async (req: Request, res: Response) => {
   const symbol = req.params.symbol;
-  // 'BRL' is a frontend alias for the BRLUSD exchange rate stored as 'BRLUSD' in price_ticks
   const dbSymbol = symbol === 'BRL' ? 'BRLUSD' : symbol;
   const days = Math.min(parseInt((req.query.days as string) || '60', 10), 1825);
   if (isNaN(days) || days <= 0) {
@@ -54,7 +51,6 @@ assetRouter.get('/:symbol/ohlc', async (req: Request, res: Response) => {
       .sort((a, b) => a[0] - b[0])
       .map(([ts, ohlc]) => ({ ts, ...ohlc }));
 
-    // Chain candles: each open = previous close so there are no gaps between candles
     for (let i = 1; i < candles.length; i++) {
       candles[i].open = candles[i - 1].close;
       if (candles[i].open > candles[i].high) candles[i].high = candles[i].open;

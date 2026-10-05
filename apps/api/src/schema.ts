@@ -9,21 +9,6 @@ export const trades = sqliteTable(
     qty: real('qty').notNull(),
     price: real('price'),
     time: text('time').notNull(),
-    /**
-     * The `cash` row this trade created, so deleting the trade can reverse it.
-     *
-     * `POST /api/trades` writes a cash movement for every trade, but
-     * `DELETE /api/trades/:id` used to remove only the trade — so a deleted
-     * trade's proceeds stayed in the balance permanently, inflating cash,
-     * `invested` and `total` forever. The link lives on the trade rather than as
-     * a `trade_id` on `cash` because a trade produces at most one cash row,
-     * while `cash` also holds hand-entered adjustments that belong to no trade.
-     *
-     * Null for trades that have no cash entry: the six imported from the fixture
-     * (the import path writes trades without cash movements), and any trade
-     * restored from a backup taken before this column existed. Deleting those
-     * reverses nothing, which is correct — there is nothing of ours to undo.
-     */
     cashEntryId: text('cash_entry_id'),
   },
   (t) => [index('idx_trades_time').on(t.time)],
@@ -52,23 +37,6 @@ export const priceCache = sqliteTable('price_cache', {
   meta: text('meta'),
 });
 
-/**
- * Rolling-window chart cache: one row per (symbol, days, interval).
- *
- * The composite primary key is load-bearing, not documentation. Without it the
- * table carried no constraint at all, and `INSERT OR REPLACE` - which every write
- * in `priceFetcher.ts` uses - degrades to a plain `INSERT` when there is nothing
- * to conflict with.
- *
- * Verified against the live database before this key existed: 16 rows across 10
- * distinct keys, and the reader's `SELECT ... WHERE symbol=? AND days=? AND
- * interval=?` had no `ORDER BY`, so it returned the *oldest* matching row. The
- * cache therefore served data it had already replaced, never refreshed, and grew
- * a row per request once the TTL lapsed - re-hitting Yahoo every time.
- *
- * With the key in place `OR REPLACE` replaces, and the lookup is an index hit
- * against a table whose row count is bounded by symbols x window sizes.
- */
 export const assetChartCache = sqliteTable(
   'asset_chart_cache',
   {
@@ -89,17 +57,6 @@ export const interestMonths = sqliteTable(
     amount: real('amount'),
     created_at: integer('created_at'),
   },
-  // A month is identified by (month, currency), and until this index existed the
-  // table enforced that only by convention. `INSERT OR REPLACE` therefore
-  // *appended* a second row instead of replacing one, so editing a month's
-  // amount listed it twice and counted it twice, and restoring a backup doubled
-  // every month. Both routes now delete before inserting, so nothing creates
-  // duplicates - but convention is not an invariant, and the index is.
-  //
-  // The failure mode is the point: a duplicate insert now fails loudly with a
-  // UNIQUE constraint error instead of quietly double-counting income. There
-  // were no duplicates to clear when this was added (14 rows, 14 distinct
-  // pairs), so the migration is a bare CREATE UNIQUE INDEX and deletes nothing.
   (t) => [uniqueIndex('idx_interest_month_currency').on(t.month, t.currency)],
 );
 
@@ -142,19 +99,6 @@ export const alerts = sqliteTable('alerts', {
   threshold: real('threshold').notNull(),
   condition: text('condition').notNull(),
   reference_price: real('reference_price'),
-  /**
-   * Both flags are `NOT NULL DEFAULT 1` / `DEFAULT 0`.
-   *
-   * `priceFetcher.checkAndTriggerAlerts` reads them with `=== 1` and `=== 0`. A
-   * NULL makes both comparisons false, so a row that omitted the column — a
-   * restored backup, or any insert that left it out — read as "not yet
-   * triggered" forever, and the alert re-notified on every 8-minute cycle.
-   *
-   * Same trap as `history_points.brlusd_rate`, where NULL became permanent
-   * because nothing rewrote the old rows. `NOT NULL` makes the shape impossible
-   * rather than merely unlikely; the alerts route and the state importer both
-   * write these columns explicitly.
-   */
   is_active: integer('is_active').notNull().default(1),
   created_at: integer('created_at').notNull(),
   current_price: real('current_price'),

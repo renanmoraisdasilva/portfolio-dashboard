@@ -35,7 +35,6 @@ cashRouter.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/cash  — interest is now managed via /api/interest/months; this endpoint is a no-op kept for compatibility
 cashRouter.put('/', async (req: Request, res: Response) => {
   try {
     const pos = await get(CASH_SUM_SQL);

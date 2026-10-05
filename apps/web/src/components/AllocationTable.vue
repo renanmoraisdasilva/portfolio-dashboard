@@ -23,7 +23,6 @@ const rows = computed(() => {
       market,
       pnl,
       pnlPct,
-      /** The bar is a fixed 50% scale, so ±50% fills it. */
       barPct: Math.min(100, (Math.abs(pnlPct) / 50) * 100),
     };
   });

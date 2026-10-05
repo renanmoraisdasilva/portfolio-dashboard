@@ -3,23 +3,10 @@ import type { PiniaPluginContext } from 'pinia';
 declare module 'pinia' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   export interface DefineStoreOptionsBase<S, Store> {
-    /**
-     * localStorage keys whose state is mirrored to storage. Keys are used
-     * verbatim, not namespaced, so a value written by the vanilla pages before
-     * the Vue migration is still read after it.
-     */
     persist?: string[];
   }
 }
 
-/**
- * Pinia plugin: mirrors the state keys a store opts into into `localStorage`.
- *
- * Replaces the scattered `localStorage.setItem` calls the vanilla pages made
- * (`simAllocCurrency`, `allocCurrency`, …) with one declaration on the store.
- * Strings are stored bare, which is what those pages wrote, so a preference set
- * before the migration is still read afterwards.
- */
 export function persistPlugin({ store, options }: PiniaPluginContext): void {
   const keys = options.persist;
   if (!keys || keys.length === 0) return;
@@ -30,7 +17,6 @@ export function persistPlugin({ store, options }: PiniaPluginContext): void {
     try {
       return JSON.parse(raw) as unknown;
     } catch {
-      // Written by a vanilla page: a bare string rather than JSON.
       return raw;
     }
   };

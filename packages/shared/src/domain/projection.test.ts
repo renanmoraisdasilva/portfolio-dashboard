@@ -3,7 +3,6 @@ import { computeProjection, PROJECTION_DAYS } from './projection';
 const HOUR = 1000 * 60 * 60;
 const DAY = 24 * HOUR;
 
-/** A portfolio that gained $1000 a day, sampled every 12 hours. */
 const rising = Array.from({ length: 20 }, (_, i) => ({ ts: i * 12 * HOUR, v: 10_000 + i * 500 }));
 
 describe('computeProjection', () => {
@@ -15,7 +14,6 @@ describe('computeProjection', () => {
   test('extends the fitted line forward from the last sample', () => {
     const points = computeProjection(rising, { days: 10 });
     expect(points.length).toBeGreaterThan(0);
-    // Ten days past the last point, a +1000/day fit is 10 days of gains away.
     const lastSample = rising[rising.length - 1];
     const tenDaysOut = points.find((p) => p.ts >= lastSample.ts + 10 * DAY);
     expect(tenDaysOut?.v).toBeCloseTo(lastSample.v + 10_000, 6);
@@ -64,15 +62,12 @@ describe('computeProjection', () => {
     expect(points.length).toBeGreaterThan(0);
     points.forEach((p) => expect(Number.isFinite(p.v)).toBe(true));
 
-    // A sample with no fields at all is the same as one that is all zeros, and a
-    // final sample with no timestamp still yields a forward line.
     const missing = [{ v: 1_000 }, { ts: DAY, v: 2_000 }, {}] as Array<{ ts?: number; v?: number }>;
     const fromMissing = computeProjection(missing, { days: 5 });
     expect(fromMissing.length).toBeGreaterThan(0);
     fromMissing.forEach((p) => expect(Number.isFinite(p.v)).toBe(true));
     expect(fromMissing[0].ts).toBeGreaterThan(0);
 
-    // Every sample at the same instant is not a line, so there is nothing to draw.
     expect(
       computeProjection([
         { ts: null, v: null },

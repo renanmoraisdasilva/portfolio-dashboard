@@ -48,7 +48,6 @@ export interface Alert {
   reference_price?: number | null;
   is_active: number;
   created_at: number;
-  // Trigger state — null when the alert has never fired or was reset
   current_price?: number | null;
   previous_price?: number | null;
   percentage_change?: number | null;

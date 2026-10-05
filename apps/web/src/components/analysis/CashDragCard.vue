@@ -3,13 +3,6 @@ import { computed } from 'vue';
 import { EMERGENCY_FUND_USD, useAnalyticsStore } from '../../stores/analytics';
 import { fmtSignedUSD, fmtUSD } from '../../composables/useMoney';
 
-/**
- * Cash Drag & Interest Carry.
- *
- * Opportunity cost is charged only against *deployable* cash: the emergency
- * buffer is meant to sit idle, so counting it as drag would always read as a
- * problem. Same rule as the legacy page.
- */
 const store = useAnalyticsStore();
 
 const card = computed(() => {

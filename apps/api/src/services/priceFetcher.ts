@@ -2,11 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { all, run, get } from '../db';
 import { sendAlertNotification } from './homeAssistantService';
 import { SYMBOLS as SYMBOL_CONFIGS, getStockSymbols, getCurrencySymbols } from '../config/symbols';
-// The freshness numbers live in `config/priceFreshness.ts` rather than here,
-// because `routes/prices.ts` needs `STALE_AFTER_MS` for the wire contract and
-// this module is the worker's — importing it for a constant meant a dynamic
-// `import()` inside a request handler, wrapped in a `catch` that substituted a
-// different number without logging.
 import { MIN_INTERVAL, ASSET_HISTORY_CACHE_TTL_MS } from '../config/priceFreshness';
 
 const COINGECKO_IDS: Record<string, string> = Object.fromEntries(
@@ -34,7 +29,6 @@ function sleep(ms: number) {
 
 const FETCH_TIMEOUT_MS = TEST_MODE ? 30_000 : 10_000;
 
-/** Wraps fetch with an AbortController timeout to prevent hung connections (Ch. 8 — unreliable networks). */
 function fetchWithTimeout(url: string): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -55,31 +49,10 @@ async function appendPriceTick(symbol: string, price: number, ts: number, source
   }
 }
 
-/**
- * An HTTP response that was not ok, carrying its status as data.
- *
- * This exists because `retry` used to decide whether to back off five times longer
- * by testing whether the error *message* contained `429`:
- *
- * ```ts
- * const is429 = e instanceof Error && e.message.includes('429');
- * ```
- *
- * `routes/trades.ts` carries a post-mortem for exactly this shape — *"a status
- * that depends on message wording breaks the moment someone rewords the message"* —
- * and this was the same anti-pattern in the same codebase, unremarked. It also
- * misfired in both directions: a proxy or CDN error page mentioning `429` in its
- * body would be classified as rate limiting, and a real rate limit whose message
- * was reworded would not be.
- *
- * The message is unchanged (`CoinGecko 429`), so logs read the same. Only the
- * classification is now structural.
- */
 export class HttpError extends Error {
   constructor(
     readonly status: number,
     readonly source: string,
-    /** Seconds from a `Retry-After` header, when the server sent a usable one. */
     readonly retryAfterSeconds?: number,
   ) {
     super(`${source} ${status}`);
@@ -87,51 +60,14 @@ export class HttpError extends Error {
   }
 }
 
-/**
- * `Retry-After` is either delta-seconds or an HTTP date; only the former is worth
- * honouring.
- *
- * Exported for `priceFetcher.test.ts`. The delay it produces is unobservable from
- * a test — `DEFAULT_RETRY_DELAY` is 1ms under `NODE_ENV=test`, so a 7-second
- * back-off and a 1-second one finish at the same wall-clock time. That makes the
- * *parsing* the only part of this worth testing directly, and it is the part that
- * can go wrong silently: `Number('Wed, 21 Oct 2026 07:28:00 GMT')` is `NaN`, and a
- * `NaN` delay resolves immediately on some timers and hangs on others.
- */
 export function parseRetryAfter(header: string | null): number | undefined {
   if (!header) return undefined;
   const seconds = Number(header);
   return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 
-/**
- * The most a `Retry-After` header is allowed to extend a wait.
- *
- * Without a cap, honouring the header is a denial-of-service risk against *this*
- * worker: one `Retry-After: 3600` on a rate-limited response, times three attempts
- * times three fallback tickers, is nine hours of sleeping inside a single
- * `fetchAndCacheAssetHistory` call — and the worker's symbol loop is serial, so
- * every other asset waits behind it.
- *
- * The cap is set to the largest delay the exponential schedule *already* used for
- * a 429, which gives a clean invariant: **honouring `Retry-After` can never make a
- * request slower than the rate-limit back-off did before this existed.** It can
- * only replace a guess with the server's own answer, within the budget already
- * being spent.
- */
 export const MAX_RETRY_AFTER_MS = 10_000;
 
-/**
- * How long to wait before attempt `attempt` (zero-based).
- *
- * A rate limit backs off five times harder than any other error, and a usable
- * `Retry-After` raises the wait to what the server asked for - bounded by
- * `MAX_RETRY_AFTER_MS`.
- *
- * Exported for the test because the delay is otherwise unobservable:
- * `DEFAULT_RETRY_DELAY` is 1ms under `NODE_ENV=test`, so every branch finishes at
- * the same wall-clock time and only the arithmetic can be checked.
- */
 export function backoffMs(error: unknown, attempt: number, baseDelay = DEFAULT_RETRY_DELAY): number {
   const isRateLimited = error instanceof HttpError && error.status === 429;
   const backoff = (isRateLimited ? baseDelay * 5 : baseDelay) * 2 ** attempt;
@@ -147,7 +83,6 @@ async function retry<T>(fn: () => Promise<T>, attempts = 3, baseDelay = DEFAULT_
       return await fn();
     } catch (e) {
       err = e;
-      // Branch on the status, not on the wording.
       await sleep(backoffMs(e, i, baseDelay));
     }
   }
@@ -187,11 +122,6 @@ async function fetchYahooClose(symbol: string) {
         }
       }
     } catch (e) {
-      // A 404 for one ticker means "wrong symbol", not "try again" — move to the
-      // next fallback candidate quietly. This was `/YF 404/.test(e.message)`,
-      // the same message-substring classification as the 429 above, and renaming
-      // the source to `Yahoo` would have broken it silently: a 404 would start
-      // logging a warning and, worse, stop advancing to the next ticker.
       if (e instanceof HttpError && e.status === 404) continue;
       console.warn(`Yahoo fetch failed for ${yf}:`, e);
     }
@@ -295,9 +225,7 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
         prices: Array.isArray(parsed.prices) ? parsed.prices : [],
         ts: row.ts,
       };
-    } catch (e) {
-      /* fallthrough */
-    }
+    } catch (e) {}
   }
 
   const result: AssetHistoryResult = { labels: [], prices: [], ts: now };
@@ -318,9 +246,6 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
 
     const candidates = config.historicalFallbacks || (config.yahooTicker ? [config.yahooTicker] : []);
     if (candidates.length === 0) {
-      // Nothing to fetch from, so the empty series IS the answer and caching it
-      // saves the next request repeating the lookup. This is the one path where
-      // an empty cache entry is legitimate.
       await run('INSERT OR REPLACE INTO asset_chart_cache (symbol, days, interval, ts, data) VALUES (?, ?, ?, ?, ?)', [
         symbol,
         days,
@@ -347,7 +272,6 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
           const timestamps = data.chart.result[0].timestamp || [];
           const closes = data.chart.result[0].indicators.quote[0].close || [];
           result.labels = timestamps.map((ts: number) => formatLabel(ts));
-          // Preserve index alignment between timestamps and closes; keep nulls where data is missing
           result.prices = timestamps.map((_: number, idx: number) => {
             const v = closes[idx];
             return typeof v === 'number' ? v : null;
@@ -357,23 +281,11 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
           break;
         }
       } catch (e) {
-        // Same as `fetchYahooClose`: a 404 means this ticker is wrong, so try the
-        // next candidate. Branched on the status, not on the message.
         if (e instanceof HttpError && e.status === 404) continue;
         console.warn(`Yahoo history fetch failed for candidate ${yf}:`, e);
       }
     }
     if (!success) {
-      // Deliberately NOT cached. This write used to run unconditionally, so a
-      // network blip or a Yahoo 429 stored `{labels: [], prices: []}` with a
-      // *fresh* timestamp - and the TTL check above then served that empty
-      // payload as a valid hit for the next 15 minutes (1h) or hour (1d). One
-      // failed fetch produced a blank chart that outlived the outage.
-      //
-      // Leaving the previous row untouched is what makes the next request
-      // retry: its timestamp is older than the TTL, so the cache misses and the
-      // fetch is attempted again. The caller still receives an empty result, so
-      // the response shape is unchanged.
       console.warn(
         `Yahoo history: no valid data for ${symbol} after trying candidates: ${candidates.join(', ')}; cache left unchanged`,
       );
@@ -388,8 +300,6 @@ export async function fetchAndCacheAssetHistory(symbol: string, days = 60) {
       JSON.stringify({ labels: result.labels, prices: result.prices }),
     ]);
   } catch (e) {
-    // Same reasoning: an exception is not a result. The existing cache row, if
-    // any, stays authoritative until it ages out.
     console.warn('Asset history fetch failed for', symbol, e);
   }
   return result;
@@ -420,12 +330,6 @@ export async function checkAndTriggerAlerts() {
         }
       }
 
-      // Both columns are NOT NULL in the schema (migration 0007), but the `??`
-      // is kept deliberately: this function's whole failure mode is a *silently*
-      // wrong comparison. `null === 0` is false, so a NULL made the alert read as
-      // never-triggered and re-notified on every cycle. Coercing means a row from
-      // a pre-0007 database or a hand-edited file cannot reach that state even if
-      // the constraint is bypassed.
       const alreadyTriggered = alert.triggered_at !== null && alert.triggered_at !== undefined && (alert.is_dismissed ?? 0) === 0;
 
       if (shouldTrigger && !alreadyTriggered) {

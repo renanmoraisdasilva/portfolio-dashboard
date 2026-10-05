@@ -8,12 +8,10 @@ export type AnalyticsSnapshot = components['schemas']['AnalyticsSnapshot'];
 export type HistoryPoint = components['schemas']['HistoryPoint'];
 export type CashEntry = components['schemas']['CashEntry'];
 
-/** `cost_vs_market_json` once parsed. */
 export interface CostVsMarket {
   [symbol: string]: { cost: number; market: number };
 }
 
-/** Everything the cash panels need about the current cash balance. */
 export interface CashContext {
   cashUSD: number;
   cashBRL: number;
@@ -29,10 +27,6 @@ export const CASH_CHART_MODE = {
 } as const;
 export type CashChartMode = (typeof CASH_CHART_MODE)[keyof typeof CASH_CHART_MODE];
 
-/**
- * `3M` maps to `6months` — the legacy Analytics Lab did the same, so the
- * period buttons keep showing the same window.
- */
 export const PERIODS = [
   { id: '1W', range: 'week' },
   { id: '1M', range: 'month' },
@@ -53,16 +47,6 @@ function parseCostVsMarket(json: string | null | undefined): CostVsMarket {
   }
 }
 
-/**
- * Analytics Lab state.
- *
- * The legacy page fetched all five period snapshots in one request and only
- * refetched history when the period changed, so the store keeps that shape:
- * switching period is instant for the cards and refetches only the chart
- * series.
- *
- * Cash and prices are fetched once and cached — they do not depend on period.
- */
 export const useAnalyticsStore = defineStore('analytics', () => {
   const api = useApi();
 
@@ -95,13 +79,10 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   });
   const pnlStdPct = computed(() => stdDev(computePnlReturns(history.value)) * 100);
 
-  /** One-shot load: snapshots, then the period-independent cash context. */
   async function load(): Promise<void> {
     loading.value = true;
     error.value = null;
 
-    // `/cash` returns both balances and both interest totals in one query; the
-    // month lists are not needed here. `/api/state` was retired.
     try {
       const [snapshotsPayload, state, prices, entries] = await Promise.all([
         request(api.GET('/analytics'), 'GET', '/analytics'),
@@ -145,7 +126,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     }
   }
 
-  /** Refetches only the chart series for the new window. */
   async function selectPeriod(id: PeriodId): Promise<void> {
     period.value = id;
     loadingHistory.value = true;
@@ -153,8 +133,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       const points = await request(api.GET('/history', { params: { query: { range: range.value } } }), 'GET', '/history');
       history.value = Array.isArray(points) ? points : [];
     } catch (err) {
-      // A failed window refresh leaves the previous series on screen; the page
-      // stays usable and the status dot already reflects the failed load.
       console.warn('[analytics] history refresh failed:', err);
     } finally {
       loadingHistory.value = false;

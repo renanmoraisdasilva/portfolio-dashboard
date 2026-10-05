@@ -9,7 +9,6 @@ const store = useSimulationStore();
 const cashReaisText = computed(() => formatMoney(store.simCashReais, 'BRL'));
 const cashDollarsText = computed(() => formatMoney(store.simCashDollars, 'USD'));
 
-/** Steppers add or remove 1 from the field, then re-derive the total. */
 function step(field: 'qty' | 'price', delta: number): void {
   if (field === 'qty') {
     const next = (parseFloat(store.qtyInput) || 0) + delta;

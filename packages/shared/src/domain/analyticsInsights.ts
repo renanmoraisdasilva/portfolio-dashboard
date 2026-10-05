@@ -1,29 +1,11 @@
-/**
- * Analytics Lab math.
- *
- * Lifted verbatim out of `static/js/lib/analytics-insights.js` when the page
- * moved to Vue - same thresholds, same rounding, same order of
- * operations, so the numbers on screen are unchanged. Only the module format
- * and the types are new.
- *
- * Nothing here touches the DOM, the network or the database: every function is
- * a pure transform of its arguments, which is why it can be unit-tested and
- * reused by both apps.
- */
-
-/** The subset of a `history_points` row these helpers read. */
 export interface HistoryPointLike {
   ts?: number | null;
-  /** Invested base. */
   i?: number | null;
-  /** Unrealized P/L. */
   p?: number | null;
-  /** Total portfolio value. */
   v?: number | null;
   brlusd_rate?: number | null;
 }
 
-/** A cash ledger row from `GET /api/cash/entries`. */
 export interface CashEntryLike {
   ts?: number | null;
   currency?: string | null;
@@ -86,13 +68,6 @@ function byTs(a: { ts?: number | null }, b: { ts?: number | null }): number {
   return toNumber(a.ts, 0) - toNumber(b.ts, 0);
 }
 
-/**
- * Splits each history point into cash and assets in USD.
- *
- * Cash is the running sum of the ledger up to that point, converted with the
- * row's own `brlusd_rate` — so a cash backfill or deposit is never mistaken for
- * performance.
- */
 export function buildCashAssetSeries(
   historyPoints: readonly HistoryPointLike[] | null | undefined,
   cashEntries: readonly CashEntryLike[] | null | undefined,
@@ -129,7 +104,6 @@ export function buildCashAssetSeries(
   return out;
 }
 
-/** Same walk, but keeping the two native cash currencies apart. */
 export function buildCashCurrencySeries(
   historyPoints: readonly HistoryPointLike[] | null | undefined,
   cashEntries: readonly CashEntryLike[] | null | undefined,
@@ -159,10 +133,6 @@ export function buildCashCurrencySeries(
   return out;
 }
 
-/**
- * Maxima for the dual-axis cash chart, locked to one FX ratio so the BRL and
- * USD lines stay visually comparable as the rate moves.
- */
 export function computeCorrelatedAxisMax(
   cashBRLSeries: readonly number[] | null | undefined,
   cashUSDSeries: readonly number[] | null | undefined,
@@ -189,10 +159,6 @@ export function computeCorrelatedAxisMax(
   };
 }
 
-/**
- * Per-step P/L returns as `ΔP/L ÷ previous invested base`. Used for the
- * volatility term of the risk score — raw P/L deltas would let deposits move it.
- */
 export function computePnlReturns(historyPoints: readonly HistoryPointLike[] | null | undefined): number[] {
   const points = Array.isArray(historyPoints) ? [...historyPoints] : [];
   points.sort(byTs);
@@ -208,7 +174,6 @@ export function computePnlReturns(historyPoints: readonly HistoryPointLike[] | n
   return returns;
 }
 
-/** Population standard deviation; 0 for an empty series. */
 export function stdDev(values: readonly number[] | null | undefined): number {
   if (!Array.isArray(values) || values.length === 0) return 0;
   const mean = values.reduce((s, x) => s + x, 0) / values.length;
@@ -216,11 +181,6 @@ export function stdDev(values: readonly number[] | null | undefined): number {
   return Math.sqrt(variance);
 }
 
-/**
- * Weighted 0–100 risk score. Each input is a risk *penalty* except
- * `cashBufferCredit`, which subtracts: a funded emergency buffer genuinely
- * lowers portfolio risk, so it must not read as a penalty.
- */
 export function computeRiskProfile(input: RiskProfileInput): RiskProfile {
   const drawdownPct = toNumber(input.drawdownPct, 0);
   const sharpeRatio = toNumber(input.sharpeRatio, 0);
@@ -243,7 +203,6 @@ export function computeRiskProfile(input: RiskProfileInput): RiskProfile {
   const concentrationRisk = Math.min(20, Math.max(0, maxAssetAllocPct - 35) * 0.9);
   const volRisk = Math.min(20, pnlStdPct * 5.0);
 
-  // Opportunity-cost risk is attached only to deployable cash, not the protected emergency buffer.
   let deployableCashRisk;
   if (periodReturnPct >= 0) {
     deployableCashRisk = Math.min(12, deployableCashPct * 0.35);
@@ -251,7 +210,6 @@ export function computeRiskProfile(input: RiskProfileInput): RiskProfile {
     deployableCashRisk = Math.min(5, deployableCashPct * 0.12);
   }
 
-  // Cash buffer provides downside protection and should reduce overall market risk.
   const cashBufferCredit = emergencyCoverage >= 1 ? Math.min(12, 6 + (emergencyCoverage - 1) * 6) : 0;
   const emergencyShortfallRisk = emergencyCoverage < 1 ? Math.min(15, (1 - emergencyCoverage) * 15) : 0;
 

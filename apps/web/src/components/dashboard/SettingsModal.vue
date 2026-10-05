@@ -3,30 +3,6 @@ import { ref } from 'vue';
 import { useDashboardStore } from '../../stores/dashboard';
 import { useToast } from '../../composables/useToast';
 
-/**
- * Three tools, and that is deliberate.
- *
- * The modal used to carry nine. Fill History Gaps, Clear History, Erase All,
- * Backfill Cash History and Backfill Price History are gone. Two reasons.
- *
- * *Some were one-time repairs for bad data that no longer exists.* Backfill Cash
- * History in particular ran `DELETE FROM cash` and rebuilt the balance from
- * estimates - a single click with no confirmation zeroed the entire USD balance
- * and destroyed every cash entry belonging to a trade. It had already done its
- * job; leaving it on the screen was leaving a loaded gun next to the backup
- * button. (The figure is deliberately not quoted here: this comment ships to
- * every visitor, and a real balance is not a showcase detail.)
- *
- * *The rest belong to the application, not to a person.* Clearing history and
- * erasing everything are maintenance operations with no legitimate everyday use,
- * and a restore from a JSON backup is now a true replace, so it covers the
- * "start over from a known state" case properly.
- *
- * The backfills' capability is not lost, only its button: `price_ticks` refills
- * itself from Yahoo on the worker's schedule, and the worker keeps taking
- * snapshots. If history density ever needs a repair, that belongs in the worker,
- * where it cannot be forgotten or run by accident.
- */
 const store = useDashboardStore();
 const { show } = useToast();
 
@@ -45,9 +21,6 @@ async function onImportFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-  // A restore replaces every table the backup carries, so it needs the same
-  // kind of confirmation Erase All used to have - one click on a file picker
-  // should not be able to discard a trade or the history.
   const confirmed = window.confirm(
     `Restore from "${file.name}"?\n\nEvery trade, snapshot, interest month, cash entry, alert and scenario is replaced by the file's contents. Anything not in the file is removed. This cannot be undone.`,
   );
@@ -57,10 +30,6 @@ async function onImportFile(event: Event): Promise<void> {
   }
   const message = await store.importData(file);
   if (message) {
-    // A rejected backup is one line per problem, so the default 4s timeout is not
-    // enough to read it — and the user cannot act on a list they did not see. The
-    // time scales with the length, bounded so a long list does not leave a toast
-    // parked on screen indefinitely.
     show(message, 'error', Math.min(20000, 4000 + message.length * 60));
   } else {
     show('Data restored from backup', 'success');
@@ -116,9 +85,6 @@ async function onImportFile(event: Event): Promise<void> {
     <div class="modal-content">
       <h2>Delete trade?</h2>
       <p>This will remove this trade from your history. This cannot be undone.</p>
-      <!-- These two used to be spaced by `.modal-content button` in dashboard.css,
-           which could not match a shell-rendered modal. The spacing is here now,
-           scoped, so it travels with the markup that needs it. -->
       <div class="confirm-actions">
         <button class="confirm-delete" @click="store.confirmDeleteTrade()">Delete</button>
         <button @click="store.deleteTradeIndex = null">Cancel</button>

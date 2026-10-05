@@ -2,26 +2,11 @@ import express from 'express';
 import { all, get } from '../db';
 import { portfolioRouter } from './portfolio';
 
-/**
- * `GET /api/portfolio/valuation` — the endpoint every number on the dashboard
- * comes from.
- *
- * This file's module is in the coverage
- * list. What was missing until now was the test itself, which is why the route
- * read as 11% covered. The gap matters because the currency rules are the whole
- * point of the endpoint: a BRL position, a bond stored in USD but quoted in
- * BRL, and a BRL balance earning BRL interest are three different answers, and a
- * silent error in any of them lands in a headline figure.
- *
- * The database is mocked rather than seeded, so each test states exactly the
- * rows it depends on.
- */
 vi.mock('../db', () => ({ all: vi.fn(), get: vi.fn() }));
 
 const mockedAll = all as unknown as ReturnType<typeof vi.fn>;
 const mockedGet = get as unknown as ReturnType<typeof vi.fn>;
 
-/** A trade row as `SELECT symbol, side, qty, price, profit` returns it. */
 const trade = (
   over: Partial<{ symbol: string; side: string; qty: number; price: number | null; profit: number | null }> = {},
 ) => ({
@@ -40,7 +25,6 @@ const PRICE_ROWS = [
   { symbol: 'BRLUSD', price: 0.2, meta: null },
 ];
 
-/** Routes the query to the fixture that answers it, like the real table would. */
 function stubDatabase(overrides: { trades?: unknown[]; cash?: unknown; interest?: Record<string, number> } = {}): void {
   mockedAll.mockImplementation((sql: string) => {
     if (sql.includes('FROM trades')) return Promise.resolve(overrides.trades ?? [trade()]);
@@ -52,7 +36,6 @@ function stubDatabase(overrides: { trades?: unknown[]; cash?: unknown; interest?
       return Promise.resolve(overrides.cash ?? { cashReais: 1_000, cashDollars: 2_000 });
     }
     if (sql.includes('currency = ?')) {
-      // Both interest totals come from the same query with a different currency.
       const currency = mockedGet.mock.calls.at(-1)?.[1]?.[0] as string | undefined;
       return Promise.resolve({ total: overrides.interest?.[currency ?? 'BRL'] ?? 0 });
     }
@@ -84,9 +67,7 @@ describe('GET /api/portfolio/valuation', () => {
     const { status, body } = await requestValuation();
 
     expect(status).toBe(200);
-    // 0.5 BTC at 60k, plus 1,000 BRL at 0.2 and 2,000 USD of cash.
     expect(body.total).toBeCloseTo(30_000 + 200 + 2_000, 6);
-    // Cost basis of the open lot, plus the same cash.
     expect(body.invested).toBeCloseTo(25_000 + 200 + 2_000, 6);
     expect(body.unrealized).toBeCloseTo(5_000, 6);
     expect(body.positions.BTC).toBe(0.5);
@@ -94,13 +75,9 @@ describe('GET /api/portfolio/valuation', () => {
   });
 
   test('realized P/L is interest only, because trades.profit no longer exists', async () => {
-    // The column was dropped in migration 0003, so the database cannot supply
-    // realized P/L from sales. Reporting interest alone is deliberate: the live
-    // valuation must not disagree with the history snapshots beside it.
     stubDatabase({ trades: [trade({ side: 'sell', qty: 0.1, price: 70_000 })], interest: { BRL: 100, USD: 20 } });
 
     const { body } = await requestValuation();
-    // 100 BRL of interest at 0.2, plus 20 USD.
     expect(body.realized).toBeCloseTo(40, 6);
     expect(body.salesCount).toBe(1);
   });
@@ -114,22 +91,13 @@ describe('GET /api/portfolio/valuation', () => {
     expect(row.valueCurrency).toBe('BRL');
     expect(row.value).toBeCloseTo(17_000, 6);
     expect(row.pl).toBeCloseTo(2_000, 6);
-    // ...while the portfolio total is USD: 100 x 170 x 0.2 + cash.
     expect(body.total).toBeCloseTo(3_400 + 200 + 2_000, 6);
   });
 
   test('a bond would be quoted in BRL from its price metadata', async () => {
-    // The bond branch is unreachable from this route: no symbol in
-    // `config/symbols.ts` has `type: 'bond'`, so `isBRLBond` is false for every
-    // symbol the app knows. The maths is covered in
-    // `packages/shared/src/domain/valuation.test.ts` against a synthetic
-    // registry; this test pins the fact rather than the behaviour, so that
-    // adding a bond to the registry makes it fail loudly rather than silently
-    // changing what the dashboard shows.
     const { SYMBOLS } = await import('../config/symbols');
     expect(Object.values(SYMBOLS).filter((s) => s.type === 'bond')).toEqual([]);
 
-    // A bond's price metadata, if one ever appears, is parsed from `meta`.
     const { status, body } = await requestValuation();
     expect(status).toBe(200);
     expect(body.rows.every((r: { quotedInBrl?: boolean }) => r.quotedInBrl === undefined)).toBe(true);
@@ -139,10 +107,6 @@ describe('GET /api/portfolio/valuation', () => {
     mockedAll.mockImplementation((sql: string) => {
       if (sql.includes('FROM trades')) return Promise.resolve([trade()]);
       if (sql.includes('FROM price_cache')) {
-        // `meta` is malformed *and* BRLUSD is absent, so the rate falls back to
-        // 1:1 - the same fallback `computePortfolioValue` uses when writing
-        // history. Zeroing the BRL side instead would make the portfolio appear
-        // to lose every BRL holding when one price is missing.
         return Promise.resolve([{ symbol: 'BTC', price: 60_000, meta: 'not json at all' }]);
       }
       return Promise.resolve([]);

@@ -13,8 +13,6 @@ export function sinceForRange(range: string, now: number): number {
   return 0;
 }
 
-// Bucket size in ms for each range — determines how many data points the chart gets.
-// Rows are sorted ASC; the last row in each bucket is kept (most recent within the period).
 export const BUCKET_MS: Record<string, number> = {
   day: 30 * 60 * 1000, // one point per 30 min  → up to 48 points
   week: 2 * 60 * 60 * 1000, // one point per 2 hours → up to 84 points
@@ -144,17 +142,3 @@ historyRouter.delete('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete history point' });
   }
 });
-
-// `DELETE /api/history` - "Clear History" - is gone. It deleted every snapshot
-// with no confirmation and no way back, and a restore from a backup is now a
-// true replace, which is the same operation done deliberately.
-//
-// `POST /api/history/fill-gaps` went with it. It recomputed the snapshots the
-// early history never received, which sounds like a permanent feature and is
-// not: the first 30 days of records have no day reaching 40 snapshots because
-// the worker was not running then, and it is healthy now (48/day across the
-// last fortnight). The worker only appends, so nothing would ever fill that
-// period on its own - but the 128 rows it did produce carry
-// `note = 'gap-fill'`, and the thin past was not worth a permanent endpoint.
-// `recomputeHistoryAt` in `services/historyManager.ts` is what made it
-// possible. It stays exported and tested, and now has no caller in the app.

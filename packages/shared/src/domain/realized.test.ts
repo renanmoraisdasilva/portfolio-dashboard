@@ -3,18 +3,11 @@ import { computeRealizedFromSales } from './valuation';
 const SYMBOLS = {
   BTC: { type: 'crypto' },
   BOVA11: { type: 'stock', denominatedInBRL: true },
-  /** A bond: quoted in BRL, stored and traded in USD. */
   BOVB11: { type: 'bond', denominatedInBRL: true },
 };
 
 const RATE = 0.2;
 
-/**
- * These tests exist because the function they cover replaced a hardcoded 0 in
- * three places, after the `trades.profit` column was dropped in migration 0003.
- * A wrong answer here is not a cosmetic error: it feeds the realized P/L card,
- * invested net, every history snapshot and the analytics.
- */
 describe('computeRealizedFromSales', () => {
   test('books a gain as sells consume the oldest lots first', () => {
     const out = computeRealizedFromSales(
@@ -27,7 +20,6 @@ describe('computeRealizedFromSales', () => {
       RATE,
     );
 
-    // The oldest lot (100) is consumed, so the gain is 300 - 100, not 300 - 200.
     expect(out.totalUsd).toBeCloseTo(200);
   });
 
@@ -95,10 +87,7 @@ describe('computeRealizedFromSales', () => {
         RATE,
       );
 
-      // 500 BRL of gain is 100 USD at 0.2. Adding the BRL figure unconverted
-      // would overstate realized P/L five-fold.
       expect(out.totalUsd).toBeCloseTo(100);
-      // ...while the per-trade figure stays in the symbol's own currency.
       expect(out.nativeByTradeId['s1']).toBeCloseTo(500);
     });
 
@@ -126,8 +115,6 @@ describe('computeRealizedFromSales', () => {
         0,
       );
 
-      // Same fallback `computeValuation` uses: a BRLUSD missing from the price
-      // cache must not make a BRL gain disappear.
       expect(out.totalUsd).toBeCloseTo(500);
     });
 
@@ -166,9 +153,6 @@ describe('computeRealizedFromSales', () => {
   });
 
   test('the walk is only correct on time-ordered input, which is why callers must sort', () => {
-    // The two orders differ by a real amount, and neither raises: a FIFO walk on
-    // unsorted trades is a plausible wrong number, not an error. This is why the
-    // callers pass `ORDER BY time ASC` rather than whatever the driver returns.
     const ordered = computeRealizedFromSales(
       [
         { id: 'b1', symbol: 'BTC', side: 'buy', qty: 1, price: 100 },
@@ -193,8 +177,6 @@ describe('computeRealizedFromSales', () => {
   });
 
   test('a gain on one symbol is not netted against a loss on another by the FIFO order', () => {
-    // Interleaved buys and sells, so the walk has to track lots per symbol
-    // rather than one shared queue.
     const out = computeRealizedFromSales(
       [
         { id: 'b1', symbol: 'BTC', side: 'buy', qty: 1, price: 100 },

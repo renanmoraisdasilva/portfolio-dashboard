@@ -1,20 +1,6 @@
-// Secret / data scan.
-//
-// A public showcase repo has to be provably free of the real financial data
-// that used to live here. This checks the working tree, every commit reachable
-// from every ref, and the contents of the tracked files for the shapes that
-// leaked before.
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 
-// `git` is invoked with an argv array and no shell. It used to go through
-// `execSync` with `shell: 'powershell.exe'`, which worked on the author's
-// Windows machine and died on the ubuntu-latest CI runner with
-// `spawnSync powershell.exe ENOENT` - a security gate that could not run where
-// it mattered most. Dropping the shell also drops two quoting hazards: the
-// `%(refname)` format would have been mangled by cmd.exe's `%` expansion, and
-// the forbidden-path globs were being re-parsed by a shell that had no business
-// seeing them.
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 let failures = 0;
 const ok = (label, detail = '') => console.log(`  PASS  ${label}${detail ? ` - ${detail}` : ''}`);
@@ -59,11 +45,6 @@ for (const pattern of forbidden) {
 
 console.log('\ncredential-shaped assignments in tracked files:');
 const tracked = git('ls-files').split('\n').filter(Boolean);
-// No `g` flag, deliberately. This is a global regex run with `.exec` once per
-// line, so a match on one line advanced `lastIndex` and the *next* line's search
-// began partway through it - any secret whose match sat earlier in its line than
-// the previous line's match was silently skipped. A secret scan that can miss a
-// secret is worse than no scan, because it reports CLEAN.
 const secretish = /((?:password|passwd|secret|api[_-]?key|access[_-]?token|bearer)\s*[:=]\s*)(['"])([^'"\n]{6,})\2/i;
 const placeholders =
   /^(x{3,}|\*{3,}|<.*>|\$\{.*\}|process\.env|your|changeme|placeholder|example|redacted|dummy|test|fake|abc123)/i;
@@ -83,7 +64,6 @@ for (const file of tracked) {
     const m = secretish.exec(line);
     if (!m) continue;
     if (placeholders.test(m[3])) continue;
-    // An allowlist entry is a place the literal is obviously not a real secret.
     if (/(allowlist|placeholder|example|sample|dummy|redact|never commit|do not)/i.test(line)) continue;
     bad(`${file}`, line.trim().slice(0, 90));
   }
@@ -104,9 +84,6 @@ const snapshots = fixture.history || [];
 const snapYears = [...new Set(snapshots.map((s) => new Date(s.ts).getUTCFullYear()))].sort();
 console.log(`        trade years ${years.join(', ')}; snapshot years ${snapYears.join(', ')}`);
 
-// The strongest evidence that the fixture is not a dump of the real database is
-// that the two disagree. Skip the check when there is no local database, which is
-// the case in CI.
 const realDb = 'apps/api/data/portfolio.db';
 if (fs.existsSync(realDb)) {
   const Database = require('better-sqlite3');

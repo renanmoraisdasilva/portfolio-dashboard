@@ -4,10 +4,6 @@ export interface SymbolConfig {
   coingeckoId?: string;
   yahooTicker?: string;
   historicalFallbacks?: string[];
-  // 'bond' is in the union because the money rules handle it: a bond is stored in
-  // USD and quoted in BRL, so its row needs the price metadata. The union
-  // omitted it, which made registering a bond a compile error even though
-  // `createSymbolClassifier` has always tested for it. No symbol uses it yet.
   type: 'crypto' | 'stock' | 'currency' | 'bond';
   denominatedInBRL?: boolean; // true when price/value is natively in BRL (BOVA11, IVVB11)
 }
