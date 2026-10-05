@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { computeRealizedFromSales } from '@portfolio-dashboard/shared';
+import { computeRealizedFromSales, computeValuation } from '@portfolio-dashboard/shared';
 import { SYMBOLS } from '../config/symbols';
 import { all, get, run } from '../db';
 import { refreshPrices } from './priceFetcher';
-import { replayFIFOLots, computePortfolioValue } from './portfolioCalculator';
 
 export async function computeAndInsertHistoryPoint(options: { manual?: boolean; note?: string } = {}) {
   await refreshPrices();
@@ -13,8 +12,8 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
   for (const r of priceRows) prices[r.symbol] = r.price;
 
   const trades: any[] = await all('SELECT * FROM trades ORDER BY time ASC');
-  const lots = replayFIFOLots(trades, prices);
-  const realizedFromSells = computeRealizedFromSales(trades, SYMBOLS, prices['BRLUSD'] ?? 1, prices).totalUsd;
+  const brlUsdRate = prices['BRLUSD'] ?? 1;
+  const realizedFromSells = computeRealizedFromSales(trades, SYMBOLS, brlUsdRate, prices).totalUsd;
 
   const cashRow: any = await get(`
     SELECT
@@ -32,13 +31,19 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
   const interestBRLMonthsTotal = brlMonths.reduce((s, m) => s + (m.amount || 0), 0);
   const interestUSDMonthsTotal = usdMonths.reduce((s, m) => s + (m.amount || 0), 0);
 
-  const { total, investedNet, p, brlUsdRate } = computePortfolioValue({
-    lots,
+  const {
+    total,
+    investedNet,
+    unrealized: p,
+  } = computeValuation({
+    trades,
     prices,
     cash,
     realizedFromSells,
-    interestBRLMonthsTotal,
-    interestUSDMonthsTotal,
+    interest: { brlTotal: interestBRLMonthsTotal, usdTotal: interestUSDMonthsTotal },
+    brlUsdRate,
+    symbols: SYMBOLS,
+    requirePrices: true,
   });
 
   const last: any = await get('SELECT * FROM portfolio_snapshots ORDER BY ts DESC LIMIT 1');
@@ -61,8 +66,6 @@ export async function computeAndInsertHistoryPoint(options: { manual?: boolean; 
 export async function recomputeHistoryAt(ts: number) {
   const cutoff = new Date(ts).toISOString();
   const trades: any[] = await all('SELECT * FROM trades WHERE time <= ? ORDER BY time ASC', [cutoff]);
-
-  const lots = replayFIFOLots(trades, {});
 
   const tickRows: any[] = await all(
     `
@@ -105,13 +108,21 @@ export async function recomputeHistoryAt(ts: number) {
   const interestBRLMonthsTotal = brlMonthsAt.reduce((s, m) => s + (m.amount || 0), 0);
   const interestUSDMonthsTotal = usdMonthsAt.reduce((s, m) => s + (m.amount || 0), 0);
 
-  const { total, investedNet, p, brlUsdRate } = computePortfolioValue({
-    lots,
+  const brlUsdRate = prices['BRLUSD'] ?? 1;
+  const {
+    total,
+    investedNet,
+    unrealized: p,
+  } = computeValuation({
+    trades,
     prices,
+    lotFallbackPrices: {},
     cash,
-    realizedFromSells: computeRealizedFromSales(trades, SYMBOLS, prices['BRLUSD'] ?? 1, prices).totalUsd,
-    interestBRLMonthsTotal,
-    interestUSDMonthsTotal,
+    realizedFromSells: computeRealizedFromSales(trades, SYMBOLS, brlUsdRate, prices).totalUsd,
+    interest: { brlTotal: interestBRLMonthsTotal, usdTotal: interestUSDMonthsTotal },
+    brlUsdRate,
+    symbols: SYMBOLS,
+    requirePrices: true,
   });
 
   return {

@@ -1,27 +1,8 @@
-import { brlToUSD, createSymbolClassifier, SymbolMap } from './money';
+import { createSymbolClassifier, SymbolMap } from './money';
 
 export interface LotEntry {
   qty: number;
   price: number;
-}
-
-export interface PortfolioInput {
-  lots: Record<string, LotEntry[]>;
-  prices: Record<string, number>;
-  cash: {
-    cashReais: number;
-    cashDollars: number;
-  };
-  realizedFromSells: number;
-  interestBRLMonthsTotal: number;
-  interestUSDMonthsTotal: number;
-}
-
-export interface PortfolioResult {
-  total: number;
-  investedNet: number;
-  p: number;
-  brlUsdRate: number;
 }
 
 export interface ReplayResult {
@@ -43,7 +24,6 @@ export interface PortfolioCalculator {
     trades: Array<{ symbol: string; side: string; qty: number; price?: number | null }>,
     fallbackPrices?: Record<string, number>,
   ): ReplayResult;
-  computePortfolioValue(this: void, input: PortfolioInput): PortfolioResult;
 }
 
 export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculator {
@@ -108,42 +88,5 @@ export function createPortfolioCalculator(symbols: SymbolMap): PortfolioCalculat
     return { lots, positions, realized, realizedByTradeIndex };
   }
 
-  function computePortfolioValue(input: PortfolioInput): PortfolioResult {
-    const { lots, prices, cash, realizedFromSells, interestBRLMonthsTotal, interestUSDMonthsTotal } = input;
-    const { cashReais, cashDollars } = cash;
-    const brlUsdRate = prices['BRLUSD'] ?? 1;
-
-    let invested = 0;
-    for (const symbol of Object.keys(lots)) {
-      const needsBRLConversion = isBRLNonBond(symbol);
-      for (const lot of lots[symbol]) {
-        const lotPriceUSD = needsBRLConversion ? brlToUSD(lot.price, brlUsdRate) : lot.price;
-        invested += lot.qty * lotPriceUSD;
-      }
-    }
-    invested += brlToUSD(cashReais, brlUsdRate);
-    invested += cashDollars;
-
-    const realized = realizedFromSells + brlToUSD(interestBRLMonthsTotal, brlUsdRate) + interestUSDMonthsTotal;
-    const investedNet = invested - realized;
-
-    let total = 0;
-    for (const symbol of Object.keys(lots)) {
-      const positionQty = lots[symbol].reduce((sum, l) => sum + l.qty, 0);
-      if (positionQty > 0) {
-        const price = prices[symbol] ?? 0;
-        if (!price || price === 0) {
-          throw new Error(`Missing price for ${symbol}; skipping history point`);
-        }
-        const priceUSD = isBRLNonBond(symbol) ? brlToUSD(price, brlUsdRate) : price;
-        total += positionQty * priceUSD;
-      }
-    }
-    total += brlToUSD(cashReais, brlUsdRate);
-    total += cashDollars;
-
-    return { total, investedNet, p: total - invested, brlUsdRate };
-  }
-
-  return { isBRLNonBond, replayFIFOLots, replayTradesWithRealized, computePortfolioValue };
+  return { isBRLNonBond, replayFIFOLots, replayTradesWithRealized };
 }

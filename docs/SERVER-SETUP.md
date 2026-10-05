@@ -75,25 +75,15 @@ across redeployments.
 
 ### HOME_ASSISTANT_WEBHOOK_URL
 
-The webhook URL used to send portfolio alerts to Home Assistant is **baked into the Docker image at build time** — it is not read from a `.env` file at runtime.
+The webhook URL used to send portfolio alerts to Home Assistant is a **runtime environment variable**. Set `HOME_ASSISTANT_WEBHOOK_URL` in the Dokploy application environment; `docker-compose.yml` forwards it into the container and the Node process reads it from `process.env`.
 
-**How it works:**
+It is deployment configuration, not part of the image, so it is never passed as a `--build-arg` or written into the `Dockerfile`. A webhook URL is itself the credential — anyone holding it can post to the automation — which is why it lives in the deployment environment and nowhere in the artifact.
 
-1. The value is stored as a **GitHub Actions secret** named `HOME_ASSISTANT_WEBHOOK_URL` in the repository settings (`Settings → Secrets and variables → Actions`).
-2. The CI workflow (`.github/workflows/docker-image.yml`) passes it to the Docker build as a `--build-arg`:
-   ```yaml
-   build-args: |
-     HOME_ASSISTANT_WEBHOOK_URL=${{ secrets.HOME_ASSISTANT_WEBHOOK_URL }}
-   ```
-3. The `Dockerfile` accepts it as an `ARG` and promotes it to an `ENV`, so it is available to the Node.js process at runtime:
-   ```dockerfile
-   ARG HOME_ASSISTANT_WEBHOOK_URL
-   ENV HOME_ASSISTANT_WEBHOOK_URL=${HOME_ASSISTANT_WEBHOOK_URL}
-   ```
-
-**To update the webhook URL**, change the secret value in GitHub and trigger a new push to `main` — the CI will rebuild and push a new image. Update `PORTFOLIO_IMAGE_TAG` to that commit SHA in Dokploy and redeploy to pick it up.
+**To update the webhook URL**, change the value in Dokploy and redeploy. No rebuild, no new image tag, no GitHub Actions secret: `PORTFOLIO_IMAGE_TAG` keeps pointing at the same commit.
 
 **Local development** uses `apps/api/.env` (ignored by git). Copy `apps/api/.env.example` and fill in your local HA webhook URL.
+
+Full details, including the payload format and troubleshooting, are in [HOME_ASSISTANT_SETUP.md](HOME_ASSISTANT_SETUP.md).
 
 ---
 

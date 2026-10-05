@@ -265,6 +265,35 @@ Fast dashboard and analytics reads
 
 That is a solid foundation for discussing event logs, materialized views, cache freshness, and bounded domains from a system-design perspective.
 
+## Security boundary
+
+**The API has no authentication layer, and that is deliberate.** There is no
+session, cookie, token or credential check on any route, and `cors()` allows
+every origin. The application is local-only, so isolation is provided by the
+network boundary rather than by the app: a single-user dashboard on the
+operator's own machine does not need an auth layer, and introducing one would
+add a credential that the rest of this stack — no accounts, one SQLite file —
+has nowhere to put.
+
+The scope is what makes it safe, so it is worth stating exactly what the
+boundary is:
+
+```text
+"Who can reach the port"  ──  the entire security boundary
+```
+
+That matters because two of the routes are powerful and open:
+`GET /api/state/export` dumps every table that cannot be re-derived, and
+`POST /api/state/import` replaces them all. Anyone who reaches the port can
+read or destroy the data.
+
+Three conditions end the exemption, and authentication must land **before** the
+exposure rather than after it: the port being published beyond the local
+network, a public domain or reverse proxy routing to it, or any endpoint
+starting to accept a credential. Note also that CORS constrains browsers only —
+`curl` ignores it — so an open CORS is never evidence that a port is safe to
+publish. See "Authentication and exposure" in [AGENTS.md](../AGENTS.md).
+
 ## Scalability learning path
 
 This project follows the design sequence from _System Design Interview: An Insider's Guide_ by Alex Xu. Each step should produce a measurable result before introducing the next component.

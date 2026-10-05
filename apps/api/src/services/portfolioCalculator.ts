@@ -5,4 +5,3 @@ const calculator = createPortfolioCalculator(SYMBOLS);
 
 export const isBRLNonBond = calculator.isBRLNonBond;
 export const replayFIFOLots = calculator.replayFIFOLots;
-export const computePortfolioValue = calculator.computePortfolioValue;

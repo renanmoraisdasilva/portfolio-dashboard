@@ -504,3 +504,31 @@ describe('degenerate inputs', () => {
     expect(result.investedNet).toBeCloseTo(150 - 10, 8);
   });
 });
+
+describe('computeValuation requirePrices', () => {
+  test('throws when an open position has no price', () => {
+    expect(() => valuation({ prices: { SPY: 500, BRLUSD: 0.18 }, requirePrices: true })).toThrow(/Missing price for BTC/);
+  });
+
+  test('throws when an open position has a zero price', () => {
+    expect(() => valuation({ prices: { BTC: 0, SPY: 500, BRLUSD: 0.18 }, requirePrices: true })).toThrow(/Missing price for BTC/);
+  });
+
+  test('a closed-out position needs no price, because nothing of it is valued', () => {
+    expect(() =>
+      valuation({
+        trades: [
+          { symbol: 'BTC', side: 'buy', qty: 1, price: 100 },
+          { symbol: 'BTC', side: 'sell', qty: 1, price: 150 },
+        ],
+        prices: { BRLUSD: 0.18 },
+        requirePrices: true,
+      }),
+    ).not.toThrow();
+  });
+
+  test('the flag is opt-in: the dashboard path still values a missing price at zero', () => {
+    const result = valuation({ prices: { SPY: 500, BRLUSD: 0.18 } });
+    expect(result.total).toBeCloseTo(5_000, 8);
+  });
+});

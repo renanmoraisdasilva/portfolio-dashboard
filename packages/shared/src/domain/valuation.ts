@@ -30,6 +30,7 @@ export interface ValuationInput {
   symbols: SymbolMap;
   includeCashRows?: boolean;
   includeCashInAllocation?: boolean;
+  requirePrices?: boolean;
 }
 
 export type PositionRowKind = 'position' | 'brl-cash' | 'usd-cash';
@@ -130,6 +131,14 @@ export function computeValuation(input: ValuationInput): ValuationResult {
 
   const symbols_ = Object.keys(positions);
   const openSymbols = symbols_.filter((symbol) => positions[symbol] !== 0);
+
+  if (input.requirePrices) {
+    for (const symbol of openSymbols) {
+      if (!(prices[symbol] > 0)) {
+        throw new Error(`Missing price for ${symbol}; skipping history point`);
+      }
+    }
+  }
 
   const nativeCost = (symbol: string): number => sum(lots[symbol].map((lot) => lot.qty * lot.price));
   const nativeValue = (symbol: string): number => positions[symbol] * (prices[symbol] ?? 0);
