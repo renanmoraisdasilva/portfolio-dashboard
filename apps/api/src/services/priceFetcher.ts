@@ -133,7 +133,7 @@ async function fetchBRLUSD() {
   const url = 'https://api.exchangerate-api.com/v4/latest/BRL';
   const data = await retry(() =>
     fetchWithTimeout(url).then((r) => {
-      throw new HttpError(r.status, 'Exchange', parseRetryAfter(r.headers.get('retry-after')));
+      if (!r.ok) throw new HttpError(r.status, 'Exchange', parseRetryAfter(r.headers.get('retry-after')));
       return r.json();
     }),
   );

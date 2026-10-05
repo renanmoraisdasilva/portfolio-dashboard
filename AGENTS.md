@@ -273,13 +273,27 @@ ROLLBACK` as prepared statements. That was the driver's own mechanism spelled ou
   `wal_checkpoint(TRUNCATE)`. Without that, `docker stop` killed the process
   outright and the WAL was left uncheckpointed — the mechanism behind the
   7-week-stale copy above.
-  - `jobs/scheduler.ts` owns every `setInterval` and `unref`s it, so a scheduled
-    job can never be the reason the process stays alive. `stopWorkerJobs()` clears
-    them; the three job modules must register through `schedule()` and not call
-    `setInterval` directly, or shutdown will not stop them.
+  - `jobs/scheduler.ts` owns every `setInterval`, and those job timers are
+    **referenced, never `unref`ed** — they are the only thing keeping the worker
+    alive. `worker.ts` opens no server, and OTel's own metric interval unrefs
+    itself (`PeriodicExportingMetricReader`), so `unref`ing the job timers leaves
+    nothing on the loop: the process drains and exits `0` the moment startup
+    finishes, without ever reaching the signal handler that logs a shutdown,
+    `unless-stopped` restarts it, and the worker loops forever running each job's
+    _startup_ pass instead of its schedule — observed at 193 restarts in 74
+    minutes, one every 16–28 s, refetching on every cycle instead of every 8 min.
+    CI did not catch it because the `docker` job smokes the **web** entrypoint,
+    which never starts a job. Shutdown stays clean without the `unref`: SIGTERM
+    runs `stopWorkerJobs()`, which clears every timer, and only then does the
+    process exit. `stopWorkerJobs()` clears them; the three job modules must
+    register through `schedule()` and not call `setInterval` directly, or
+    shutdown will not stop them.
   - Each shutdown has a 10-second hard timeout. Without it, a hung keep-alive
     socket or an in-flight price fetch would hold the process open until the
     orchestrator killed it, which is the outcome this avoids — just less politely.
+    That timer is the one thing here that _should_ be `unref`ed: a pending
+    shutdown deadline must not be what holds the loop open after
+    `stopWorkerJobs()` has already cleared the jobs.
   - `telemetry.ts` registers its own `SIGTERM`/`SIGINT` handler for the OTel SDK
     flush. Node runs every listener, and `process.once` fires each exactly once,
     so the two do not conflict.
@@ -499,6 +513,15 @@ symbol=? AND days=? AND interval=?` had no `ORDER BY`, so it returned the
   anti-pattern `routes/trades.ts` carries a post-mortem for, twice in one file.
   The messages are unchanged (`Yahoo 429`), so logs read the same; only the
   classification moved.
+  - **The same edit dropped a guard in one of the three fetchers.**
+    `fetchBRLUSD` lost its `if (!r.ok)`, so the `throw new HttpError(...)`
+    became unconditional and a _successful_ 200 was reported as
+    `Failed to fetch BRLUSD HttpError: Exchange 200`, with `return r.json()`
+    left unreachable beneath it. BRLUSD froze at its last good value while every
+    other symbol kept refreshing, which is what made it look like a network
+    problem. The throw must stay **conditional** in all three:
+    `if (!r.ok) throw ...` and then `return r.json()`. No test drives
+    `fetchBRLUSD`, so nothing but a stale `BRLUSD_ts` would have caught it.
   - **A subtle trap, verified by mutation:** `HttpError`'s message is
     `"<source> <status>"`, so it _contains_ "429". Any test that only feeds real
     `HttpError`s passes equally well under the old substring check — mutating back

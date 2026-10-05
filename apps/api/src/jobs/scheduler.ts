@@ -2,7 +2,6 @@ const timers: NodeJS.Timeout[] = [];
 
 export function schedule(name: string, intervalMs: number, task: () => void): void {
   const timer = setInterval(task, intervalMs);
-  timer.unref();
   timers.push(timer);
   console.log(`[jobs] ${name} scheduled every ${formatInterval(intervalMs)}`);
 }
