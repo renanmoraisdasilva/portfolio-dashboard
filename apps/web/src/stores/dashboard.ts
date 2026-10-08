@@ -3,20 +3,14 @@ import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
 import {
   computeProjection,
-  computePctFromQty,
-  computeQtyFromPct,
-  computeQtyFromTotal,
-  computeTotal,
-  convertCashInput,
   createSymbolClassifier,
-  displayPriceFromSpot,
   formatMoney,
   formatSigned,
   parseMoney,
   type SymbolMap,
-  type TradeFormContext,
 } from '@portfolio-dashboard/shared';
 import { ApiError, request, useApi } from '../composables/useApi';
+import { useTradeForm } from '../composables/useTradeForm';
 
 export type Trade = components['schemas']['Trade'];
 export type CashEntry = components['schemas']['CashEntry'];
@@ -165,15 +159,6 @@ export const useDashboardStore = defineStore(
     const deleteTradeIndex = ref<number | null>(null);
     const loading = ref(false);
 
-    const formSide = ref<Side>('buy');
-    const formSymbol = ref('BTC');
-    const formCashSource = ref<CashSource>('USD');
-    const qtyInput = ref('');
-    const priceInput = ref('');
-    const tradeDate = ref('');
-    const totalInput = ref('');
-    const qtyPct = ref(0);
-
     const classifier = computed(() => createSymbolClassifier(symbolDetails.value));
     const isBRLAsset = (s: string): boolean => classifier.value.isBRLAsset(s);
     const isBRLNonBond = (s: string): boolean => classifier.value.isBRLNonBond(s);
@@ -184,6 +169,44 @@ export const useDashboardStore = defineStore(
     const tradeableSymbols = computed(() =>
       symbolList.value.filter((s) => symbolDetails.value[s] && symbolDetails.value[s]?.type !== 'currency'),
     );
+
+    /**
+     * The trade form — state, setters and the delegation to the shared
+     * arithmetic in `packages/shared/src/domain/tradeForm.ts`. Destructured
+     * so the rest of this store (and its return block) refers to these names
+     * exactly as before; the refs are the same objects the components bind.
+     */
+    const {
+      formSide,
+      formSymbol,
+      formCashSource,
+      qtyInput,
+      priceInput,
+      tradeDate,
+      totalInput,
+      qtyPct,
+      totalFromQty,
+      qtyFromTotal,
+      qtyFromPct,
+      pctFromQty,
+      setQty,
+      setQtyPct,
+      setPrice,
+      setTotal,
+      syncPriceToSymbol,
+      setFormSide,
+      setCashSource,
+      resolvedTradePrice,
+      resetTradeForm,
+    } = useTradeForm({
+      classifier: () => classifier.value,
+      brlUsdRate: () => brlUsdRate.value,
+      cashUsd: () => cashDollars.value,
+      cashBrl: () => cashReais.value,
+      positionQty,
+      prices: () => prices.value,
+      priceMeta: () => priceMeta.value,
+    });
 
     const priceOf = (s: string): number => prices.value[s] ?? 0;
 
@@ -351,137 +374,6 @@ export const useDashboardStore = defineStore(
         close: c.close ?? 0,
       }));
     });
-
-    const parsedQty = computed(() => parseFloat(qtyInput.value) || 0);
-    const parsedPrice = computed(() => parseFloat(priceInput.value) || 0);
-
-    /**
-     * What the form's arithmetic needs, and nothing else: the balance the
-     * slider spends, the classifier that decides the price field's currency,
-     * and the holding a sell percentage is a share of. Quantity, total and
-     * percentage all come from `packages/shared/src/domain/tradeForm.ts` — the
-     * one copy of this arithmetic, shared with the simulator's form.
-     */
-    const formCtx = computed<TradeFormContext>(() => ({
-      symbol: formSymbol.value,
-      side: formSide.value,
-      cashSource: formCashSource.value,
-      classifier: classifier.value,
-      brlUsdRate: brlUsdRate.value,
-      cashUsd: cashDollars.value,
-      cashBrl: cashReais.value,
-      positionQty: positionQty(formSymbol.value),
-    }));
-
-    /**
-     * The price being typed, or the symbol's market quote when the field is
-     * empty — in the currency the field shows. `parsedPrice` stays a plain
-     * `parseFloat` because this input is `type="number"`: it holds `169.27`,
-     * never `R$169,27`, and `parseMoney` would read a pt-BR thousands
-     * separator into it.
-     */
-    const formPrice = computed(() => {
-      const typed = parsedPrice.value;
-      if (typed > 0) return typed;
-      const s = formSymbol.value;
-      return displayPriceFromSpot(priceOf(s), s, classifier.value, brlUsdRate.value, priceMeta.value) ?? 0;
-    });
-
-    function totalFromQty(): string {
-      return computeTotal(parsedQty.value, formPrice.value, formCtx.value);
-    }
-
-    function qtyFromTotal(): string {
-      return computeQtyFromTotal(totalInput.value, formPrice.value, formCtx.value);
-    }
-
-    function qtyFromPct(pct: number): number {
-      return computeQtyFromPct(pct, formPrice.value, formCtx.value);
-    }
-
-    function pctFromQty(qty: number): number {
-      return computePctFromQty(qty, formPrice.value, formCtx.value);
-    }
-
-    function setQty(text: string): void {
-      qtyInput.value = text;
-      totalInput.value = totalFromQty();
-      qtyPct.value = pctFromQty(parseFloat(text) || 0);
-    }
-
-    function setQtyPct(pct: number): void {
-      qtyPct.value = pct;
-      qtyInput.value = String(qtyFromPct(pct));
-      totalInput.value = totalFromQty();
-    }
-
-    function setPrice(text: string): void {
-      priceInput.value = text;
-      totalInput.value = totalFromQty();
-    }
-
-    function setTotal(text: string): void {
-      const parsed = parseMoney(text, formCashSource.value === 'USD' ? 'USD' : 'BRL');
-      totalInput.value =
-        parsed && parsed > 0 ? (formCashSource.value === 'USD' ? formatMoney(parsed, 'USD') : formatMoney(parsed, 'BRL')) : text;
-      const qty = qtyFromTotal();
-      if (qty) qtyInput.value = qty;
-    }
-
-    function syncPriceToSymbol(): void {
-      const s = formSymbol.value;
-      // Always resync, for every symbol: leaving a USD asset's price field
-      // alone kept the previous symbol's quote in it, and the total was then
-      // computed from a price that belonged to a different asset.
-      const spot = displayPriceFromSpot(priceOf(s), s, classifier.value, brlUsdRate.value, priceMeta.value);
-      priceInput.value = spot !== null && spot > 0 ? spot.toFixed(2) : '';
-      totalInput.value = totalFromQty();
-      qtyPct.value = pctFromQty(parsedQty.value);
-    }
-
-    function setFormSide(side: Side): void {
-      formSide.value = side;
-      totalInput.value = totalFromQty();
-      qtyPct.value = pctFromQty(parsedQty.value);
-    }
-
-    function setCashSource(source: CashSource): void {
-      const previous = formCashSource.value;
-      formCashSource.value = source;
-      if (totalInput.value) {
-        totalInput.value = convertCashInput(totalInput.value, previous, source, brlUsdRate.value);
-        const qty = qtyFromTotal();
-        if (qty) qtyInput.value = qty;
-      }
-      qtyPct.value = pctFromQty(parsedQty.value);
-    }
-
-    function resolvedTradePrice(): number | null {
-      const typed = priceInput.value ? parseFloat(priceInput.value) : null;
-      const s = formSymbol.value;
-      if (isBRLBond(s)) {
-        const brlP =
-          typed !== null
-            ? typed
-            : typeof priceMeta.value[s]?.priceBRL === 'number'
-              ? priceMeta.value[s].priceBRL
-              : brlUsdRate.value > 0
-                ? priceOf(s) / brlUsdRate.value
-                : null;
-        return brlP !== null && brlUsdRate.value > 0 ? brlP / brlUsdRate.value : (prices.value[s] ?? null);
-      }
-      return typed !== null ? typed : (prices.value[s] ?? null);
-    }
-
-    function resetTradeForm(): void {
-      formSymbol.value = 'BTC';
-      formSide.value = 'buy';
-      qtyInput.value = '';
-      priceInput.value = '';
-      tradeDate.value = '';
-      totalInput.value = '';
-      qtyPct.value = 0;
-    }
 
     async function addTrade(): Promise<string | null> {
       const trade: DashboardTrade = {
