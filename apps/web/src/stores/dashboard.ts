@@ -6,11 +6,11 @@ import {
   createSymbolClassifier,
   formatMoney,
   formatSigned,
-  parseMoney,
   type SymbolMap,
 } from '@portfolio-dashboard/shared';
 import { ApiError, request, useApi } from '../composables/useApi';
 import { useAlerts } from '../composables/useAlerts';
+import { useCashflow, type InterestMonth } from '../composables/useCashflow';
 import { useSettings } from '../composables/useSettings';
 import { useTradeForm } from '../composables/useTradeForm';
 
@@ -28,11 +28,7 @@ export type Currency = 'USD' | 'BRL';
 export type Metric = 'value' | 'pnl';
 export type Tab = 'dashboard' | 'assetCharts';
 
-export interface InterestMonth {
-  month: string;
-  amount: number;
-  currency?: string;
-}
+export type { InterestMonth };
 
 export interface PriceMeta {
   priceBRL?: number;
@@ -68,8 +64,6 @@ export const ALLOCATION_PALETTE = [
   '#a855f7',
   '#3b82f6',
 ];
-
-const CASH_ENTRIES_PAGE_SIZE = 5;
 
 const usd = (n: number): string => formatMoney(n, 'USD');
 const brl = (n: number): string => formatMoney(n, 'BRL');
@@ -107,13 +101,6 @@ export const useDashboardStore = defineStore(
     const history = ref<HistoryPoint[]>([]);
     const historyOHLC = ref<OhlcCandle[]>([]);
     const pnlOHLC = ref<OhlcCandle[]>([]);
-    const cashReais = ref(0);
-    const cashDollars = ref(0);
-    const interestReais = ref(0);
-    const interestDollars = ref(0);
-    const interestReaisMonths = ref<InterestMonth[]>([]);
-    const interestDollarsMonths = ref<InterestMonth[]>([]);
-    const cdiRate = ref(0);
     const brlUsdRate = ref(0);
     const symbolList = ref<string[]>([]);
     const symbolDetails = ref<SymbolMap>({});
@@ -121,17 +108,12 @@ export const useDashboardStore = defineStore(
 
     const allocationShowCash = ref(true);
     const allocCurrency = ref<Currency>('USD');
-    const interestMonthsCollapsed = ref(true);
-    const interestUSDMonthsCollapsed = ref(true);
 
     const tab = ref<Tab>('dashboard');
     const activeSeries = ref<'all' | 'value' | 'pnl'>('value');
     const activeMetric = computed<Metric>(() => (activeSeries.value === 'pnl' ? 'pnl' : 'value'));
     const projectionEnabled = ref(false);
     const selectedDays = ref(60);
-    const entryCurrency = ref<Currency>('USD');
-    const cashEntries = ref<CashEntry[]>([]);
-    const cashEntriesPage = ref(1);
     const priceError = ref<string | null>(null);
     const staleWarning = ref<string | null>(null);
     const deleteTradeIndex = ref<number | null>(null);
@@ -216,6 +198,34 @@ export const useDashboardStore = defineStore(
       }),
       afterImport: () => reloadState(),
     });
+
+    /**
+     * Cash balances, the interest ledgers and the cash-entry log — the third
+     * 4.1 slice. `reloadState` and `fetchPrices` keep writing into these refs
+     * (they come back from the same destructure), and only the post-write
+     * reload crosses back into this store.
+     */
+    const {
+      cashReais,
+      cashDollars,
+      interestReais,
+      interestDollars,
+      interestReaisMonths,
+      interestDollarsMonths,
+      cdiRate,
+      interestMonthsCollapsed,
+      interestUSDMonthsCollapsed,
+      entryCurrency,
+      cashEntries,
+      cashEntriesPage,
+      cashEntriesPages,
+      cashEntryRows,
+      loadCashEntries,
+      addCashEntry,
+      deleteCashEntry,
+      addInterestMonth,
+      deleteInterestMonth,
+    } = useCashflow({ afterWrite: () => reloadState() });
 
     const priceOf = (s: string): number => prices.value[s] ?? 0;
 
@@ -453,99 +463,6 @@ export const useDashboardStore = defineStore(
       trades.value.splice(idx, 1);
       deleteTradeIndex.value = null;
       await reloadState().catch((err) => console.warn('[dashboard] reload after delete failed:', err));
-    }
-
-    async function addInterestMonth(currency: Currency, month: string, raw: string): Promise<string | null> {
-      const amount = +parseMoney(raw, currency).toFixed(2) || 0;
-      if (!month) return 'Please select a month';
-      const list = currency === 'BRL' ? interestReaisMonths : interestDollarsMonths;
-      const idx = list.value.findIndex((m) => m.month === month);
-      if (idx >= 0) list.value[idx].amount = amount;
-      else list.value.push(currency === 'USD' ? { month, amount, currency: 'USD' } : { month, amount });
-      list.value.sort((a, b) => b.month.localeCompare(a.month));
-      let truncated = false;
-      if (list.value.length > 12) {
-        list.value = list.value.slice(0, 12);
-        truncated = true;
-      }
-      if (currency === 'BRL') interestMonthsCollapsed.value = false;
-      else interestUSDMonthsCollapsed.value = false;
-
-      await request(
-        api.POST('/interest/months', {
-          body: currency === 'USD' ? { month, amount, currency: 'USD' } : { month, amount },
-        }),
-        'POST',
-        '/interest/months',
-      );
-      return truncated ? 'Keeping only latest 12 months; oldest entry removed.' : null;
-    }
-
-    async function deleteInterestMonth(currency: Currency, month: string): Promise<void> {
-      if (currency === 'BRL') interestReaisMonths.value = interestReaisMonths.value.filter((m) => m.month !== month);
-      else interestDollarsMonths.value = interestDollarsMonths.value.filter((m) => m.month !== month);
-      await request(
-        api.DELETE('/interest/months/{month}', {
-          params: {
-            path: { month },
-            ...(currency === 'USD' ? { query: { currency: 'USD' } } : {}),
-          },
-        }),
-        'DELETE',
-        '/interest/months/{month}',
-      );
-      await reloadState();
-    }
-
-    async function loadCashEntries(page?: number): Promise<void> {
-      if (page !== undefined) cashEntriesPage.value = page;
-      const entries = await request(api.GET('/cash/entries'), 'GET', '/cash/entries');
-      cashEntries.value = Array.isArray(entries) ? entries : [];
-    }
-
-    const cashEntriesPages = computed(() => Math.ceil(cashEntries.value.length / CASH_ENTRIES_PAGE_SIZE));
-    const cashEntryRows = computed(() => {
-      const total = cashEntriesPages.value;
-      const current = Math.max(1, Math.min(cashEntriesPage.value, total || 1));
-      const start = (current - 1) * CASH_ENTRIES_PAGE_SIZE;
-      return cashEntries.value.slice(start, start + CASH_ENTRIES_PAGE_SIZE).map((e) => ({
-        id: e.id ?? '',
-        date: new Date(e.ts ?? 0).toLocaleDateString('pt-BR'),
-        currency: e.currency ?? 'USD',
-        amount: formatMoney(e.amount ?? 0, e.currency === 'BRL' ? 'BRL' : 'USD'),
-        positive: (e.amount ?? 0) >= 0,
-      }));
-    });
-
-    async function addCashEntry(amountText: string, date: string): Promise<string | null> {
-      const raw = amountText.trim();
-      const amount = parseFloat(raw.replace(/[^\d.-]/g, ''));
-      if (!raw || isNaN(amount) || amount === 0) return 'Enter a non-zero amount (e.g. +1000 or -500)';
-      const ts = date ? new Date(`${date}T12:00:00`).getTime() : Date.now();
-
-      try {
-        await request(
-          api.POST('/cash/entries', { body: { currency: entryCurrency.value, amount, ts } }),
-          'POST',
-          '/cash/entries',
-        );
-      } catch (err) {
-        console.warn('[dashboard] add cash entry failed:', err);
-        return 'Failed to add cash entry';
-      }
-      await Promise.all([loadCashEntries(1), reloadState()]);
-      return null;
-    }
-
-    async function deleteCashEntry(id: string): Promise<string | null> {
-      try {
-        await request(api.DELETE('/cash/entries/{id}', { params: { path: { id } } }), 'DELETE', '/cash/entries/{id}');
-      } catch (err) {
-        console.warn('[dashboard] delete cash entry failed:', err);
-        return 'Failed to delete cash entry';
-      }
-      await Promise.all([loadCashEntries(), reloadState()]);
-      return null;
     }
 
     async function loadSymbols(): Promise<void> {
