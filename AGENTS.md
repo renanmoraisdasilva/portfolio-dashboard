@@ -120,8 +120,9 @@ apps/web/
   src/composables/useAnalyticsCharts.ts # the three Chart.js configurations, as computed refs
   src/composables/useAnalyticsTooltips.ts # metric tooltip content as structured data (no v-html)
   src/composables/useDocumentTitle.ts # per-page <title> (client-side navigation does not reload)
+  src/composables/useTradeForm.ts, useAlerts.ts, useSettings.ts, useCashflow.ts # the dashboard store's slices (IMPROVEMENT-PLAN 4.1): each takes its deps as getters/callbacks so it never imports the store, and the store destructures them under the old names so no .vue consumer changes
   src/stores/persistPlugin.ts   # Pinia plugin: mirrors opted-in state keys into localStorage
-  src/stores/           # Pinia stores, one per migrated page (analytics, simulation, dashboard)
+  src/stores/           # Pinia stores, one per migrated page (analytics, simulation, dashboard); dashboard.ts is a facade over the four slices above, and keeps the server-backed state, the display computeds and the load orchestration
   src/components/       # ChartCanvas.vue (Chart.js lifecycle), MetricCard.vue, PageHeader.vue (a page's TITLE only - no navigation), AllocationTable.vue, analysis/, simulation/, dashboard/
   src/views/            # DashboardView.vue (at `/`), AnalyticsView.vue, SimulationView.vue
 ```
@@ -759,7 +760,8 @@ tests behind them. That gate says nothing about the rest of `src/`, so
 `npm run test:coverage:full` reports all of `src/` with no threshold, and that is
 the number to quote when asked how much of the codebase is tested. It currently
 reads about 31% statements, and the gap is almost entirely Vue single-file
-components: no test mounts one, so `MetricCards.vue`, `PositionsTable.vue` and
+components: only three are mounted by a test (`ChartCanvas`, `AddTradeForm`,
+`TradeForm`), so `MetricCards.vue`, `PositionsTable.vue` and
 every view read 0%. Those are genuinely uncovered, not unmeasurable. `domain/` is
 at ~99.7% and `useApi.ts` at 100%. `scripts/config-integrity.test.ts` fails if the
 include list names a file that does not exist — `cashBackfill.ts` sat there after

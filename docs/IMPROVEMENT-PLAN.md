@@ -956,15 +956,15 @@ policy says so explicitly rather than leaving the absence unexplained.
 
 ## 4.1 `stores/dashboard.ts` is a 1212-line God store
 
-**Status: VERIFIED.**
+**Status: DONE.** `70176cf` `f4a38bc` `c9188bc` `16f49df` `245ed70`
 
-| Metric                        | Value |
-| ----------------------------- | ----- |
-| Lines                         | 1212  |
-| `ref(` declarations           | 46    |
-| `computed(` declarations      | 19    |
-| `async function`              | 22    |
-| Direct `request(api.*)` calls | 18    |
+| Metric                        | Value (before) |
+| ----------------------------- | -------------- |
+| Lines                         | 1212           |
+| `ref(` declarations           | 46             |
+| `computed(` declarations      | 19             |
+| `async function`              | 22             |
+| Direct `request(api.*)` calls | 18             |
 
 One reactive object holds 18 server-backed collections, the entire trade form,
 the settings modal, alerts, cash pagination and chart selection, with 19
@@ -976,33 +976,78 @@ server data, UI preferences, transient UI state, trade form — each of which is
 cohesive unit. Split along those lines into stores and composables; keep the
 `refresh()` orchestration in one place so the load order stays explicit.
 
-`stores/simulation.ts` is 810 lines with **no test file at all** and is the larger
+Done, in five commits that were each green on their own:
+
+1. **`70176cf`** — the trade form's qty/total/slider arithmetic moved to
+   `packages/shared/src/domain/tradeForm.ts`, the one copy both stores call.
+   That is where the drift the diagnosis implies was actually fixed: the two
+   hand-written copies were not inverses (on a BRL asset the slider pinned
+   itself at Max), they disagreed about bonds, and one formatted a BRL price as
+   dollars.
+2. **`f4a38bc`** — component tests for `AddTradeForm.vue` and `TradeForm.vue`
+   (13 tests) as the safety net _before_ any split.
+3. **`c9188bc`** — `composables/useTradeForm.ts`: the form's state and setters.
+4. **`16f49df`** — `composables/useAlerts.ts` + `useSettings.ts`: alert rows and
+   CRUD, the settings modal's visibility and its three tools.
+   `importErrorMessage` moved with them and is re-exported from the store, so
+   `dashboard.import.test.ts` is unchanged.
+5. **`245ed70`** — `composables/useCashflow.ts`: balances, both interest
+   ledgers, the cash-entry log.
+
+`dashboard.ts` is now **728 lines**. What stayed in the store: the
+server-backed collections, the display computeds (metrics, rows, allocation,
+candles), the small UI prefs, and all of the `load()` / `refresh()` /
+`reloadState()` orchestration, so the load order is still explicit. The return
+block never changed — each slice is destructured under its old name, so no
+`.vue` consumer moved at all.
+
+The slices are composables rather than Pinia stores deliberately: each needs
+several things the store owns (classifier, rate, balances, `reloadState`), and a
+second store would have to be fed every one of them to stay a leaf. As
+composables they arrive once, as getters — no import cycle, no load-order trap,
+and a test can call one with plain object literals instead of a network
+harness. That shape also keeps `simulation.ts` able to adopt `useTradeForm`
+later: a `defineStore` id is a singleton, so two live forms would have to share
+one state.
+
+`stores/simulation.ts` was 810 lines with **no test file at all** when this was
+written — it is 683 lines with a store suite now, so it is no longer the larger
 exposure.
 
 ### Verify
 
 `dashboard.test.ts` already exists (203 lines) and must keep passing unchanged
-in its assertions. That is the safety net for the refactor.
+in its assertions. That is the safety net for the refactor. **It held: the file
+was never edited, and 624 unit tests plus the 12 Playwright smoke tests were
+green after each of the five commits.**
 
 ## 4.2 There are no component tests, and no way to write them
 
-**Status: VERIFIED.** ~25 `.vue` components; `@vue/test-utils` is not a
-dependency. `vitest.config.ts:17-19` names the absence of component tests as the
-gap that motivated the Vitest migration — the store got tests, the components
-did not.
+**Status: partial.** `f4a38bc`. ~25 `.vue` components. The premise here has
+drifted: `@vue/test-utils` **is** a dev dependency, and `ChartCanvas.test.ts`
+already mounted components — so the gap was never "no way to write them". What
+was true is that almost none had tests, and that is still mostly true: the
+`f4a38bc` commit added 13 for `AddTradeForm.vue` and `TradeForm.vue` (the
+currency parsing and cash-source selection the stores depend on), which is also
+part of 4.1's safety net.
 
 Untested by anything below the Playwright smoke layer: `CashPanel.vue` (310
-lines), `AddTradeForm.vue` (178), `TradeForm.vue` (214), `SimulationView.vue`,
-`AnalyticsView.vue`, `ValueChart.vue`, `ChartCanvas.vue`, `AllocationTable.vue`,
-and the whole `analysis/` and `simulation/` component directories.
+lines), `SettingsModal.vue`, `SimulationView.vue`, `AnalyticsView.vue`,
+`ValueChart.vue`, `AllocationTable.vue`, and the whole `analysis/` and
+`simulation/` component directories. `vitest.config.ts:17-19` names the absence
+of component tests as the gap that motivated the Vitest migration — the store
+got tests, most of the components still have none.
 
 ### Fix
 
-Add `@vue/test-utils` as a dev dependency. Cover, in order of value:
+~~Add `@vue/test-utils` as a dev dependency.~~ Already present — and
+`ChartCanvas.test.ts` already exercises the first bullet, so the write-up below
+is the remaining work. Cover, in order of value:
 
 - `ChartCanvas.vue` — create on mount, destroy on unmount, update on config
   change. The `AGENTS.md:118` note says a chart leaking "when the period changes"
   was a real bug; that is exactly what a component test should lock down.
+  **(done — `ChartCanvas.test.ts` predates this plan.)**
 - `ValueChart.vue` — the `ResizeObserver` applies **width and height**
   (`AGENTS.md:366-374`). A test that asserts both are set would prevent the
   regression that commit `0ae1c91` fixed.
@@ -1010,6 +1055,7 @@ Add `@vue/test-utils` as a dev dependency. Cover, in order of value:
   scoped to a page root.
 - `AddTradeForm.vue` / `TradeForm.vue` — the form does currency parsing and
   cash-source selection that the stores depend on.
+  **(done — 13 tests, `f4a38bc`.)**
 
 ## 4.3 CSS selectors that collide between page stylesheets are a documented hazard with no guard
 
@@ -1496,62 +1542,63 @@ docker stop pd   # watch for the clean-shutdown log from 2.3
 
 # Progress
 
-26 of 33 done, 1 moot, 1 partial. **Phase 4 (the frontend) is untouched** and is
-the largest remaining block — and the coverage number now says so quantitatively:
-all of `src/` measures 31% statements, and the gap is almost entirely Vue
-single-file components. Every backend item is either done or deliberately
-deferred with the reasoning recorded.
+28 of 36 done, 1 moot, 2 partial. **Phase 4 has started**: 4.1 (the god store)
+is done and 4.2 (component tests) is partial — and the coverage number says how
+much is left of it: all of `src/` measures 31% statements, and the gap is almost
+entirely Vue single-file components. Every backend item is either done or
+deliberately deferred with the reasoning recorded.
 
-| Item                                   | Status   | Commit                       |
-| -------------------------------------- | -------- | ---------------------------- |
-| 0.1 gear renders at page bottom        | done     | `c539d9d`                    |
-| 1.1 `asset_chart_cache` no PK          | done     | `412c174` (migration `0006`) |
-| 1.2 fetch failure cached as data       | done     | `412c174`                    |
-| 1.3 POST /api/trades not transactional | done     | `412c174`                    |
-| 1.4 cache invalidation race            | done     | `412c174`                    |
-| 1.5 `is_dismissed` NULL re-notifies    | done     | `412c174` (migration `0007`) |
-| 2.1 import has no validation           | done     | `7e42851`                    |
-| 2.2 `interest` partial replace         | done     | `107df76`                    |
-| 2.3 no graceful shutdown               | done     | `107df76`                    |
-| 2.4 metrics label cardinality          | done     | `107df76`                    |
-| 2.5 open CORS / `/metrics`             | done     | `107df76` (see note)         |
-| 2.6 dynamic import for a constant      | done     | `d5626f9`                    |
-| 2.7 SQL Explorer guard                 | moot     | `cb0e0c6`                    |
-| 2.8 e2e failure paths                  | done     | `7e42851`                    |
-| 3.1 fake-async DB layer                | done     | `ea4292c`                    |
-| 3.2 hand-rolled legacy migrations      | **open** | —                            |
-| 3.3 duplicated transaction blocks      | done     | `ea4292c`                    |
-| 3.4 duplicated currency formatters     | done     | `bfad54a`                    |
-| 3.5 `investedNet` clamp                | done     | `dda573b`                    |
-| 3.6 closed positions in table          | done     | `02b8eab`                    |
-| 3.7 float money / rounding policy      | done     | `7818f01`                    |
-| 4.1 God store                          | **open** | —                            |
-| 4.2 no component tests                 | **open** | —                            |
-| 4.3 no CSS collision guard             | partial  | `c539d9d` (shell half only)  |
-| 5.1 shell-stylesheet regression test   | done     | `c539d9d`                    |
-| 5.2 linter overstates coverage         | done     | `34080a8`                    |
-| 5.3 coverage config dead reference     | done     | `3a2ac5e`                    |
-| 5.4 eslint CommonJS comments           | done     | `34080a8`                    |
-| 5.5 `allowScripts` dead field          | done     | `34080a8`                    |
-| 5.6 tests compiled into `dist/`        | done     | `107df76`                    |
-| 5.7 coverage gate measures a subset    | done     | `3a2ac5e`                    |
-| 5.8 eight untested routes              | **open** | —                            |
-| 5.9 429 by message substring           | done     | `fbf6fbf`                    |
-| 5.10 Yahoo serialised                  | **open** | —                            |
-| 5.11 global boolean mutex              | **open** | —                            |
-| 5.12 smaller items                     | **open** | —                            |
+| Item                                   | Status   | Commit                          |
+| -------------------------------------- | -------- | ------------------------------- |
+| 0.1 gear renders at page bottom        | done     | `c539d9d`                       |
+| 1.1 `asset_chart_cache` no PK          | done     | `412c174` (migration `0006`)    |
+| 1.2 fetch failure cached as data       | done     | `412c174`                       |
+| 1.3 POST /api/trades not transactional | done     | `412c174`                       |
+| 1.4 cache invalidation race            | done     | `412c174`                       |
+| 1.5 `is_dismissed` NULL re-notifies    | done     | `412c174` (migration `0007`)    |
+| 2.1 import has no validation           | done     | `7e42851`                       |
+| 2.2 `interest` partial replace         | done     | `107df76`                       |
+| 2.3 no graceful shutdown               | done     | `107df76`                       |
+| 2.4 metrics label cardinality          | done     | `107df76`                       |
+| 2.5 open CORS / `/metrics`             | done     | `107df76` (see note)            |
+| 2.6 dynamic import for a constant      | done     | `d5626f9`                       |
+| 2.7 SQL Explorer guard                 | moot     | `cb0e0c6`                       |
+| 2.8 e2e failure paths                  | done     | `7e42851`                       |
+| 3.1 fake-async DB layer                | done     | `ea4292c`                       |
+| 3.2 hand-rolled legacy migrations      | **open** | —                               |
+| 3.3 duplicated transaction blocks      | done     | `ea4292c`                       |
+| 3.4 duplicated currency formatters     | done     | `bfad54a`                       |
+| 3.5 `investedNet` clamp                | done     | `dda573b`                       |
+| 3.6 closed positions in table          | done     | `02b8eab`                       |
+| 3.7 float money / rounding policy      | done     | `7818f01`                       |
+| 4.1 God store                          | done     | `70176cf`–`245ed70` (5 commits) |
+| 4.2 no component tests                 | partial  | `f4a38bc`                       |
+| 4.3 no CSS collision guard             | partial  | `c539d9d` (shell half only)     |
+| 5.1 shell-stylesheet regression test   | done     | `c539d9d`                       |
+| 5.2 linter overstates coverage         | done     | `34080a8`                       |
+| 5.3 coverage config dead reference     | done     | `3a2ac5e`                       |
+| 5.4 eslint CommonJS comments           | done     | `34080a8`                       |
+| 5.5 `allowScripts` dead field          | done     | `34080a8`                       |
+| 5.6 tests compiled into `dist/`        | done     | `107df76`                       |
+| 5.7 coverage gate measures a subset    | done     | `3a2ac5e`                       |
+| 5.8 eight untested routes              | **open** | —                               |
+| 5.9 429 by message substring           | done     | `fbf6fbf`                       |
+| 5.10 Yahoo serialised                  | **open** | —                               |
+| 5.11 global boolean mutex              | **open** | —                               |
+| 5.12 smaller items                     | **open** | —                               |
 
 ## Work that was not in the plan
 
-Four items came out of doing the planned ones, and each is a real fix rather
+Five items came out of doing the planned ones, and each is a real fix rather
 than a chore:
 
-| What                                                                               | Commit    | Why                                                                     |
-| ---------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------- |
-| The SQL Explorer deleted outright, with `pages/`, `/legacy/` and `LegacyHandoff`   | `cb0e0c6` | 2.7 below; the guard was never the boundary it looked like              |
-| `/metrics` and `prom-client` removed; metrics now OTel-only                        | `107df76` | Two metrics systems were running and nothing scraped the Prometheus one |
-| `npm run test:docker` repaired (tsconfig exclude + config copied into the builder) | `107df76` | It was failing on 32 of 36 files before this work                       |
-| CI smoke step: invalid `docker stop -w` flag                                       | `658d953` | Exit 125, so the container was never signalled                          |
+| What                                                                                | Commit    | Why                                                                                                                                      |
+| ----------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| The SQL Explorer deleted outright, with `pages/`, `/legacy/` and `LegacyHandoff`    | `cb0e0c6` | 2.7 below; the guard was never the boundary it looked like                                                                               |
+| `/metrics` and `prom-client` removed; metrics now OTel-only                         | `107df76` | Two metrics systems were running and nothing scraped the Prometheus one                                                                  |
+| `npm run test:docker` repaired (tsconfig exclude + config copied into the builder)  | `107df76` | It was failing on 32 of 36 files before this work                                                                                        |
+| CI smoke step: invalid `docker stop -w` flag                                        | `658d953` | Exit 125, so the container was never signalled                                                                                           |
+| Shared trade-form math (`tradeForm.ts`) extracted from both stores before the split | `70176cf` | The two hand-written copies had drifted: on a BRL asset the slider pinned itself at Max, and one branch formatted a BRL price as dollars |
 
 ## Corrections to this plan
 
@@ -1578,13 +1625,19 @@ subdirectory needs `Get-ChildItem -Recurse` behind it, or it is not evidence.
 1. **5.8–5.11** the remaining backend items, one commit each — they are small and
    independent, so batching them hides more than it saves.
 2. **5.12** the small ones, batched.
-3. **Phase 4** — 4.1 first, with 4.2 alongside it. Highest effort and the highest
-   regression risk, so it wants the backend stable. The published coverage number
-   points straight at 4.2: the Vue components are the untested majority, and 4.1 is
-   what makes them testable one at a time.
-4. ~~**3.2** legacy-database cleanup — two parallel implementations of the same
+3. ~~**Phase 4** — 4.1 first, with 4.2 alongside it.~~ **4.1 is DONE** —
+   `dashboard.ts` went 1212 → 728 lines behind four leaf composables
+   (`70176cf`–`245ed70`, each commit green on its own, `dashboard.test.ts`
+   untouched). What remains of Phase 4 is **4.2 (partial)**: the published
+   coverage number still points straight at it, the Vue components are the
+   untested majority, and with the store split they can be covered one at a
+   time — plus **4.3's** page-vs-page half, which the shell-scope guard
+   deliberately does not catch.
+4. ~~Legacy-database valuation cleanup — two parallel implementations of the same
    valuation rules, which is the underlying duplication behind most of Phase 3.~~
-   **DONE.** `computePortfolioValue` and `PortfolioInput`/`PortfolioResult` were
+   **DONE** as `246031c` (plus `144aa88`, moving the calculator into
+   `packages/shared`) — note this is _not_ the numbered item 3.2, which is the
+   `db.ts` second migration engine and is still open. `computePortfolioValue` and `PortfolioInput`/`PortfolioResult` were
    deleted; `historyManager` now calls `computeValuation` for both the scheduled
    snapshot and `recomputeHistoryAt`, so the route, the simulator and the history
    writer share one implementation. The only behaviour the snapshot writer needed
