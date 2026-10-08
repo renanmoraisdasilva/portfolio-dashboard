@@ -10,12 +10,13 @@ import {
   type SymbolMap,
 } from '@portfolio-dashboard/shared';
 import { ApiError, request, useApi } from '../composables/useApi';
+import { useAlerts } from '../composables/useAlerts';
+import { useSettings } from '../composables/useSettings';
 import { useTradeForm } from '../composables/useTradeForm';
 
 export type Trade = components['schemas']['Trade'];
 export type CashEntry = components['schemas']['CashEntry'];
-export type Alert = components['schemas']['Alert'];
-export type TriggeredAlert = components['schemas']['TriggeredAlert'];
+export type { Alert, TriggeredAlert } from '../composables/useAlerts';
 export type OhlcCandle = components['schemas']['OhlcCandle'];
 export type HistoryPoint = components['schemas']['HistoryPoint'];
 export type SymbolMeta = components['schemas']['SymbolConfig'];
@@ -49,29 +50,9 @@ export interface DashboardTrade {
   _tmpId?: string;
 }
 
-interface ImportProblem {
-  table: string;
-  index: number | null;
-  reason: string;
-}
-
-const MAX_RENDERED_PROBLEMS = 6;
-
-export function importErrorMessage(err: unknown): string | null {
-  if (!(err instanceof ApiError)) return null;
-  const details = err.details as { problems?: unknown; omitted?: unknown } | null;
-  const problems = Array.isArray(details?.problems) ? (details.problems as ImportProblem[]) : null;
-  if (err.status !== 400 || !problems?.length) return err.message;
-
-  const shown = problems.slice(0, MAX_RENDERED_PROBLEMS);
-  const lines = shown.map((p) => `${p.index === null ? p.table : `${p.table}[${p.index}]`}: ${p.reason}`);
-  const omitted = typeof details?.omitted === 'number' ? details.omitted : 0;
-  const notShown = problems.length - shown.length + omitted;
-  if (notShown > 0) lines.push(`…and ${notShown} more`);
-
-  const total = problems.length + omitted;
-  return [`Backup rejected — ${total} problem${total === 1 ? '' : 's'}:`, ...lines].join('\n');
-}
+// The import formatter lives with the import tool; re-exported here because
+// `dashboard.import.test.ts` has always imported it from this module.
+export { importErrorMessage } from '../composables/useSettings';
 
 export const ALLOCATION_PALETTE = [
   '#dc2626',
@@ -151,11 +132,8 @@ export const useDashboardStore = defineStore(
     const entryCurrency = ref<Currency>('USD');
     const cashEntries = ref<CashEntry[]>([]);
     const cashEntriesPage = ref(1);
-    const alerts = ref<Alert[]>([]);
-    const triggeredAlerts = ref<TriggeredAlert[]>([]);
     const priceError = ref<string | null>(null);
     const staleWarning = ref<string | null>(null);
-    const settingsOpen = ref(false);
     const deleteTradeIndex = ref<number | null>(null);
     const loading = ref(false);
 
@@ -206,6 +184,37 @@ export const useDashboardStore = defineStore(
       positionQty,
       prices: () => prices.value,
       priceMeta: () => priceMeta.value,
+    });
+
+    /**
+     * Alerts and the settings modal's three tools — the second 4.1 slice,
+     * the same shape as the trade form above: state and actions defined in
+     * their own composable, destructured under the old names so nothing
+     * downstream changes.
+     */
+    const {
+      alerts,
+      triggeredAlerts,
+      alertRows,
+      triggeredRows,
+      loadAlerts,
+      loadTriggeredAlerts,
+      createAlert,
+      deleteAlert,
+      dismissAlert,
+    } = useAlerts({ classifier: () => classifier.value });
+
+    const { settingsOpen, exportData, importData, testNotify } = useSettings({
+      fallbackSnapshot: () => ({
+        trades: trades.value,
+        history: history.value,
+        cashReais: cashReais.value,
+        cashDollars: cashDollars.value,
+        interestReais: interestReais.value,
+        interestDollars: interestDollars.value,
+        interestReaisMonths: interestReaisMonths.value,
+      }),
+      afterImport: () => reloadState(),
     });
 
     const priceOf = (s: string): number => prices.value[s] ?? 0;
@@ -537,156 +546,6 @@ export const useDashboardStore = defineStore(
       }
       await Promise.all([loadCashEntries(), reloadState()]);
       return null;
-    }
-
-    const alertRows = computed(() =>
-      alerts.value.map((a) => {
-        const brl = isBRLAsset(a.symbol ?? '');
-        const money = (amount: number): string => formatMoney(amount, brl ? 'BRL' : 'USD');
-        const threshold = a.threshold ?? 0;
-        const label =
-          a.alert_type === 'value'
-            ? `${a.condition === 'below' ? 'Falls Below' : 'Rises Above'} ${money(threshold)}`
-            : `${a.condition === 'below' ? 'Down' : 'Up'} ${threshold.toFixed(2)}% from ${money(a.reference_price ?? 0)}`;
-        return { id: a.id ?? '', symbol: a.symbol ?? '', label, isActive: Boolean(a.is_active) };
-      }),
-    );
-
-    const triggeredRows = computed(() =>
-      triggeredAlerts.value.map((t) => {
-        const brl = isBRLAsset(t.symbol ?? '');
-        const money = (amount: number, maxDigits?: number): string => formatMoney(amount, brl ? 'BRL' : 'USD', maxDigits);
-        const current = t.current_price ?? 0;
-        const priceText =
-          t.alert_type === 'value' ? money(current) : `${t.percentage_change ? t.percentage_change.toFixed(2) : '0'}%`;
-        const details =
-          t.previous_price && t.percentage_change
-            ? `from ${money(t.previous_price)} to ${money(current)} (${t.percentage_change.toFixed(2)}% change)`
-            : `Currently at ${money(current)}`;
-        return {
-          id: t.id ?? '',
-          symbol: t.symbol ?? '',
-          priceText,
-          details,
-          triggeredAt: t.triggered_at ? new Date(t.triggered_at).toLocaleString() : '',
-        };
-      }),
-    );
-
-    async function loadAlerts(): Promise<void> {
-      const list = await request(api.GET('/alerts'), 'GET', '/alerts');
-      alerts.value = Array.isArray(list) ? list : [];
-    }
-
-    async function loadTriggeredAlerts(): Promise<void> {
-      const triggered = await request(api.GET('/alerts/triggered'), 'GET', '/alerts/triggered');
-      triggeredAlerts.value = Array.isArray(triggered) ? triggered : [];
-    }
-
-    async function createAlert(body: {
-      symbol: string;
-      alert_type: 'value' | 'percentage';
-      threshold: number;
-      condition: 'above' | 'below';
-      reference_price?: number;
-    }): Promise<string | null> {
-      try {
-        await request(api.POST('/alerts', { body }), 'POST', '/alerts');
-      } catch (err) {
-        console.warn('[dashboard] create alert failed:', err);
-        return 'Error: Failed to create alert';
-      }
-      await Promise.all([loadAlerts(), loadTriggeredAlerts()]);
-      return null;
-    }
-
-    async function deleteAlert(id: string): Promise<string | null> {
-      try {
-        await request(api.DELETE('/alerts/{id}', { params: { path: { id } } }), 'DELETE', '/alerts/{id}');
-      } catch (err) {
-        console.warn('[dashboard] delete alert failed:', err);
-        return 'Error deleting alert';
-      }
-      await Promise.all([loadAlerts(), loadTriggeredAlerts()]);
-      return null;
-    }
-
-    async function dismissAlert(id: string): Promise<void> {
-      try {
-        await request(
-          api.POST('/alerts/dismiss/{triggeredAlertId}', { params: { path: { triggeredAlertId: id } } }),
-          'POST',
-          '/alerts/dismiss/{triggeredAlertId}',
-        );
-      } catch (err) {
-        console.warn('[dashboard] dismiss alert failed:', err);
-        return;
-      }
-      await loadTriggeredAlerts().catch((err) => console.warn('[dashboard] reload triggered alerts failed:', err));
-    }
-
-    async function exportData(): Promise<void> {
-      let payload: unknown;
-      try {
-        payload = await request(api.GET('/state/export'), 'GET', '/state/export');
-      } catch (err) {
-        console.warn('[dashboard] server export failed, falling back to a local snapshot:', err);
-        payload = {
-          trades: trades.value,
-          history: history.value,
-          cashReais: cashReais.value,
-          cashDollars: cashDollars.value,
-          interestReais: interestReais.value,
-          interestDollars: interestDollars.value,
-          interestReaisMonths: interestReaisMonths.value,
-        };
-      }
-
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'portfolio_data.json';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
-    }
-
-    async function importData(file: File): Promise<string | null> {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(await file.text());
-      } catch {
-        return 'Invalid JSON.';
-      }
-
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return 'Not a backup file.';
-
-      try {
-        await request(api.POST('/state/import', { body: parsed }), 'POST', '/state/import');
-      } catch (err) {
-        console.warn('[dashboard] import failed:', err);
-        return importErrorMessage(err);
-      }
-      await reloadState();
-      return 'Data imported to server!';
-    }
-
-    async function testNotify(message: string): Promise<string | null> {
-      try {
-        await request(
-          api.POST('/alerts/test-notify', { body: { title: 'Portfolio Test Notification', message } }),
-          'POST',
-          '/alerts/test-notify',
-        );
-        return null;
-      } catch (err) {
-        console.warn('[dashboard] test notify failed:', err);
-        return err instanceof ApiError ? err.message : 'Notification failed';
-      }
     }
 
     async function loadSymbols(): Promise<void> {
