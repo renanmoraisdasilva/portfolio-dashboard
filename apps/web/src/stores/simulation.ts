@@ -2,14 +2,25 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
 import {
+  computeQtyFromPct,
+  computeQtyFromTotal,
+  computeTotal,
+  computeTradeAmounts,
   computeValuation,
+  conversionNeedsRate,
+  convertCashInput,
   createPortfolioCalculator,
   createSymbolClassifier,
+  displayCurrencyOf,
+  displayPriceFromSpot,
+  formatDisplayPrice,
   formatMoney,
   formatSigned,
+  parseDisplayPrice,
   parseMoney,
   type Currency,
   type SymbolMap,
+  type TradeFormContext,
 } from '@portfolio-dashboard/shared';
 import { useApi, request } from '../composables/useApi';
 
@@ -194,15 +205,19 @@ export const useSimulationStore = defineStore(
 
     const tradeRows = computed(() =>
       simTrades.value.map((t) => {
-        const price = t.price || priceOf(t.symbol);
+        // `t.price` is the price the form showed, so it is shown again in the
+        // symbol's display currency — a BRL asset's trade used to be printed
+        // with a dollar sign.
+        const priceCurrency = displayCurrencyOf(t.symbol, classifier.value);
+        const price = t.price || displayPrice(t.symbol);
         const currency: Currency = t.currency === 'BRL' ? 'BRL' : 'USD';
-        const totalDisplay = t.total !== undefined ? formatMoney(t.total, currency) : formatMoney(price * t.qty, currency);
+        const totalDisplay = t.total !== undefined ? formatMoney(t.total, currency) : formatMoney(price * t.qty, priceCurrency);
         return {
           time: new Date(t.time).toLocaleString(),
           symbol: t.symbol,
           side: t.side.toUpperCase(),
           qty: t.qty,
-          price: formatMoney(price, 'USD'),
+          price: formatMoney(price, priceCurrency),
           total: totalDisplay,
         };
       }),
@@ -264,87 +279,50 @@ export const useSimulationStore = defineStore(
       simPricePcts.value['BRLUSD'] = base ? Math.round(((brlPer - base) / base) * 100) : 0;
     }
 
-    const parsedPrice = computed(
-      () => parseMoney(priceInput.value, isBRLAsset(symbol.value) ? 'BRL' : 'USD') || priceOf(symbol.value),
-    );
     const parsedQty = computed(() => parseFloat(qtyInput.value) || 0);
 
-    function totalFromQty(): string {
-      const qty = parsedQty.value;
-      const price = parsedPrice.value;
-      const s = symbol.value;
-      if (!qty || !price) return '';
+    /**
+     * What the form's arithmetic needs — the scenario balances the slider
+     * spends, the classifier that decides the price field's currency, and the
+     * holding a sell percentage is a share of. Quantity, total and percentage
+     * come from `packages/shared/src/domain/tradeForm.ts`, the one copy of
+     * this arithmetic, shared with the dashboard's real-money form.
+     */
+    const formCtx = computed<TradeFormContext>(() => ({
+      symbol: symbol.value,
+      side: side.value,
+      cashSource: cashSource.value,
+      classifier: classifier.value,
+      brlUsdRate: brlUsdRate.value,
+      cashUsd: simCashDollars.value,
+      cashBrl: simCashReais.value,
+      positionQty: portfolio.value.positions[symbol.value] || 0,
+    }));
 
-      if (isBRLNonBond(s)) {
-        const brlTotal = +(qty * price).toFixed(2);
-        if (!brlTotal || brlTotal <= 0) return '';
-        if (cashSource.value === 'BRL') return formatMoney(brlTotal, 'BRL');
-        if (!brlUsdRate.value || brlUsdRate.value <= 0) return '';
-        return formatMoney(brlTotal * brlUsdRate.value, 'USD');
-      }
-      const usdAmount = +(qty * price).toFixed(2);
-      if (!usdAmount || usdAmount <= 0) return '';
-      if (cashSource.value === 'USD') return formatMoney(usdAmount, 'USD');
-      if (!brlUsdRate.value || brlUsdRate.value <= 0) return '';
-      return formatMoney(usdAmount / brlUsdRate.value, 'BRL');
+    /**
+     * The price typed into the field, read in the currency the field shows,
+     * or the symbol's scenario quote when it is empty. This input is
+     * `type="text"` holding formatted money (`R$1.234,56`), so the display
+     * currency is the currency to parse in: formatting a BRL price as USD and
+     * reading it back as BRL — what this did before — turned 169.27 into
+     * 16.927.
+     */
+    const parsedPrice = computed(() => {
+      const typed = parseDisplayPrice(priceInput.value, symbol.value, classifier.value);
+      if (typed > 0) return typed;
+      return displayPriceFromSpot(priceOf(symbol.value), symbol.value, classifier.value, brlUsdRate.value) ?? 0;
+    });
+
+    function totalFromQty(): string {
+      return computeTotal(parsedQty.value, parsedPrice.value, formCtx.value);
     }
 
     function qtyFromTotal(): string {
-      if (totalInput.value === '') return '';
-      const total = parseMoney(totalInput.value, cashSource.value === 'USD' ? 'USD' : 'BRL');
-      if (isNaN(total) || total <= 0) return '';
-      const price = parsedPrice.value;
-      if (!price || price <= 0) return '';
-      const s = symbol.value;
-
-      if (isBRLNonBond(s)) {
-        const totalBRL = cashSource.value === 'USD' ? total / (brlUsdRate.value || 1) : total;
-        return String(+(totalBRL / price).toFixed(4));
-      }
-      if (cashSource.value === 'BRL') {
-        if (!brlUsdRate.value || brlUsdRate.value <= 0) return '';
-        return String(+((total * brlUsdRate.value) / price).toFixed(4));
-      }
-      return String(+(total / price).toFixed(4));
+      return computeQtyFromTotal(totalInput.value, parsedPrice.value, formCtx.value);
     }
 
     function qtyFromPct(pct: number): number {
-      const s = symbol.value;
-      const price = parsedPrice.value;
-      if (!price || price <= 0) return 0;
-
-      if (side.value === 'sell') {
-        const avail = portfolio.value.positions[s] || 0;
-        return +((avail * pct) / 100).toFixed(4);
-      }
-      if (isBRLNonBond(s)) {
-        const availBRL =
-          cashSource.value === 'USD' ? (simCashDollars.value || 0) / (brlUsdRate.value || 1) : simCashReais.value || 0;
-        return +((availBRL * pct) / 100 / price).toFixed(4);
-      }
-      if (cashSource.value === 'BRL' && (!brlUsdRate.value || brlUsdRate.value <= 0)) return 0;
-      const availUsd = cashSource.value === 'USD' ? simCashDollars.value : (simCashReais.value || 0) * (brlUsdRate.value || 0);
-      return +((availUsd * pct) / 100 / price).toFixed(4);
-    }
-
-    function totalFromPct(): string {
-      const amount = +(qtyFromPct(qtyPct.value) * parsedPrice.value).toFixed(2);
-      if (!amount || amount <= 0) return '';
-      const s = symbol.value;
-      const rate = brlUsdRate.value || 0;
-
-      if (isBRLNonBond(s)) {
-        if (cashSource.value === 'BRL') return amount.toFixed(2);
-        if (rate <= 0) return '';
-        return (amount * rate).toFixed(2);
-      }
-      if (cashSource.value === 'USD') return amount.toFixed(2);
-      if (rate <= 0) return '';
-      return (amount / rate).toFixed(2);
-    }
-
-    function refreshTotalFromPct(): void {
-      totalInput.value = totalFromPct();
+      return computeQtyFromPct(pct, parsedPrice.value, formCtx.value);
     }
 
     function setQtyPct(pct: number): void {
@@ -359,25 +337,22 @@ export const useSimulationStore = defineStore(
     }
 
     function setTotal(text: string): void {
-      const parsed = parseMoney(text, cashSource.value === 'USD' ? 'USD' : 'BRL');
-      totalInput.value =
-        parsed && parsed > 0 ? (cashSource.value === 'USD' ? formatMoney(parsed, 'USD') : formatMoney(parsed, 'BRL')) : text;
+      totalInput.value = convertCashInput(text, cashSource.value, cashSource.value, brlUsdRate.value);
       const qty = qtyFromTotal();
       if (qty) qtyInput.value = qty;
     }
 
     function setPriceInput(text: string): void {
       const s = symbol.value;
-      const currency = isBRLAsset(s) ? 'BRL' : 'USD';
-      const parsed = parseMoney(text, currency);
-      priceInput.value = parsed ? formatMoney(parsed, currency) : '';
+      const parsed = parseDisplayPrice(text, s, classifier.value);
+      priceInput.value = parsed ? formatDisplayPrice(parsed, s, classifier.value) : '';
       totalInput.value = totalFromQty();
     }
 
     function syncPriceToSymbol(): void {
       const s = symbol.value;
-      const price = priceOf(s);
-      priceInput.value = price ? formatMoney(price, 'USD') : '';
+      const display = displayPriceFromSpot(priceOf(s), s, classifier.value, brlUsdRate.value);
+      priceInput.value = display && display > 0 ? formatDisplayPrice(display, s, classifier.value) : '';
       totalInput.value = totalFromQty();
     }
 
@@ -386,37 +361,48 @@ export const useSimulationStore = defineStore(
     }
 
     function setCashSource(next: CashSource): void {
+      const previous = cashSource.value;
       cashSource.value = next;
-      refreshTotalFromPct();
+      // Re-express the typed total in the new currency rather than rebuilding
+      // it from the slider: a total typed by hand has no slider position
+      // behind it, and the old rebuild left it unformatted as well.
+      totalInput.value = convertCashInput(totalInput.value, previous, next, brlUsdRate.value) || totalFromQty();
+      const qty = qtyFromTotal();
+      if (qty) qtyInput.value = qty;
     }
 
     function addTrade(): string | null {
       const s = symbol.value;
       if (!s) return 'Pick an asset first';
 
+      const ctxValue = formCtx.value;
       let qty = parsedQty.value;
-      const isBRLNBSym = isBRLNonBond(s);
       const priceToUse = parsedPrice.value;
-      const totalRaw = totalInput.value === '' ? NaN : parseFloat(totalInput.value);
-      const rate = brlUsdRate.value || 1;
+      // The total field holds formatted money (`R$1.234,56`), so read it the
+      // way the rest of the form reads money: in the cash source's currency.
+      // `parseFloat` stopped at the first separator and turned that total into
+      // 1, which then priced the whole trade.
+      const totalRaw = totalInput.value === '' ? NaN : parseMoney(totalInput.value, cashSource.value);
 
       if (qty <= 0) {
         if (!isNaN(totalRaw) && totalRaw > 0) {
           if (!priceToUse || priceToUse <= 0) return 'Price is required to compute quantity from total';
-          if (cashSource.value === 'BRL' && (!brlUsdRate.value || brlUsdRate.value <= 0)) {
+          if (conversionNeedsRate(ctxValue) && !(brlUsdRate.value > 0)) {
             return 'BRL/USD rate unavailable to convert total';
           }
-          qty = isBRLNBSym
-            ? +((cashSource.value === 'USD' ? totalRaw / rate : totalRaw) / priceToUse).toFixed(4)
-            : +((cashSource.value === 'USD' ? totalRaw : totalRaw * brlUsdRate.value) / priceToUse).toFixed(4);
-          if (qty <= 0) return 'Computed quantity is invalid; check price and total';
+          const derived = computeQtyFromTotal(totalInput.value, priceToUse, ctxValue);
+          qty = derived ? parseFloat(derived) : NaN;
+          if (!(qty > 0)) return 'Computed quantity is invalid; check price and total';
         } else {
           return 'Enter valid quantity or total';
         }
       }
 
-      const usdAmount = isBRLNBSym ? priceToUse * qty * rate : priceToUse * qty;
-      const brlAmount = isBRLNBSym ? priceToUse * qty : usdAmount / rate;
+      if (conversionNeedsRate(ctxValue) && !(brlUsdRate.value > 0)) {
+        return 'BRL/USD rate unavailable to convert total';
+      }
+
+      const { usd: usdAmount, brl: brlAmount } = computeTradeAmounts(qty, priceToUse, ctxValue);
 
       if (side.value === 'buy') {
         if (cashSource.value === 'USD') {
