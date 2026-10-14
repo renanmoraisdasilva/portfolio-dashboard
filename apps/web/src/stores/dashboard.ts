@@ -1,16 +1,11 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { components } from '@portfolio-dashboard/shared';
-import {
-  computeProjection,
-  createSymbolClassifier,
-  formatMoney,
-  formatSigned,
-  type SymbolMap,
-} from '@portfolio-dashboard/shared';
+import { createSymbolClassifier, formatMoney, formatSigned, type SymbolMap } from '@portfolio-dashboard/shared';
 import { ApiError, request, useApi } from '../composables/useApi';
 import { useAlerts } from '../composables/useAlerts';
 import { useCashflow, type InterestMonth } from '../composables/useCashflow';
+import { useDisplayComputeds } from '../composables/useDisplayComputeds';
 import { useSettings } from '../composables/useSettings';
 import { useTradeForm } from '../composables/useTradeForm';
 
@@ -50,32 +45,13 @@ export interface DashboardTrade {
 // `dashboard.import.test.ts` has always imported it from this module.
 export { importErrorMessage } from '../composables/useSettings';
 
-export const ALLOCATION_PALETTE = [
-  '#dc2626',
-  '#15803d',
-  '#0891b2',
-  '#1e40af',
-  '#7c3aed',
-  '#d97706',
-  '#06b6d4',
-  '#22c55e',
-  '#f97316',
-  '#eab308',
-  '#a855f7',
-  '#3b82f6',
-];
+// The allocation palette is presentation, so it lives with the allocation
+// view-model; re-exported here to keep this module's public surface unchanged.
+export { ALLOCATION_PALETTE } from '../composables/useDisplayComputeds';
 
 const usd = (n: number): string => formatMoney(n, 'USD');
 const brl = (n: number): string => formatMoney(n, 'BRL');
 const signedUsd = (n: number): string => formatSigned(n, 'USD');
-
-function legacyAmount(amount: number, currency: Currency): string {
-  return `${currency === 'BRL' ? 'R$' : '$'}${Math.abs(amount).toFixed(2)}`;
-}
-
-function legacySigned(amount: number, currency: Currency): string {
-  return `${amount < 0 ? '-' : '+'}${legacyAmount(amount, currency)}`;
-}
 
 export const CHART_DAY_RANGES = [
   { days: 1825, label: '5Y', title: '5 Years' },
@@ -253,145 +229,35 @@ export const useDashboardStore = defineStore(
       );
     }
 
-    const metrics = computed(() => {
-      const v = valuation.value;
-      const total = v?.total ?? 0;
-      const invested = v?.invested ?? 0;
-      return {
-        total,
-        invested,
-        investedNet: v?.investedNet ?? 0,
-        realized: v?.realized ?? 0,
-        unrealized: v?.unrealized ?? 0,
-        unrealizedPct: v?.unrealizedPct ?? 0,
-        tickerValue: v?.tickerValue ?? 0,
-        investedPct: v?.investedPct ?? 0,
-        investedShareOfTotal: total > 0 ? (invested / total) * 100 : 0,
-        breakEven: v?.breakEven ?? true,
-        salesCount: v?.salesCount ?? 0,
-      };
-    });
-
-    const zeroPriceAssets = computed(() =>
-      Object.keys(prices.value).filter((k) => prices.value[k] == null || prices.value[k] === 0),
-    );
-    const hasPriceError = computed(() => priceError.value !== null || zeroPriceAssets.value.length > 0);
-
-    const positionRows = computed(() =>
-      (valuation.value?.rows ?? [])
-        .filter((row) => row.kind === 'position')
-        .map((row) => {
-          const brl = row.valueCurrency === 'BRL';
-          const money = (amount: number): string => legacyAmount(amount, brl ? 'BRL' : 'USD');
-          const pl = legacySigned(row.pl, row.plCurrency);
-          return {
-            symbol: row.symbol,
-            qty: row.qty.toFixed(4),
-            avg: money(row.avgCost),
-            cur: money(row.currentPrice),
-            value: money(row.value),
-            pl,
-            plPct: `${row.plPct >= 0 ? '+' : ''}${row.plPct.toFixed(2)}%`,
-            positive: row.pl >= 0,
-          };
-        }),
-    );
-
-    const cashPositionRows = computed(() =>
-      (valuation.value?.rows ?? [])
-        .filter((row) => row.kind !== 'position')
-        .map((row) => ({
-          symbol: row.symbol,
-          qty: row.qty.toFixed(2),
-          avg: row.kind === 'brl-cash' ? `$${row.avgCost.toFixed(4)}` : '-',
-          cur: row.kind === 'brl-cash' ? `$${row.currentPrice.toFixed(4)}` : '-',
-          value: `$${row.value.toFixed(2)}`,
-          pl: legacySigned(row.pl, row.plCurrency),
-          plPct: `${row.plPct >= 0 ? '+' : ''}${row.plPct.toFixed(2)}%`,
-          positive: row.pl >= 0,
-        })),
-    );
-
-    const allocation = computed(() => {
-      const slices = valuation.value?.allocation ?? [];
-      return {
-        labels: slices.map((slice) => slice.label),
-        values: slices.map((slice) => slice.value),
-        pcts: slices.map((slice) => slice.pct),
-        colors: slices.map((_, i) => ALLOCATION_PALETTE[i % ALLOCATION_PALETTE.length]),
-      };
-    });
-
-    const plByAsset = computed(() => {
-      const rows = valuation.value?.plByAsset ?? [];
-      return {
-        labels: rows.map((row) => row.symbol),
-        values: rows.map((row) => row.pl),
-        colors: rows.map((row) => (row.pl >= 0 ? '#10b981' : '#ef4444')),
-      };
-    });
-
-    const projection = computed(() => (projectionEnabled.value ? computeProjection(history.value) : []));
-
-    const tradeRows = computed(() => {
-      const rate = brlUsdRate.value || 1;
-      return trades.value.map((t) => {
-        const symbol = t.symbol as string;
-        let price: string;
-        let total: string;
-        let profit: { text: string; positive: boolean | null };
-
-        if (isBRLNonBond(symbol)) {
-          const raw = t.price || priceOf(symbol);
-          price = t.price !== null && t.price !== undefined ? formatMoney(raw, 'BRL') : '-';
-          total = formatMoney(t.qty * raw, 'BRL');
-          profit = { text: '-', positive: null };
-          if (t.side === 'sell' && typeof t.profit === 'number') {
-            profit = { text: formatSigned(t.profit, 'BRL'), positive: t.profit >= 0 };
-          }
-        } else if (isBRLBond(symbol)) {
-          const rawUSD = t.price || priceOf(symbol);
-          const rawBRL = rawUSD / rate;
-          price = t.price !== null && t.price !== undefined ? formatMoney(rawBRL, 'BRL') : '-';
-          total = formatMoney(t.qty * rawBRL, 'BRL');
-          profit = { text: '-', positive: null };
-          if (t.side === 'sell' && typeof t.profit === 'number') {
-            const profitBRL = t.profit / rate;
-            profit = { text: formatSigned(profitBRL, 'BRL'), positive: profitBRL >= 0 };
-          }
-        } else {
-          const p = t.price || priceOf(symbol);
-          price = t.price !== null && t.price !== undefined ? `$${t.price?.toFixed(2)}` : '-';
-          total = `$${(t.qty * p).toFixed(2)}`;
-          profit = { text: '-', positive: null };
-          if (t.side === 'sell' && typeof t.profit === 'number') {
-            profit = { text: `$${t.profit.toFixed(2)}`, positive: t.profit >= 0 };
-          }
-        }
-
-        return {
-          id: t.id,
-          time: new Date(t.time as string).toLocaleString(),
-          symbol,
-          side: String(t.side).toUpperCase(),
-          isBuy: t.side === 'buy',
-          qty: t.qty,
-          price,
-          total,
-          profit,
-        };
-      });
-    });
-
-    const valueCandles = computed(() => {
-      const source = activeMetric.value === 'pnl' ? pnlOHLC.value : historyOHLC.value;
-      return source.map((c) => ({
-        time: Math.floor((c.ts ?? 0) / 1000),
-        open: c.open ?? 0,
-        high: c.high ?? 0,
-        low: c.low ?? 0,
-        close: c.close ?? 0,
-      }));
+    /**
+     * The view-models — metrics, the position/cash tables, the allocation and
+     * P/L chart data, the trade-history rows, the candles and the projection.
+     * Every member is a pure computed, so the only coupling is the eleven
+     * getters below; the names come back unchanged for the return block.
+     */
+    const {
+      metrics,
+      zeroPriceAssets,
+      hasPriceError,
+      positionRows,
+      cashPositionRows,
+      allocation,
+      plByAsset,
+      projection,
+      tradeRows,
+      valueCandles,
+    } = useDisplayComputeds({
+      valuation: () => valuation.value,
+      prices: () => prices.value,
+      priceError: () => priceError.value,
+      trades: () => trades.value,
+      classifier: () => classifier.value,
+      brlUsdRate: () => brlUsdRate.value,
+      activeMetric: () => activeMetric.value,
+      historyOHLC: () => historyOHLC.value,
+      pnlOHLC: () => pnlOHLC.value,
+      projectionEnabled: () => projectionEnabled.value,
+      history: () => history.value,
     });
 
     async function addTrade(): Promise<string | null> {
