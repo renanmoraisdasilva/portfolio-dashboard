@@ -18,7 +18,9 @@ import { computeProjection, formatMoney, formatSigned, type Currency, type Symbo
  * The trade rows keep the bond branch exactly as it shipped, including its
  * `/ rate` conversion: no `type: 'bond'` symbol is configured, so the branch
  * is dormant, and a move must not change behaviour. `dashboard.test.ts`
- * drives the valuation view-models, which is the gate for this slice.
+ * drives the valuation view-models through the store; this slice's own
+ * suite, `useDisplayComputeds.test.ts`, pins the row, candle and projection
+ * derivations directly — that dormant branch included.
  */
 
 type PortfolioValuation = components['schemas']['PortfolioValuation'];

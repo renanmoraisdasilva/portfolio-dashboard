@@ -1592,14 +1592,14 @@ deliberately deferred with the reasoning recorded.
 Six items came out of doing the planned ones, and each is a real fix rather
 than a chore:
 
-| What                                                                                | Commit    | Why                                                                                                                                      |
-| ----------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| The SQL Explorer deleted outright, with `pages/`, `/legacy/` and `LegacyHandoff`    | `cb0e0c6` | 2.7 below; the guard was never the boundary it looked like                                                                               |
-| `/metrics` and `prom-client` removed; metrics now OTel-only                         | `107df76` | Two metrics systems were running and nothing scraped the Prometheus one                                                                  |
-| `npm run test:docker` repaired (tsconfig exclude + config copied into the builder)  | `107df76` | It was failing on 32 of 36 files before this work                                                                                        |
-| CI smoke step: invalid `docker stop -w` flag                                        | `658d953` | Exit 125, so the container was never signalled                                                                                           |
-| Shared trade-form math (`tradeForm.ts`) extracted from both stores before the split | `70176cf` | The two hand-written copies had drifted: on a BRL asset the slider pinned itself at Max, and one branch formatted a BRL price as dollars |
-| Dashboard view-models extracted into `useDisplayComputeds`                          | `ef88023` | Beyond 4.1: the facade's last cohesive block — ten pure computeds behind eleven getter deps, 728 → 594 lines                             |
+| What                                                                                | Commit    | Why                                                                                                                                        |
+| ----------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| The SQL Explorer deleted outright, with `pages/`, `/legacy/` and `LegacyHandoff`    | `cb0e0c6` | 2.7 below; the guard was never the boundary it looked like                                                                                 |
+| `/metrics` and `prom-client` removed; metrics now OTel-only                         | `107df76` | Two metrics systems were running and nothing scraped the Prometheus one                                                                    |
+| `npm run test:docker` repaired (tsconfig exclude + config copied into the builder)  | `107df76` | It was failing on 32 of 36 files before this work                                                                                          |
+| CI smoke step: invalid `docker stop -w` flag                                        | `658d953` | Exit 125, so the container was never signalled                                                                                             |
+| Shared trade-form math (`tradeForm.ts`) extracted from both stores before the split | `70176cf` | The two hand-written copies had drifted: on a BRL asset the slider pinned itself at Max, and one branch formatted a BRL price as dollars   |
+| Dashboard view-models extracted into `useDisplayComputeds`                          | `ef88023` | Beyond 4.1: the facade's last cohesive block — ten pure computeds behind eleven getter deps, 728 → 594 lines; pinned directly by `e9e48c7` |
 
 ## Corrections to this plan
 
