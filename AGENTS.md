@@ -8,7 +8,7 @@ Run everything from the **repository root** (npm workspaces):
 
 ```bash
 npm install            # installs apps/api + apps/web + packages/* into the root node_modules
-npm run dev            # dev server with hot reload (ts-node-dev), port 3000
+npm run dev            # dev server with hot reload (tsx watch), port 3000
 npm run dev:web        # Vite dev server for the Vue app, port 5173, proxying /api → :3000
 ```
 
@@ -395,6 +395,23 @@ ROLLBACK` as prepared statements. That was the driver's own mechanism spelled ou
   install also silently reverts the _declared_ version while `node_modules`
   keeps the new one, and the next `npm install` puts the old one back — which is
   how a Playwright upgrade can appear to have worked and then vanish.
+- **An advisory with no fixed version anywhere means removing the consumer, not
+  weakening the gate.** GHSA-vfj7-8cjw-p6xm marked `braces` vulnerable through
+  3.0.3 — the newest release — so there was nothing to upgrade or override to,
+  and `npm run audit` went red with "No fix available". The only chain was
+  `ts-node-dev` (the dev server) → `chokidar@3.6.0` (which pins `~3.0.2`) →
+  `braces`; the runtime image never sees it, because devDependencies are pruned
+  there. Scoping the gate to `npm audit --omit=dev` would have gone green while
+  silently disarming the next esbuild-class finding, and an override pinning
+  `chokidar@4` would have guessed at a package unmaintained since 2021, with no
+  test covering the dev loop. The fix was swapping `ts-node-dev` for `tsx` —
+  already in the tree via drizzle-kit, the same watch-the-dependency-graph
+  behaviour, and its only dependency is `esbuild`, which the root override
+  already governs. `ts-node` stays for the one-shot scripts (`migrate:*`,
+  `seed:local`): no watcher, no `braces` in its tree. The same pass took
+  `source-map-js` 1.2.1 → 1.2.2 with `npm update source-map-js`, which moved
+  one resolution block because every parent already allowed `^1.2.1` — the
+  explicit-upgrade rule applied to a transitive dependency.
 - **`trades.profit` does not exist, and realized P/L from sales is derived, not
   stored.** The column was dropped in migration `0003_cheerful_rocket_raccoon.sql`,
   so for a while realized P/L from sales was zero everywhere while every

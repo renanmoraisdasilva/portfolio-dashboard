@@ -7,7 +7,7 @@
     "start": "node dist/web.js",
     "start:web": "node dist/web.js",
     "start:worker": "node dist/worker.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "tsx watch --clear-screen=false src/index.ts",
     "dev:compose": "docker compose -f ../../docker-compose.local.yml up --build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:docker": "docker build --target builder -t portfolio-dashboard-test -f Dockerfile ../.. && docker run --rm portfolio-dashboard-test sh -c \"npm test\"",
@@ -53,7 +53,7 @@
     "@types/swagger-ui-express": "^4.1.6",
     "drizzle-kit": "^0.31.10",
     "ts-node": "^10.9.1",
-    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.1.6"
   }
 }
