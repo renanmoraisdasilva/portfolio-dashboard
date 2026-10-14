@@ -120,7 +120,7 @@ apps/web/
   src/composables/useAnalyticsCharts.ts # the three Chart.js configurations, as computed refs
   src/composables/useAnalyticsTooltips.ts # metric tooltip content as structured data (no v-html)
   src/composables/useDocumentTitle.ts # per-page <title> (client-side navigation does not reload)
-  src/composables/useTradeForm.ts, useAlerts.ts, useSettings.ts, useCashflow.ts # the dashboard store's slices (IMPROVEMENT-PLAN 4.1): each takes its deps as getters/callbacks so it never imports the store, and the store destructures them under the old names so no .vue consumer changes
+  src/composables/useTradeForm.ts, useAlerts.ts, useSettings.ts, useCashflow.ts, useDisplayComputeds.ts # the dashboard store's slices (IMPROVEMENT-PLAN 4.1 + its follow-up): each takes its deps as getters/callbacks so it never imports the store, and the store destructures them under the old names so no .vue consumer changes
   src/stores/persistPlugin.ts   # Pinia plugin: mirrors opted-in state keys into localStorage
   src/stores/           # Pinia stores, one per migrated page (analytics, simulation, dashboard); dashboard.ts is a facade over the four slices above, and keeps the server-backed state, the display computeds and the load orchestration
   src/components/       # ChartCanvas.vue (Chart.js lifecycle), MetricCard.vue, PageHeader.vue (a page's TITLE only - no navigation), AllocationTable.vue, analysis/, simulation/, dashboard/

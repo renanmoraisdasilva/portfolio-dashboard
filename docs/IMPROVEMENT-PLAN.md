@@ -994,12 +994,12 @@ Done, in five commits that were each green on their own:
 5. **`245ed70`** — `composables/useCashflow.ts`: balances, both interest
    ledgers, the cash-entry log.
 
-`dashboard.ts` is now **728 lines**. What stayed in the store: the
-server-backed collections, the display computeds (metrics, rows, allocation,
-candles), the small UI prefs, and all of the `load()` / `refresh()` /
-`reloadState()` orchestration, so the load order is still explicit. The return
-block never changed — each slice is destructured under its old name, so no
-`.vue` consumer moved at all.
+`dashboard.ts` is now **728 lines** — **594** after the follow-up cut recorded
+under _Work that was not in the plan_. What stayed in the store: the
+server-backed collections, the small UI prefs, and all of the `load()` /
+`refresh()` / `reloadState()` orchestration, so the load order is still explicit.
+The return block never changed — each slice is destructured under its old name,
+so no `.vue` consumer moved at all.
 
 The slices are composables rather than Pinia stores deliberately: each needs
 several things the store owns (classifier, rate, balances, `reloadState`), and a
@@ -1589,7 +1589,7 @@ deliberately deferred with the reasoning recorded.
 
 ## Work that was not in the plan
 
-Five items came out of doing the planned ones, and each is a real fix rather
+Six items came out of doing the planned ones, and each is a real fix rather
 than a chore:
 
 | What                                                                                | Commit    | Why                                                                                                                                      |
@@ -1599,6 +1599,7 @@ than a chore:
 | `npm run test:docker` repaired (tsconfig exclude + config copied into the builder)  | `107df76` | It was failing on 32 of 36 files before this work                                                                                        |
 | CI smoke step: invalid `docker stop -w` flag                                        | `658d953` | Exit 125, so the container was never signalled                                                                                           |
 | Shared trade-form math (`tradeForm.ts`) extracted from both stores before the split | `70176cf` | The two hand-written copies had drifted: on a BRL asset the slider pinned itself at Max, and one branch formatted a BRL price as dollars |
+| Dashboard view-models extracted into `useDisplayComputeds`                          | `ef88023` | Beyond 4.1: the facade's last cohesive block — ten pure computeds behind eleven getter deps, 728 → 594 lines                             |
 
 ## Corrections to this plan
 
